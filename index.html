@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avaliação Fisioterapêutica</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- Html2Pdf Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+
+<body>
+    <div class="background-elements">
+        <div class="glow-orb red-orb"></div>
+        <div class="glow-orb grey-orb"></div>
+    </div>
+
+    <header class="app-header glass-panel">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-img-container">
+                    <img src="Logotipo Kinesis Fisioterapia - Fundo Branco.jpg" alt="Logo Kinesis Lab"
+                        style="height: 100%; width: auto; object-fit: contain; border-radius: 4px;">
+                </div>
+                <h1>Kinesis<span class="highlight">Lab</span></h1>
+            </div>
+            <nav>
+                <button id="btn-home" class="nav-btn active">Início</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="app-main">
+        <div id="view-segments" class="view active">
+            <header class="view-header">
+                <h2>Onde está o foco da avaliação?</h2>
+                <p>Selecione a região do corpo (segmento) para ver os questionários disponíveis.</p>
+            </header>
+
+            <div class="card-grid">
+                <div class="evaluation-card glass-panel" onclick="selectSegment('cervical')">
+                    <div class="card-icon">
+                        <img src="icon_cervical.png" alt="Anatomia Cervical"
+                            style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <h3>Cervical</h3>
+                    <p>Questionários focados na região do pescoço.</p>
+                </div>
+
+                <div class="evaluation-card glass-panel" onclick="selectSegment('lombar')">
+                    <div class="card-icon">
+                        <img src="icon_lombar.png" alt="Anatomia Lombar"
+                            style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <h3>Lombar</h3>
+                    <p>Avaliações para dores nas costas e região lombar.</p>
+                </div>
+
+                <div class="evaluation-card glass-panel" onclick="selectSegment('ombro')">
+                    <div class="card-icon">
+                        <img src="icon_ombro.png" alt="Anatomia Ombro"
+                            style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <h3>Ombro</h3>
+                    <p>Avaliações para problemas no ombro, braço e mão.</p>
+                </div>
+
+                <div class="evaluation-card glass-panel" onclick="selectSegment('geriatria')">
+                    <div class="card-icon">
+                        <img src="icon_geriatria.png" alt="Geriatria"
+                            style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <h3>Geriatria</h3>
+                    <p>Avaliações específicas para saúde do idoso.</p>
+                </div>
+
+                <div class="evaluation-card glass-panel" onclick="selectSegment('mmii')">
+                    <div class="card-icon">
+                        <img src="icon_mmii.png" alt="Anatomia Membros Inferiores"
+                            style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <h3>Membros Inferiores</h3>
+                    <p>Avaliação funcional para pernas, joelhos e quadril.</p>
+                </div>
+
+                <div class="evaluation-card glass-panel" onclick="selectSegment('tornozelo')">
+                    <div class="card-icon">
+                        <img src="icon_tornozelo.png" alt="Anatomia Tornozelo"
+                            style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <h3>Tornozelo</h3>
+                    <p>Questionários focados na articulação do tornozelo e pé.</p>
+                </div>
+
+                <div class="evaluation-card glass-panel" onclick="selectSegment('cotovelo')">
+                    <div class="card-icon">
+                        <img src="icon_cotovelo.png" alt="Anatomia Cotovelo"
+                            style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <h3>Cotovelo e Mão</h3>
+                    <p>Avaliações da articulação do cotovelo, punho e mão.</p>
+                </div>
+
+                <div class="evaluation-card glass-panel" onclick="selectSegment('diversas')">
+                    <div class="card-icon"
+                        style="display: flex; align-items: center; justify-content: center; background: #f0f4f8; border-radius: 8px;">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            style="color: var(--primary)">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </div>
+                    <h3>Avaliações Diversas</h3>
+                    <p>Testes isolados e avaliações gerais de áreas específicas.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-dashboard" class="view hidden">
+            <header class="view-header">
+                <h2>Selecione a Avaliação</h2>
+                <p>Escolha o questionário a ser preenchido pelo paciente.</p>
+            </header>
+
+            <div class="card-grid" id="questionnaire-list">
+                <!-- Cards renderizados via JS -->
+            </div>
+        </div>
+
+        <div id="view-patient-info" class="view hidden">
+            <header class="view-header">
+                <h2>Dados do Paciente</h2>
+                <p>Preencha os dados abaixo antes de iniciar a avaliação.</p>
+            </header>
+
+            <div class="question-container">
+                <form id="patient-form" class="options-list">
+                    <div class="form-group">
+                        <label for="patient-name">Nome Completo</label>
+                        <input type="text" id="patient-name" class="form-input" placeholder="Ex: Maria da Silva">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="patient-age">Idade</label>
+                            <input type="number" id="patient-age" class="form-input" placeholder="Ex: 45">
+                        </div>
+                        <div class="form-group" style="flex: 1.5;">
+                            <label for="patient-gender">Sexo</label>
+                            <select id="patient-gender" class="form-input">
+                                <option value="Masculino">Masculino</option>
+                                <option value="Feminino">Feminino</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 1.5;" id="patient-dominance-group">
+                            <label for="patient-dominance">Dominância</label>
+                            <select id="patient-dominance" class="form-input">
+                                <option value="Destro">Destro</option>
+                                <option value="Canhoto">Canhoto</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 2;">
+                            <label for="patient-date">Data da Avaliação</label>
+                            <input type="date" id="patient-date" class="form-input">
+                        </div>
+                    </div>
+
+                    <div class="question-navigation" style="justify-content: flex-end;">
+                        <button type="submit" class="btn btn-primary" id="btn-start-questions">
+                            Iniciar Perguntas
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="view-questionnaire" class="view hidden">
+            <!-- Renderizado via JS -->
+        </div>
+
+        <div id="view-results" class="view hidden">
+            <!-- Renderizado via JS -->
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

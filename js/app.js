@@ -874,7 +874,7 @@ function updateDéficits(section = 'forca') {
 
     // Colunas de déficit genéricas (Membro E x Membro D)
     const rowsToCalculate = section === 'forca'
-        ? ['abd_quadril', 'ext_joelho', 'flex_joelho']
+        ? ['abd_quadril', 'ext_quadril', 'flex_quadril', 'rot_int_quadril', 'ext_joelho', 'flex_joelho']
         : section === 'forca_preensao'
             ? ['preensao_palmar', 'pinca_polpa', 'pinca_lateral', 'pinca_tripode']
             : ['abd_ombro', 'rl_ombro', 'rm_ombro'];
@@ -1868,29 +1868,30 @@ function renderResults(result) {
 }
 
 function renderChartsHtml(q, result) {
-    if (!state.clinicalData || !state.clinicalData.forca_preensao) return '';
+    if (!state.clinicalData) return '';
     let html = '';
 
     // Preensao Palmar
-    const preensao = state.clinicalData.forca_preensao.preensao_palmar;
-    if (preensao && (preensao.esquerdo || preensao.direito)) {
-        html += `
-        <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-            <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Análise de Preensão Palmar</h4>
-            <div class="glass-panel" style="padding: 1.5rem;">
-                <div id="preensao-palmar-text-results"></div>
-                <div style="height: 300px; margin-top: 1.5rem;">
-                    <canvas id="preensaoPalmarChart"></canvas>
+    if (state.clinicalData.forca_preensao) {
+        const preensao = state.clinicalData.forca_preensao.preensao_palmar;
+        if (preensao && (preensao.esquerdo || preensao.direito)) {
+            html += `
+            <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
+                <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Análise de Preensão Palmar</h4>
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <div id="preensao-palmar-text-results"></div>
+                    <div style="height: 300px; margin-top: 1.5rem;">
+                        <canvas id="preensaoPalmarChart"></canvas>
+                    </div>
                 </div>
             </div>
-        </div>
-        `;
-    }
+            `;
+        }
 
-    // Pinca Lateral
-    const pinca = state.clinicalData.forca_preensao.pinca_lateral;
-    if (pinca && (pinca.esquerdo || pinca.direito)) {
-        html += `
+        // Pinca Lateral
+        const pinca = state.clinicalData.forca_preensao.pinca_lateral;
+        if (pinca && (pinca.esquerdo || pinca.direito)) {
+            html += `
         <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
             <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Análise de Pinça Lateral (Chave)</h4>
             <div class="glass-panel" style="padding: 1.5rem;">
@@ -1901,12 +1902,12 @@ function renderChartsHtml(q, result) {
             </div>
         </div>
         `;
-    }
+        }
 
-    // Pinca Tripode
-    const tripode = state.clinicalData.forca_preensao.pinca_tripode;
-    if (tripode && (tripode.esquerdo || tripode.direito)) {
-        html += `
+        // Pinca Tripode
+        const tripode = state.clinicalData.forca_preensao.pinca_tripode;
+        if (tripode && (tripode.esquerdo || tripode.direito)) {
+            html += `
         <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
             <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Análise de Pinça Trípode (Palmer Pinch)</h4>
             <div class="glass-panel" style="padding: 1.5rem;">
@@ -1917,22 +1918,23 @@ function renderChartsHtml(q, result) {
             </div>
         </div>
         `;
-    }
+        }
 
-    // Pinca Polpa a Polpa
-    const polpa = state.clinicalData.forca_preensao.pinca_polpa;
-    if (polpa && (polpa.esquerdo || polpa.direito)) {
-        html += `
-        <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-            <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Análise de Pinça Polpa a Polpa (Tip Pinch)</h4>
-            <div class="glass-panel" style="padding: 1.5rem;">
-                <div id="pinca-polpa-text-results"></div>
-                <div style="height: 300px; margin-top: 1.5rem;">
-                    <canvas id="pincaPolpaChart"></canvas>
+        // Pinca Polpa a Polpa
+        const polpa = state.clinicalData.forca_preensao.pinca_polpa;
+        if (polpa && (polpa.esquerdo || polpa.direito)) {
+            html += `
+            <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
+                <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Análise de Pinça Polpa a Polpa (Tip Pinch)</h4>
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <div id="pinca-polpa-text-results"></div>
+                    <div style="height: 300px; margin-top: 1.5rem;">
+                        <canvas id="pincaPolpaChart"></canvas>
+                    </div>
                 </div>
             </div>
-        </div>
-        `;
+            `;
+        }
     }
 
     // --- Hip Strength Charts HTML ---
@@ -1966,7 +1968,7 @@ function renderChartsHtml(q, result) {
 }
 
 function renderCharts() {
-    if (!state.clinicalData || !state.clinicalData.forca_preensao) return;
+    if (!state.clinicalData) return;
 
     const age = parseInt(state.patientInfo.age);
     const gender = state.patientInfo.gender; // "Masculino" or "Feminino"
@@ -1976,6 +1978,7 @@ function renderCharts() {
 
     // Helper for rendering a single chart
     const renderIndividualChart = (testId, canvasId, textContainerId, title, refDataMap) => {
+        if (!state.clinicalData.forca_preensao) return;
         const testData = state.clinicalData.forca_preensao[testId];
         if (!testData || (!testData.esquerdo && !testData.direito)) return;
 

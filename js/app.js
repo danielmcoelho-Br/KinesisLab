@@ -382,7 +382,7 @@ window.openPatientDashboard = async function (patientId) {
         const assessments = await window.db.getPatientAssessments(patientId);
 
         // Check if the current user is admin to show delete buttons
-        const isAdmin = window._currentUserProfile && window._currentUserProfile.role === 'admin';
+        const isAdmin = state.userProfile && state.userProfile.role === 'admin';
 
         if (assessments.length === 0) {
             listContainer.innerHTML = '<p style="text-align:center; color: var(--text-muted); padding: 1rem;">Nenhuma avaliação cadastrada para este paciente.</p>';

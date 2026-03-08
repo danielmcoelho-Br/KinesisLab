@@ -1604,7 +1604,7 @@ function renderClinicalForm() {
 
             <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
                 <button class="btn btn-secondary" onclick="navigateTo('view-dashboard')">Cancelar</button>
-                <button class="btn btn-primary" id="btn-finish-clinical">Finalizar e Ver Resultado</button>
+                <button class="btn btn-primary" id="btn-finish-clinical" onclick="window.finishQuestionnaire()">Finalizar e Ver Resultado</button>
             </div>
         </div>
     `;
@@ -1713,9 +1713,13 @@ function renderClinicalForm() {
         });
     });
 
-    document.getElementById('btn-finish-clinical').addEventListener('click', () => {
-        finishQuestionnaire();
-    });
+    // btn-finish-clinical now uses onclick="window.finishQuestionnaire()" directly
+    // addEventListener kept as fallback for older renders:
+    const btnFinish = document.getElementById('btn-finish-clinical');
+    if (btnFinish && !btnFinish.dataset.wired) {
+        btnFinish.dataset.wired = 'true';
+        btnFinish.addEventListener('click', () => window.finishQuestionnaire());
+    }
 }
 
 function updateDéficits(section = 'forca') {
@@ -2197,7 +2201,14 @@ function handleNext() {
 }
 
 // 5. Finish and Calculate
-async function finishQuestionnaire() {
+window.finishQuestionnaire = async function finishQuestionnaire() {
+    // Ensure patientInfo exists with a valid date (required for renderResults)
+    if (!state.patientInfo) {
+        state.patientInfo = { name: 'Paciente', age: '-', gender: '-', date: new Date().toISOString() };
+    }
+    if (!state.patientInfo.date) {
+        state.patientInfo.date = new Date().toISOString();
+    }
     const q = state.currentQuestionnaire;
 
     const actualAnswers = {};

@@ -12,6 +12,8 @@ const state = {
 
 // DOM Elements
 const views = {
+    'view-login': document.getElementById('view-login'),
+    'view-admin': document.getElementById('view-admin'),
     'view-home': document.getElementById('view-home'),
     'view-patient-dashboard': document.getElementById('view-patient-dashboard'),
     'view-segments': document.getElementById('view-segments'),
@@ -26,7 +28,31 @@ const questionnaireList = document.getElementById('questionnaire-list');
 const patientForm = document.getElementById('patient-form');
 
 // Initialize the application
-function initApp() {
+async function initApp() {
+    // Check Authentication state before proceeding
+    state.session = await window.db.getSession();
+
+    if (!state.session) {
+        // Not logged in -> Show login view and hide menu
+        document.getElementById('main-header').style.display = 'none';
+        navigateTo('view-login');
+    } else {
+        // Logged in
+        document.getElementById('main-header').style.display = 'block';
+        const profile = await window.db.getUserProfile(state.session.user.id);
+        if (profile) {
+            state.userProfile = profile;
+            document.getElementById('user-greeting').innerText = `Olá, ${profile.name || 'Usuário'}`;
+            if (profile.role === 'admin') {
+                document.getElementById('btn-admin-panel').classList.remove('hidden');
+            } else {
+                document.getElementById('btn-admin-panel').classList.add('hidden');
+            }
+        }
+        navigateTo('view-home');
+        loadRecentPatients();
+    }
+
     // Set today's date automatically in the form
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('patient-date').value = today;
@@ -161,10 +187,122 @@ function initApp() {
         });
     }
 
-    // Show initial view
-    navigateTo(state.currentView);
-    if (state.currentView === 'view-home') {
-        loadRecentPatients();
+    // Auth Event Listeners
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit-login');
+            const errorDiv = document.getElementById('login-error');
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            btn.innerHTML = 'Carregando...';
+            btn.disabled = true;
+            errorDiv.style.display = 'none';
+
+            try {
+                await window.db.login(email, password);
+                // Restart app logic to fetch profile and load view-home
+                initApp();
+            } catch (err) {
+                console.error(err);
+                errorDiv.innerText = 'Email ou senha incorretos.';
+                errorDiv.style.display = 'block';
+            } finally {
+                btn.innerHTML = 'Entrar na Plataforma';
+                btn.disabled = false;
+            }
+        });
+    }
+
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async () => {
+            await window.db.logout();
+            state.session = null;
+            state.userProfile = null;
+            document.getElementById('main-header').style.display = 'none';
+            navigateTo('view-login');
+        });
+    }
+
+    const btnAdminPanel = document.getElementById('btn-admin-panel');
+    if (btnAdminPanel) {
+        btnAdminPanel.addEventListener('click', () => {
+            navigateTo('view-admin');
+            loadAdminUsers();
+        });
+    }
+
+    const adminCreateUserForm = document.getElementById('admin-create-user-form');
+    if (adminCreateUserForm) {
+        adminCreateUserForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit-new-user');
+            const errorDiv = document.getElementById('admin-error');
+            const successDiv = document.getElementById('admin-success');
+
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+
+            const name = document.getElementById('new-user-name').value;
+            const email = document.getElementById('new-user-email').value;
+            const password = document.getElementById('new-user-password').value;
+            const role = document.getElementById('new-user-role').value;
+
+            btn.disabled = true;
+            btn.innerHTML = 'Processando...';
+
+            try {
+                await window.db.createUser(email, password, name, role);
+                successDiv.innerText = `Usuário ${name} criado com sucesso! As credenciais já podem ser enviadas ao profissional.`;
+                successDiv.style.display = 'block';
+                adminCreateUserForm.reset();
+                loadAdminUsers(); // Refresh the table
+            } catch (err) {
+                console.error(err);
+                errorDiv.innerText = 'Falha ao criar usuário. Tente novamente.';
+                errorDiv.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:0.5rem"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg> Criar Usuário';
+            }
+        });
+    }
+
+}
+
+// --- Admin Logic ---
+async function loadAdminUsers() {
+    const tbody = document.getElementById('users-table-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">Carregando usuários...</td></tr>';
+
+    try {
+        const users = await window.db.getAllUsers();
+        if (users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">Nenhum usuário encontrado.</td></tr>';
+            return;
+        }
+
+        let html = '';
+        users.forEach(u => {
+            const roleClass = u.role === 'admin' ? 'role-admin' : 'role-user';
+            const roleLabel = u.role === 'admin' ? 'Admin' : 'Usuário';
+            html += `
+                <tr>
+                    <td style="font-weight: 500; color: var(--text-main);">${u.name}</td>
+                    <td><span class="role-badge ${roleClass}">${roleLabel}</span></td>
+                    <td style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem;">${u.id}</td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+
+    } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--primary-red);">Erro ao carregar lista de usuários.</td></tr>';
     }
 }
 
@@ -257,9 +395,8 @@ window.openPatientDashboard = async function (patientId) {
 
                 // Get human readable title of the evaluation
                 let title = a.assessment_type;
-                if (window.questionnairesData && window.questionnairesData[a.segment]) {
-                    const found = window.questionnairesData[a.segment].find(q => q.id === a.assessment_type);
-                    if (found) title = found.title;
+                if (window.questionnairesData && window.questionnairesData[a.assessment_type]) {
+                    title = window.questionnairesData[a.assessment_type].title;
                 }
 
                 html += `
@@ -299,8 +436,8 @@ window.viewHistoricalAssessment = function (assessmentId) {
 
     // Find the original questionnaire template
     let qTemplate = null;
-    if (window.questionnairesData && window.questionnairesData[a.segment]) {
-        qTemplate = window.questionnairesData[a.segment].find(q => q.id === a.assessment_type);
+    if (window.questionnairesData && window.questionnairesData[a.assessment_type]) {
+        qTemplate = window.questionnairesData[a.assessment_type];
     }
 
     if (!qTemplate) return alert("Erro crítico: Template do questionário não encontrado no código fonte atual.");
@@ -649,22 +786,66 @@ window.abrirModalBrief = function () {
     if (newWindow) newWindow.focus(); else alert("Por favor, permita pop-ups.");
 };
 
-// Navigation
+// UI Navigation
 function navigateTo(viewId) {
-    // Hide all views synchronously
+    if (viewId === 'view-login') {
+        Object.values(views).forEach(view => {
+            if (view) {
+                view.classList.remove('active');
+                view.classList.add('hidden');
+            }
+        });
+        if (views[viewId]) {
+            const targetView = views[viewId];
+            targetView.classList.remove('hidden');
+            void targetView.offsetWidth;
+            targetView.classList.add('active');
+            state.currentView = viewId;
+        }
+        return;
+    }
+
+    // Auth Guard: if not targeting login, ensure user is authenticated
+    if (!state.session) {
+        if (viewId !== 'view-login') {
+            navigateTo('view-login');
+            return;
+        }
+    }
+
+    // Admin Guard: block non-admins from admin panel
+    if (viewId === 'view-admin') {
+        if (!state.userProfile || state.userProfile.role !== 'admin') {
+            alert('Acesso negado. Apenas administradores podem acessar esta página.');
+            navigateTo('view-home');
+            return;
+        }
+    }
+
     Object.values(views).forEach(view => {
-        view.classList.remove('active');
-        view.classList.add('hidden');
+        if (view) {
+            view.classList.remove('active');
+            view.classList.add('hidden');
+        }
     });
 
-    // Show target view synchronously
-    const targetView = views[viewId];
-    targetView.classList.remove('hidden');
-    // Force reflow
-    void targetView.offsetWidth;
-    targetView.classList.add('active');
+    if (views[viewId]) {
+        const targetView = views[viewId];
+        targetView.classList.remove('hidden');
+        // Force reflow for CSS transitions
+        void targetView.offsetWidth;
+        targetView.classList.add('active');
+        state.currentView = viewId;
+    }
 
-    state.currentView = viewId;
+    // Scroll to top when changing views
+    window.scrollTo(0, 0);
+
+    // Update nav button states
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+    if (viewId === 'view-home' || viewId === 'view-patient-dashboard') {
+        document.getElementById('btn-home').classList.add('active');
+    }
 
     // Header Breadcrumb logic
     if (viewId === 'view-home') {
@@ -703,14 +884,7 @@ async function shareBlankQuestionnairePDF(qId, event) {
     if (event) event.preventDefault();
 
     // Find the questionnaire
-    let q = null;
-    for (const seg in questionnairesData) {
-        const found = questionnairesData[seg].find(item => item.id === qId);
-        if (found) {
-            q = found;
-            break;
-        }
-    }
+    let q = questionnairesData[qId] || null;
 
     if (!q) return;
 
@@ -821,8 +995,15 @@ async function shareBlankQuestionnairePDF(qId, event) {
                 text: `Olá! Segue em anexo o questionário: ${q.title}. Por favor, preencha e nos devolva.`
             });
         } else {
-            alert("Seu navegador não suporta compartilhamento direto de arquivos. O PDF será baixado na sequência. Envie-o manualmente pelo WhatsApp Web.");
-            html2pdf().set(opt).from(container).save();
+            alert("Seu navegador não suporta compartilhamento direto de arquivos. O PDF será baixado no seu computador. Após abrir o WhatsApp, por favor, anexe o arquivo manualmente na conversa do paciente.");
+            const url = URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = opt.filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
     } catch (err) {
@@ -2397,7 +2578,17 @@ function renderResults(result) {
                     });
                 } else {
                     // Fallback for browsers that don't support file sharing or Desktop: download and open WA link
-                    html2pdf().set(opt).from(element).save();
+                    alert("Atenção: O WhatsApp Web não permite anexar arquivos de forma automática.\n\nO PDF foi baixado no seu computador. Quando a tela do WhatsApp abrir, anexe o PDF gerado manualmente na conversa.");
+
+                    const url = URL.createObjectURL(pdfBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = opt.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
                     setTimeout(() => {
                         window.open(whatsappUrl, '_blank');
                     }, 500);

@@ -5,7 +5,91 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 // Create a single supabase client for interacting with your database
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Create a secondary client specifically for admin creation of users
+// This prevents the admin from being logged out when creating a new user
+const adminSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: {
+        storageKey: 'supabase-admin-temp-key',
+        autoRefreshToken: false,
+        persistSession: false
+    }
+});
+
 const db = {
+    /**
+     * Authentication Methods
+     */
+    async login(email, password) {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        return data;
+    },
+
+    async logout() {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+    },
+
+    async getSession() {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        return data.session;
+    },
+
+    async getUserProfile(userId) {
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .single();
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Error fetching profile:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Admin Methods
+     */
+    async getAllUsers() {
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .order('name');
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Error fetching users:', error);
+            throw error;
+        }
+    },
+
+    async createUser(email, password, name, role) {
+        try {
+            // Use the secondary client so the current admin user session is not modified
+            const { data, error } = await adminSupabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        name: name,
+                        role: role
+                    }
+                }
+            });
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Error creating user:', error);
+            throw error;
+        }
+    },
+
     /**
      * Saves a new patient to the database
      * @param {Object} patientData - { name, age, gender, dominance, activity_level }

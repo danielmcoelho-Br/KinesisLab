@@ -986,3 +986,89 @@ h3 {
 .modal-overlay:not(.hidden) .modal-content {
     transform: translateY(0) !important;
 }
+
+/* Auth and Admin Styles */
+.auth-container {
+    max-width: 400px;
+    margin: 4rem auto;
+    padding: 2.5rem;
+    text-align: center;
+}
+
+.auth-container h2 {
+    color: var(--primary-red);
+    margin-bottom: 2rem;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.users-table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: var(--border-radius-md);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.users-table th,
+.users-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.users-table th {
+    background-color: #f8fafc;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.role-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.role-admin {
+    background-color: #fee2e2;
+    color: var(--primary-red);
+}
+
+.role-user {
+    background-color: #e0f2fe;
+    color: #0284c7;
+}
+
+.error-message {
+    color: var(--primary-red);
+    background-color: #fee2e2;
+    padding: 0.75rem;
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    text-align: left;
+    display: none;
+}
+
+.success-message {
+    color: #059669;
+    background-color: #d1fae5;
+    padding: 0.75rem;
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    text-align: left;
+    display: none;
+}

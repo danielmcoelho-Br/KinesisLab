@@ -457,14 +457,41 @@ window.openPatientDashboard = async function (patientId) {
     }
 };
 
+// Custom confirmation modal (replaces native confirm())
+function showDeleteConfirm(title, message) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('modal-confirm-delete');
+        document.getElementById('modal-confirm-title').textContent = title;
+        document.getElementById('modal-confirm-msg').textContent = message;
+        modal.style.display = 'flex';
+
+        const btnOk = document.getElementById('modal-confirm-ok');
+        const btnCancel = document.getElementById('modal-confirm-cancel');
+
+        function cleanup(result) {
+            modal.style.display = 'none';
+            btnOk.removeEventListener('click', onOk);
+            btnCancel.removeEventListener('click', onCancel);
+            resolve(result);
+        }
+        function onOk() { cleanup(true); }
+        function onCancel() { cleanup(false); }
+
+        btnOk.addEventListener('click', onOk);
+        btnCancel.addEventListener('click', onCancel);
+    });
+}
+
 // Admin delete functions
 window.adminDeleteAssessment = async function (assessmentId) {
-    if (!confirm('Tem certeza que deseja excluir esta avaliação? Esta ação é irreversível.')) return;
+    const confirmed = await showDeleteConfirm(
+        'Excluir Avaliação',
+        'Tem certeza que deseja excluir esta avaliação? Esta ação é irreversível.'
+    );
+    if (!confirmed) return;
     try {
         await window.db.deleteAssessment(assessmentId);
-        // Remove from local map
         if (window._loadedAssessmentsMap) delete window._loadedAssessmentsMap[assessmentId];
-        // Refresh the dashboard
         openPatientDashboard(state.patientId);
     } catch (err) {
         alert('Erro ao excluir avaliação: ' + err.message);
@@ -472,7 +499,11 @@ window.adminDeleteAssessment = async function (assessmentId) {
 };
 
 window.adminDeletePatient = async function (patientId) {
-    if (!confirm('Tem certeza que deseja excluir este paciente e TODAS as suas avaliações? Esta ação é irreversível.')) return;
+    const confirmed = await showDeleteConfirm(
+        'Excluir Paciente',
+        'Tem certeza que deseja excluir este paciente e TODAS as suas avaliações? Esta ação é irreversível.'
+    );
+    if (!confirmed) return;
     try {
         await window.db.deletePatient(patientId);
         state.patientId = null;
@@ -484,6 +515,7 @@ window.adminDeletePatient = async function (patientId) {
         alert('Erro ao excluir paciente: ' + err.message);
     }
 };
+
 
 window.viewHistoricalAssessment = function (assessmentId) {
     const a = window._loadedAssessmentsMap ? window._loadedAssessmentsMap[assessmentId] : null;

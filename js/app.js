@@ -132,12 +132,14 @@ async function initApp() {
 
     // Event Listeners
     btnHome.addEventListener('click', () => {
+        // Only clear patient state if we're NOT returning from the patient dashboard flow
+        // (i.e., always fully reset when going home)
         state.selectedSegment = null;
         state.patientId = null;
         state.patientInfo = null;
         state.isQuickAssessment = false;
         navigateTo('view-home');
-        loadRecentPatients(); // Function to be implemented
+        loadRecentPatients();
     });
 
     patientForm.addEventListener('submit', handlePatientFormSubmit);
@@ -278,33 +280,73 @@ async function loadAdminUsers() {
     const tbody = document.getElementById('users-table-body');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">Carregando usuários...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Carregando usuários...</td></tr>';
 
     try {
         const users = await window.db.getAllUsers();
         if (users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">Nenhum usuário encontrado.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Nenhum usuário encontrado.</td></tr>';
             return;
         }
+
+        // Get current logged-in user ID to prevent self-deletion
+        const currentUserId = state.session && state.session.user ? state.session.user.id : null;
 
         let html = '';
         users.forEach(u => {
             const roleClass = u.role === 'admin' ? 'role-admin' : 'role-user';
             const roleLabel = u.role === 'admin' ? 'Admin' : 'Usuário';
+            const isSelf = u.id === currentUserId;
+
+            const deleteBtn = isSelf
+                ? `<span style="font-size: 0.78rem; color: var(--text-muted); font-style: italic;">Conta atual</span>`
+                : `<button onclick="adminDeleteUser('${u.id}', '${u.name.replace(/'/g, "\\'")}')"
+                    style="background: none; border: 1px solid var(--primary-red); color: var(--primary-red);
+                           border-radius: 6px; padding: 3px 10px; font-size: 0.8rem; cursor: pointer;
+                           transition: background 0.2s;"
+                    onmouseover="this.style.background='rgba(185,28,28,0.08)';"
+                    onmouseout="this.style.background='none';">
+                    🗑 Excluir
+                   </button>`;
+
             html += `
                 <tr>
                     <td style="font-weight: 500; color: var(--text-main);">${u.name}</td>
                     <td><span class="role-badge ${roleClass}">${roleLabel}</span></td>
                     <td style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem;">${u.id}</td>
+                    <td>${deleteBtn}</td>
                 </tr>
             `;
         });
         tbody.innerHTML = html;
 
     } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--primary-red);">Erro ao carregar lista de usuários.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--primary-red);">Erro ao carregar lista de usuários.</td></tr>';
     }
 }
+
+// Admin: delete a user profile
+window.adminDeleteUser = async function (userId, userName) {
+    const confirmed = await showDeleteConfirm(
+        'Excluir Usuário',
+        `Tem certeza que deseja excluir o usuário "${userName}"? O acesso dele à plataforma será revogado imediatamente. Esta ação é irreversível.`
+    );
+    if (!confirmed) return;
+    try {
+        await window.db.deleteUserProfile(userId);
+        loadAdminUsers(); // Refresh table
+        const successDiv = document.getElementById('admin-success');
+        successDiv.innerText = `Usuário "${userName}" removido com sucesso.`;
+        successDiv.style.display = 'block';
+        setTimeout(() => { successDiv.style.display = 'none'; }, 4000);
+    } catch (err) {
+        console.error(err);
+        const errorDiv = document.getElementById('admin-error');
+        errorDiv.innerText = 'Erro ao excluir usuário: ' + err.message;
+        errorDiv.style.display = 'block';
+        setTimeout(() => { errorDiv.style.display = 'none'; }, 5000);
+    }
+};
 
 // --- DB Logic & Patient Home View Render ---
 async function loadRecentPatients(query = '') {
@@ -959,9 +1001,11 @@ function navigateTo(viewId) {
         btnHome.classList.remove('active');
         btnHome.textContent = '← Cancelar e Voltar';
 
-        // Edge case: if viewing a form directly from the dashboard, button should go to dashboard.
+        // If navigating to patient-info while a patient is already loaded,
+        // skip the form entirely and go straight to segment selection.
         if (state.patientId && viewId === 'view-patient-info') {
-            // This doesn't apply to the patient form anymore
+            navigateTo('view-segments');
+            return;
         }
 
     }

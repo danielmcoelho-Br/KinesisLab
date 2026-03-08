@@ -1,15 +1,19 @@
 // State Management
 const state = {
-    currentView: 'view-segments',
+    currentView: 'view-home',
     selectedSegment: null,
     currentQuestionnaire: null,
     patientInfo: null,
+    patientId: null,
+    isQuickAssessment: false,
     answers: {},
     currentQuestionIndex: 0
 };
 
 // DOM Elements
 const views = {
+    'view-home': document.getElementById('view-home'),
+    'view-patient-dashboard': document.getElementById('view-patient-dashboard'),
     'view-segments': document.getElementById('view-segments'),
     'view-dashboard': document.getElementById('view-dashboard'),
     'view-patient-info': document.getElementById('view-patient-info'),
@@ -103,14 +107,415 @@ function initApp() {
     // Event Listeners
     btnHome.addEventListener('click', () => {
         state.selectedSegment = null;
-        navigateTo('view-segments');
+        state.patientId = null;
+        state.patientInfo = null;
+        state.isQuickAssessment = false;
+        navigateTo('view-home');
+        loadRecentPatients(); // Function to be implemented
     });
 
     patientForm.addEventListener('submit', handlePatientFormSubmit);
 
+    // New Home Screen Interactions
+    const btnNewPatient = document.getElementById('btn-new-patient');
+    if (btnNewPatient) {
+        btnNewPatient.addEventListener('click', () => {
+            state.patientInfo = null;
+            state.patientId = null;
+            state.isQuickAssessment = false;
+            document.getElementById('patient-form').reset();
+
+            // Set today's date automatically in the form
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('patient-date').value = today;
+
+            navigateTo('view-patient-info');
+        });
+    }
+
+    const btnQuickAssesment = document.getElementById('btn-quick-assessment');
+    if (btnQuickAssesment) {
+        btnQuickAssesment.addEventListener('click', () => {
+            // For Quick Assessments, skip registration entirely.
+            state.patientInfo = {
+                name: "Avaliação Rápida (Não Salva)",
+                age: 30, // Default placeholders useful for conditional equations
+                gender: "Masculino",
+                dominance: "Destro",
+                date: new Date().toISOString().split('T')[0]
+            };
+            state.patientId = null;
+            state.isQuickAssessment = true;
+            navigateTo('view-segments');
+        });
+    }
+
+    const searchInput = document.getElementById('patient-search-input');
+    if (searchInput) {
+        let debounceTimer;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                loadRecentPatients(e.target.value);
+            }, 300);
+        });
+    }
+
     // Show initial view
     navigateTo(state.currentView);
+    if (state.currentView === 'view-home') {
+        loadRecentPatients();
+    }
 }
+
+// --- DB Logic & Patient Home View Render ---
+async function loadRecentPatients(query = '') {
+    const listContainer = document.getElementById('patient-list');
+    if (!listContainer) return;
+
+    try {
+        listContainer.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 2rem;">Buscando...</div>';
+
+        // Use db from db.js
+        const patients = await window.db.getPatients(query);
+
+        if (patients.length === 0) {
+            listContainer.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 2rem;">Nenhum paciente encontrado. Tente outro nome ou cadastre um Novo Paciente.</div>';
+            return;
+        }
+
+        let html = '';
+        patients.forEach(p => {
+            // Format date nicely
+            const dateObj = new Date(p.created_at);
+            const formattedDate = dateObj.toLocaleDateString('pt-BR');
+            html += `
+                <div class="patient-list-item" onclick="openPatientDashboard('${p.id}')">
+                    <div class="patient-list-info">
+                        <h4>${p.name}</h4>
+                        <p>${p.age} anos | ${p.gender} | Criado em ${formattedDate}</p>
+                    </div>
+                    <div>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </div>
+                </div>
+            `;
+        });
+        listContainer.innerHTML = html;
+
+        // Temporarily save loaded patients in a local dictionary so we don't have to fetch the name again on click
+        window._loadedPatientsMap = patients.reduce((acc, curr) => {
+            acc[curr.id] = curr;
+            return acc;
+        }, {});
+
+    } catch (e) {
+        listContainer.innerHTML = '<div style="text-align: center; color: var(--primary-red); padding: 2rem;">Ocorreu um erro ao conectar com o servidor. Verifique sua conexão.</div>';
+    }
+}
+
+window.openPatientDashboard = async function (patientId) {
+    state.patientId = patientId;
+
+    // Find patient from our temporary cache to display the header info quickly
+    const patientData = window._loadedPatientsMap ? window._loadedPatientsMap[patientId] : null;
+
+    if (patientData) {
+        state.patientInfo = {
+            name: patientData.name,
+            age: patientData.age,
+            gender: patientData.gender,
+            dominance: patientData.dominance,
+            activityLevel: patientData.activity_level,
+            date: new Date().toISOString().split('T')[0] // Set today's date for any NEW assessments
+        };
+
+        const dateObj = new Date(patientData.created_at);
+        document.getElementById('pd-patient-name').textContent = patientData.name;
+        document.getElementById('pd-patient-details').textContent = `${patientData.age} anos | ${patientData.gender} | ${patientData.dominance || 'N/A'}`;
+    }
+
+    navigateTo('view-patient-dashboard');
+
+    const listContainer = document.getElementById('pd-assessment-list');
+    listContainer.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 1rem;">Carregando histórico...</div>';
+
+    try {
+        const assessments = await window.db.getPatientAssessments(patientId);
+
+        if (assessments.length === 0) {
+            listContainer.innerHTML = '<p style="text-align:center; color: var(--text-muted); padding: 1rem;">Nenhuma avaliação cadastrada para este paciente.</p>';
+        } else {
+            let html = '';
+            // Temporarily save assessments to global map to reconstruct them on click
+            window._loadedAssessmentsMap = {};
+
+            assessments.forEach(a => {
+                window._loadedAssessmentsMap[a.id] = a;
+                const d = new Date(a.created_at);
+                const strDate = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(d);
+
+                // Get human readable title of the evaluation
+                let title = a.assessment_type;
+                if (window.questionnairesData && window.questionnairesData[a.segment]) {
+                    const found = window.questionnairesData[a.segment].find(q => q.id === a.assessment_type);
+                    if (found) title = found.title;
+                }
+
+                html += `
+                    <div class="assessment-card" onclick="viewHistoricalAssessment('${a.id}')">
+                        <div class="assessment-card-header">
+                            <span class="assessment-card-title">${title}</span>
+                            <span class="assessment-card-date">${strDate}</span>
+                        </div>
+                        <span class="assessment-card-segment">${a.segment}</span>
+                    </div>
+                `;
+            });
+            listContainer.innerHTML = html;
+        }
+    } catch (e) {
+        console.error(e);
+        listContainer.innerHTML = '<div style="text-align: center; color: var(--primary-red); padding: 1rem;">Erro ao carregar histórico.</div>';
+    }
+
+    // Wire the "New Assessment" button inside the dashboard dashboard
+    const btnNewAssesmentDash = document.getElementById('btn-new-assessment-for-patient');
+    if (btnNewAssesmentDash) {
+        // Remove old listeners to avoid multiple fires
+        const newBtn = btnNewAssesmentDash.cloneNode(true);
+        btnNewAssesmentDash.parentNode.replaceChild(newBtn, btnNewAssesmentDash);
+
+        newBtn.addEventListener('click', () => {
+            state.isQuickAssessment = false;
+            navigateTo('view-segments');
+        });
+    }
+};
+
+window.viewHistoricalAssessment = function (assessmentId) {
+    const a = window._loadedAssessmentsMap ? window._loadedAssessmentsMap[assessmentId] : null;
+    if (!a) return alert("Erro ao recuperar avaliação da memória local.");
+
+    // Find the original questionnaire template
+    let qTemplate = null;
+    if (window.questionnairesData && window.questionnairesData[a.segment]) {
+        qTemplate = window.questionnairesData[a.segment].find(q => q.id === a.assessment_type);
+    }
+
+    if (!qTemplate) return alert("Erro crítico: Template do questionário não encontrado no código fonte atual.");
+
+    // Overwrite the current evaluation session state with the historical data
+    state.currentQuestionnaire = qTemplate;
+    state.selectedSegment = a.segment;
+    state.clinicalData = a.clinical_data || {};
+    state.answers = a.questionnaire_answers || {};
+
+    // Fake the 'patientInfo' date to be the historical date so it prints correctly on the PDF
+    const safePatientInfo = { ...state.patientInfo };
+    safePatientInfo.date = a.created_at;
+    state.patientInfo = safePatientInfo;
+
+    // Force a re-calculation since we don't store the final HTML output, just the raw answers
+    // By artificially calling `finishQuestionnaire` we push the raw data back through the engine
+    // However, finishQuestionnaire pushes to DB. We must circumvent that.
+
+    recompileHistoricalResults(qTemplate);
+};
+
+// Isolated function to compile results without triggering DB saves
+function recompileHistoricalResults(q) {
+    const actualAnswers = {};
+    const qaPairs = [];
+    let answerCount = 0;
+    const collectedBodySchemas = [];
+
+    // Reparse Answer arrays
+    if (q.questions) {
+        q.questions.forEach((question, index) => {
+            if (!question.isInstruction && state.answers[index] !== undefined) {
+                const value = state.answers[index];
+                actualAnswers[answerCount] = value;
+                answerCount++;
+
+                const selectedOption = question.options ? question.options.find(opt => opt.value === value) : null;
+                let displayVal = selectedOption ? selectedOption.label : String(value);
+                if (typeof value === 'boolean') displayVal = value ? 'Positivo' : 'Negativo';
+
+                qaPairs.push({ question: question.text, answer: displayVal });
+            }
+        });
+    }
+
+    // Reparse Clinical Form Logic
+    if (q.type === 'clinical' && q.sections) {
+        q.sections.forEach(section => {
+            const sectionData = state.clinicalData[section.id];
+            if (!sectionData) return;
+
+            if (section.fields) {
+                section.fields.forEach(field => {
+                    const val = sectionData[field.id];
+                    if (field.type === 'bodyschema' || field.type === 'paintmap') {
+                        collectedBodySchemas.push({
+                            title: field.label,
+                            image: field.image,
+                            dataUrl: sectionData[field.id],
+                            history: sectionData[field.id + '_history'] || []
+                        });
+                    } else if (val !== undefined && val !== null && val !== '' && field.type !== 'bodyschema' && field.type !== 'paintmap' && field.id !== 'intensidade_dor') {
+                        qaPairs.push({ section: section.title, question: field.label, answer: val });
+                    }
+                });
+            }
+
+            if (section.rows) {
+                if (section.id.includes('miofascial')) {
+                    const leftMuscles = [];
+                    const rightMuscles = [];
+                    section.rows.forEach(row => {
+                        const rowData = sectionData[row.id];
+                        if (rowData) {
+                            if (rowData.esquerdo) leftMuscles.push(row.label);
+                            if (rowData.direito) rightMuscles.push(row.label);
+                        }
+                    });
+                    if (leftMuscles.length > 0 || rightMuscles.length > 0) {
+                        let answerHtml = `<div style="display: flex; justify-content: space-between; gap: 2rem;">`;
+                        answerHtml += `<div style="flex: 1;"><strong>Esquerdo:</strong><br>${leftMuscles.length > 0 ? leftMuscles.join('<br>') : '-'}</div>`;
+                        answerHtml += `<div style="flex: 1;"><strong>Direito:</strong><br>${rightMuscles.length > 0 ? rightMuscles.join('<br>') : '-'}</div>`;
+                        answerHtml += `</div>`;
+                        qaPairs.push({ section: section.title, question: 'Músculos Positivos', answer: answerHtml, isHtml: true });
+                    }
+                } else if (section.id.includes('neuro_forca')) {
+                    const rowsContent = [];
+                    section.rows.forEach(row => {
+                        const rowData = sectionData[row.id];
+                        if (rowData && (rowData.esquerdo || rowData.direito)) {
+                            rowsContent.push(`
+                                <div style="display: flex; border-bottom: 1px dashed #f0f0f0; padding: 6px 0;">
+                                    <div style="flex: 2; font-weight: 500;">${row.label}</div>
+                                    <div style="flex: 1; text-align: center;">${rowData.esquerdo || '-'}</div>
+                                    <div style="flex: 1; text-align: center;">${rowData.direito || '-'}</div>
+                                </div>
+                            `);
+                        }
+                    });
+
+                    if (rowsContent.length > 0) {
+                        let answerHtml = `
+                            <div style="display: flex; background: #fafafa; padding: 6px 0; font-weight: bold; border-bottom: 1px solid #ccc; font-size: 0.9em; text-transform: uppercase;">
+                                <div style="flex: 2; padding-left: 4px;">Raiz / Músculo</div>
+                                <div style="flex: 1; text-align: center;">Esquerdo</div>
+                                <div style="flex: 1; text-align: center;">Direito</div>
+                            </div>
+                            <div style="font-size: 0.95rem; color: #444;">${rowsContent.join('')}</div>
+                        `;
+                        qaPairs.push({ section: section.title, question: 'Tabela de Força Muscular', answer: answerHtml, isHtml: true });
+                    }
+                } else if (section.id.includes('testes_neurais') || section.id.includes('teste_neural')) {
+                    const rowsContent = [];
+                    section.rows.forEach(row => {
+                        const rowData = sectionData[row.id];
+                        if (rowData) {
+                            let valEsq = rowData.esquerdo === true ? 'Positivo' : (rowData.esquerdo === false ? 'Negativo' : '-');
+                            let valDir = rowData.direito === true ? 'Positivo' : (rowData.direito === false ? 'Negativo' : '-');
+                            if (valEsq === '-' && valDir !== '-') valEsq = 'Negativo';
+                            if (valDir === '-' && valEsq !== '-') valDir = 'Negativo';
+                            if (valEsq !== '-' || valDir !== '-') {
+                                rowsContent.push(`
+                                    <div style="display: flex; border-bottom: 1px dashed #f0f0f0; padding: 6px 0;">
+                                        <div style="flex: 2; font-weight: 500;">${row.label}</div>
+                                        <div style="flex: 1; text-align: center; color: ${valEsq === 'Positivo' ? 'var(--primary-red)' : '#666'}">${valEsq}</div>
+                                        <div style="flex: 1; text-align: center; color: ${valDir === 'Positivo' ? 'var(--primary-red)' : '#666'}">${valDir}</div>
+                                    </div>
+                                `);
+                            }
+                        }
+                    });
+
+                    if (rowsContent.length > 0) {
+                        let answerHtml = `
+                            <div style="display: flex; background: #fafafa; padding: 6px 0; font-weight: bold; border-bottom: 1px solid #ccc; font-size: 0.9em; text-transform: uppercase;">
+                                <div style="flex: 2; padding-left: 4px;">Nervo / Teste</div>
+                                <div style="flex: 1; text-align: center;">Esquerdo</div>
+                                <div style="flex: 1; text-align: center;">Direito</div>
+                            </div>
+                            <div style="font-size: 0.95rem; color: #444;">${rowsContent.join('')}</div>
+                        `;
+                        qaPairs.push({ section: section.title, question: 'Resultados dos Testes de Tensão', answer: answerHtml, isHtml: true });
+                    }
+                } else {
+                    section.rows.forEach(row => {
+                        const rowData = sectionData[row.id];
+                        if (rowData) {
+                            const parts = [];
+                            if (row.fields) {
+                                row.fields.forEach(f => {
+                                    const fId = typeof f === 'object' ? f.id : f;
+                                    let val = rowData[fId];
+                                    if (section.id.includes('neurais') || section.id.includes('neural')) {
+                                        if (typeof f === 'object' && f.type === 'checkbox') {
+                                            if (val === undefined) val = false;
+                                            parts.push(`${fId.charAt(0).toUpperCase() + fId.slice(1)}: ${val ? 'Positivo' : 'Negativo'}`);
+                                            return;
+                                        }
+                                    }
+                                    if (val !== undefined && val !== null && val !== '' && val !== false) {
+                                        if (fId === 'dor') parts.push('Dor');
+                                        else if (fId === 'intensidade') parts.push(`Intensidade: ${val}`);
+                                        else if (['normal', 'hiper', 'hiperreflexia', 'hipo', 'hiporeflexia'].includes(fId.toLowerCase())) {
+                                            let reflexName = fId.charAt(0).toUpperCase() + fId.slice(1);
+                                            if (fId.toLowerCase() === 'hiper') reflexName = 'Hiperreflexia';
+                                            if (fId.toLowerCase() === 'hipo') reflexName = 'Hiporreflexia';
+                                            parts.push(reflexName);
+                                        } else if (section.id.includes('movimento')) {
+                                            if (fId === 'graus') parts.push(`${val} graus`);
+                                            else if (fId === 'observacoes') parts.push(val);
+                                        } else {
+                                            let labelText = typeof f === 'object' && f.label ? f.label : fId.charAt(0).toUpperCase() + fId.slice(1);
+                                            let displayVal = val;
+                                            if (typeof val === 'boolean' && val === true) displayVal = 'Sim';
+                                            parts.push(`${labelText}: ${displayVal}`);
+                                        }
+                                    }
+                                });
+                            }
+                            if (parts.length > 0) {
+                                let joinStr = ', ';
+                                if (!section.id.includes('neuro') && !section.id.includes('reflexo') && !section.id.includes('movimento') && !section.id.includes('palpacao') && !section.id.includes('neural') && !section.id.includes('miofascial')) {
+                                    joinStr = ' | ';
+                                }
+                                qaPairs.push({ section: section.title, question: row.label, answer: parts.join(joinStr) });
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    let result = {};
+    if (q.calculateScore) {
+        result = q.calculateScore(q.type === 'clinical' ? state.clinicalData : actualAnswers);
+    } else {
+        result = { score: 0, percentage: 0, interpretation: 'Avaliação Clínica concluída.', max: 0, unit: '' };
+    }
+
+    result.qaPairs = qaPairs;
+    if (collectedBodySchemas.length > 0) result.bodySchemas = collectedBodySchemas;
+
+    renderResults(result);
+
+    // Add a visual indicator that this is a historical file
+    const viewHeader = document.querySelector('#view-results .view-header h2');
+    if (viewHeader) {
+        viewHeader.innerHTML += ' <span style="font-size: 0.8rem; background: var(--primary-red-light); color: var(--primary-red); padding: 4px 8px; border-radius: 4px; vertical-align: middle;">ARQUIVO HISTÓRICO</span>';
+    }
+
+    navigateTo('view-results');
+}
+
 
 // Functionality for "Novo NDI" integration
 window.abrirModalNDI = function () {
@@ -262,15 +667,27 @@ function navigateTo(viewId) {
     state.currentView = viewId;
 
     // Header Breadcrumb logic
-    if (viewId === 'view-segments') {
+    if (viewId === 'view-home') {
         btnHome.classList.add('active');
         btnHome.textContent = 'Início';
+    } else if (viewId === 'view-segments') {
+        btnHome.classList.remove('active');
+        btnHome.textContent = '← Voltar ao Início';
     } else if (viewId === 'view-dashboard') {
         btnHome.classList.remove('active');
         btnHome.textContent = '← Voltar para Segmentos';
+    } else if (viewId === 'view-patient-dashboard') {
+        btnHome.classList.remove('active');
+        btnHome.textContent = '← Voltar ao Início';
     } else {
         btnHome.classList.remove('active');
-        btnHome.textContent = '← Cancelar Avaliação';
+        btnHome.textContent = '← Cancelar e Voltar';
+
+        // Edge case: if viewing a form directly from the dashboard, button should go to dashboard.
+        if (state.patientId && viewId === 'view-patient-info') {
+            // This doesn't apply to the patient form anymore
+        }
+
     }
 }
 
@@ -482,26 +899,123 @@ function renderDashboard() {
                 }
             }
 
-            navigateTo('view-patient-info');
+            // If we already have a patient (from dash) or it's a quick assessment, skip the form
+            if (state.patientId || state.isQuickAssessment) {
+                // Determine whether to skip info screen depending on the questionnaire type
+                if (q.type === 'clinical') {
+                    renderClinicalForm();
+                    navigateTo('view-questionnaire');
+                } else if (q.id === 'ndi') {
+                    window.abrirModalNDI();
+                } else if (q.id === 'oswestry') {
+                    window.abrirModalOswestry();
+                } else if (q.id === 'quickdash') {
+                    window.abrirModalQuickdash();
+                } else if (q.id === 'lysholm') {
+                    window.abrirModalLysholm();
+                } else if (q.id === 'womac') {
+                    window.abrirModalWomac();
+                } else if (q.id === 'ikdc') {
+                    window.abrirModalIkdc();
+                } else if (q.id === 'aofas') {
+                    window.abrirModalAofas();
+                } else if (q.id === 'man') {
+                    window.abrirModalMan();
+                } else if (q.id === 'ves13') {
+                    window.abrirModalVes13();
+                } else if (q.id === 'lbpq') {
+                    window.abrirModalLbpq();
+                } else if (q.id === 'brief') {
+                    window.abrirModalBrief();
+                } else {
+                    state.currentQuestionIndex = 0;
+                    state.answers = {};
+                    renderQuestion();
+                    navigateTo('view-questionnaire');
+                }
+            } else {
+                // Shouldn't happen in new architecture, but fallback just in case
+                navigateTo('view-patient-info');
+            }
         });
+
         questionnaireList.appendChild(card);
     });
 }
 
-// 3. Handle Patient Info Submit
-function handlePatientFormSubmit(e) {
+// 3. Handle Patient Form Submission (New Patient Registration)
+async function handlePatientFormSubmit(e) {
     e.preventDefault();
 
-    state.patientInfo = {
-        name: document.getElementById('patient-name').value,
-        age: document.getElementById('patient-age').value,
-        gender: document.getElementById('patient-gender').value,
-        dominance: document.getElementById('patient-dominance').value,
-        activityLevel: document.getElementById('patient-activity') ? document.getElementById('patient-activity').value : 'Ativo',
-        date: document.getElementById('patient-date').value
+    const name = document.getElementById('patient-name').value;
+    const age = document.getElementById('patient-age').value;
+    const gender = document.getElementById('patient-gender').value;
+    const dominance = document.getElementById('patient-dominance').value;
+    const activity = document.getElementById('patient-activity') ? document.getElementById('patient-activity').value : 'Ativo'; // Default if not present
+    const date = document.getElementById('patient-date').value;
+
+    if (!name || !age || !date) {
+        alert('Por favor, preencha nome, idade e data da avaliação.');
+        return;
+    }
+
+    const patientData = {
+        name,
+        age: parseInt(age),
+        gender,
+        dominance,
+        activity_level: activity
     };
 
-    startQuestionnaire();
+    // Also store local state info for immediate rendering
+    state.patientInfo = { ...patientData, date };
+
+    // Disable button to prevent double submit
+    const submitBtn = document.getElementById('btn-save-patient') || document.querySelector('#patient-form button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = 'Salvando...';
+    submitBtn.disabled = true;
+
+    try {
+        const savedPatient = await window.db.savePatient(patientData);
+        state.patientId = savedPatient.id;
+
+        // After registering, where to go?
+        // If they were doing a Quick Assessment and hit "Save" at the very end...
+        if (state.pendingQuickSaveData) {
+            // Save the pending assessment to this new patient
+            const assessmentData = {
+                patient_id: state.patientId,
+                assessment_type: state.pendingQuickSaveData.q.id,
+                segment: state.selectedSegment,
+                clinical_data: state.pendingQuickSaveData.clinicalData || null,
+                questionnaire_answers: state.pendingQuickSaveData.answers || null
+            };
+
+            await window.db.saveAssessment(assessmentData);
+
+            // Clean up flags
+            state.isQuickAssessment = false;
+            state.pendingQuickSaveData = null;
+
+            // Show the results now that saving is done
+            if (state.currentQuestionnaire.type === 'clinical') {
+                renderResults();
+            } else {
+                renderQuestionnaireResults();
+            }
+            navigateTo('view-results');
+        } else {
+            // Normal flow: go to Segment Selection
+            navigateTo('view-segments');
+        }
+    } catch (err) {
+        alert('Erro ao salvar paciente. Verifique sua conexão.');
+        console.error(err);
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
 }
 
 // 4. Start Questionnaire
@@ -1347,7 +1861,7 @@ function handleNext() {
 }
 
 // 5. Finish and Calculate
-function finishQuestionnaire() {
+async function finishQuestionnaire() {
     const q = state.currentQuestionnaire;
 
     const actualAnswers = {};
@@ -1591,8 +2105,53 @@ function finishQuestionnaire() {
         localStorage.setItem('womac_sync_result', `${result.score} pts (${result.percentage}%) - ${result.interpretation}`);
     }
 
-    renderResults(result);
-    navigateTo('view-results');
+    // --- Save to Supabase Workflow ---
+    if (state.isQuickAssessment) {
+        // Stop and ask if they want to save
+        state.pendingQuickSaveData = { q, result, answers: state.answers, clinicalData: state.clinicalData };
+
+        const modal = document.getElementById('modal-save-quick-assessment');
+        modal.classList.remove('hidden');
+        modal.style.pointerEvents = 'auto';
+
+        // Expose global functions for the HTML buttons
+        window.showResultsWithoutSaving = () => {
+            renderResults(result);
+            navigateTo('view-results');
+        };
+
+        window.navigateToPatientRegistrationForQuickSave = () => {
+            navigateTo('view-patient-info');
+        };
+
+    } else if (state.patientId) {
+        // Patient is known, save silently in background
+        const submitBtnObj = document.getElementById('btn-next');
+        const originalTextObj = submitBtnObj ? submitBtnObj.innerHTML : '';
+        if (submitBtnObj) { submitBtnObj.innerHTML = 'Processando...'; submitBtnObj.disabled = true; }
+
+        try {
+            await window.db.saveAssessment({
+                patient_id: state.patientId,
+                assessment_type: q.id,
+                segment: state.selectedSegment,
+                clinical_data: q.type === 'clinical' ? state.clinicalData : null,
+                questionnaire_answers: q.type !== 'clinical' ? state.answers : null
+            });
+        } catch (e) {
+            console.error("Failed to save assessment to Supabase:", e);
+            // Fail gracefully to results anyway
+        } finally {
+            if (submitBtnObj) { submitBtnObj.innerHTML = originalTextObj; submitBtnObj.disabled = false; }
+        }
+
+        renderResults(result);
+        navigateTo('view-results');
+    } else {
+        // Edge case fallback
+        renderResults(result);
+        navigateTo('view-results');
+    }
 }
 
 // 6. Render Results with Patient Info

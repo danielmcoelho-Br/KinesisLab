@@ -903,3 +903,86 @@ h3 {
 .btn-whatsapp:active {
     transform: translateY(0);
 }
+
+/* === Patient Database UI === */
+.patient-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: white;
+    border: 1px solid #E0E0E0;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.patient-list-item:hover {
+    border-color: var(--primary-red);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+}
+
+.patient-list-info h4 {
+    margin: 0 0 0.25rem 0;
+    color: var(--text-main);
+    font-size: 1.05rem;
+}
+
+.patient-list-info p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.assessment-card {
+    padding: 1rem;
+    background: white;
+    border: 1px solid #eee;
+    border-left: 4px solid var(--primary-red);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.assessment-card:hover {
+    background: #fdfdfd;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-color: var(--primary-red-light);
+}
+
+.assessment-card-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.assessment-card-title {
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.assessment-card-date {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.assessment-card-segment {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    background: var(--primary-red-light);
+    color: var(--primary-red);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.modal-overlay {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.modal-overlay:not(.hidden) .modal-content {
+    transform: translateY(0) !important;
+}

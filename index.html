@@ -36,7 +36,76 @@
     </header>
 
     <main class="app-main">
-        <div id="view-segments" class="view active">
+        <!-- New Landing Page: Patient Selection -->
+        <div id="view-home" class="view active">
+            <header class="view-header">
+                <h2>Selecione o Paciente</h2>
+                <p>Busque um paciente cadastrado ou inicie uma avaliação rápida.</p>
+            </header>
+
+            <div class="patient-actions-bar" style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
+                <div class="search-box" style="flex: 1; min-width: 250px; position: relative;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"
+                        style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%);">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="patient-search-input" class="form-input" style="padding-left: 3rem;"
+                        placeholder="Buscar paciente por nome...">
+                </div>
+                <button id="btn-new-patient" class="btn btn-secondary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="8.5" cy="7" r="4"></circle>
+                        <line x1="20" y1="8" x2="20" y2="14"></line>
+                        <line x1="23" y1="11" x2="17" y2="11"></line>
+                    </svg>
+                    Novo Paciente
+                </button>
+                <button id="btn-quick-assessment" class="btn btn-primary" style="background: var(--primary-red);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    Avaliação Rápida
+                </button>
+            </div>
+
+            <div class="patient-list-container glass-panel" style="padding: 1.5rem; min-height: 300px;">
+                <h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: var(--text-dark);">Pacientes Recentes</h3>
+                <div id="patient-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <div style="text-align: center; color: #94a3b8; padding: 2rem;">Carregando banco de dados...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Patient Dashboard (Historical Assessments) -->
+        <div id="view-patient-dashboard" class="view hidden">
+            <header class="view-header"
+                style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h2 id="pd-patient-name" style="margin-bottom: 0.25rem;">Nome do Paciente</h2>
+                    <p id="pd-patient-details">Idade | Sexo | Dominância</p>
+                </div>
+                <button id="btn-new-assessment-for-patient" class="btn btn-primary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Nova Avaliação
+                </button>
+            </header>
+
+            <div class="glass-panel" style="padding: 1.5rem; margin-top: 1rem;">
+                <h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: var(--text-dark);">Histórico de Avaliações
+                </h3>
+                <div id="pd-assessment-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <!-- Renderized via JS -->
+                </div>
+            </div>
+        </div>
+
+        <div id="view-segments" class="view hidden">
             <header class="view-header">
                 <h2>Onde está o foco da avaliação?</h2>
                 <p>Selecione a região do corpo (segmento) para ver os questionários disponíveis.</p>
@@ -138,8 +207,8 @@
 
         <div id="view-patient-info" class="view hidden">
             <header class="view-header">
-                <h2>Dados do Paciente</h2>
-                <p>Preencha os dados abaixo antes de iniciar a avaliação.</p>
+                <h2>Cadastrar Novo Paciente</h2>
+                <p>Preencha os dados do paciente para salvar no banco de dados.</p>
             </header>
 
             <div class="question-container">
@@ -182,8 +251,8 @@
                     </div>
 
                     <div class="question-navigation" style="justify-content: flex-end;">
-                        <button type="submit" class="btn btn-primary" id="btn-start-questions">
-                            Iniciar Perguntas
+                        <button type="submit" class="btn btn-primary" id="btn-save-patient">
+                            Salvar Paciente
                         </button>
                     </div>
                 </form>
@@ -197,9 +266,30 @@
         <div id="view-results" class="view hidden">
             <!-- Renderizado via JS -->
         </div>
+
+        <!-- Save Quick Assessment Modal -->
+        <div id="modal-save-quick-assessment" class="modal-overlay hidden"
+            style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none;">
+            <div class="modal-content glass-panel"
+                style="background: white; padding: 2rem; border-radius: 12px; max-width: 450px; width: 90%; transform: translateY(20px); transition: transform 0.3s;">
+                <h3 style="color: var(--primary-red); margin-bottom: 1rem;">Avaliação Finalizada!</h3>
+                <p style="margin-bottom: 1.5rem; line-height: 1.5; color: #475569;">Gostaria de cadastrar o paciente
+                    agora para salvar estes dados no histórico?</p>
+                <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                    <button class="btn btn-secondary"
+                        onclick="document.getElementById('modal-save-quick-assessment').classList.add('hidden'); document.getElementById('modal-save-quick-assessment').style.pointerEvents = 'none'; showResultsWithoutSaving();">Não,
+                        apenas mostrar</button>
+                    <button class="btn btn-primary"
+                        onclick="document.getElementById('modal-save-quick-assessment').classList.add('hidden'); document.getElementById('modal-save-quick-assessment').style.pointerEvents = 'none'; navigateToPatientRegistrationForQuickSave();">Sim,
+                        cadastrar paciente</button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+    <script src="js/db.js"></script>
     <script src="js/data.js"></script>
     <script src="js/app.js"></script>
 </body>

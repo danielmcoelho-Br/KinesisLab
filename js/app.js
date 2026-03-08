@@ -999,15 +999,20 @@ async function handlePatientFormSubmit(e) {
             state.pendingQuickSaveData = null;
 
             // Show the results now that saving is done
-            if (state.currentQuestionnaire.type === 'clinical') {
+            if (state.currentQuestionnaire && state.currentQuestionnaire.type === 'clinical') {
                 renderResults();
-            } else {
+            } else if (state.currentQuestionnaire) {
                 renderQuestionnaireResults();
             }
             navigateTo('view-results');
         } else {
-            // Normal flow: go to Segment Selection
-            navigateTo('view-segments');
+            // Normal flow: Check if we arrived via a deep link for a specific questionnaire (e.g., from NDI button)
+            if (state.currentQuestionnaire) {
+                startQuestionnaire();
+            } else {
+                // Otherwise go to Segment Selection
+                navigateTo('view-segments');
+            }
         }
     } catch (err) {
         alert('Erro ao salvar paciente. Verifique sua conexão.');

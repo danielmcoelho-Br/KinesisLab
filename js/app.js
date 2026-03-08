@@ -426,15 +426,16 @@ window.openPatientDashboard = async function (patientId) {
         // Admin: show delete patient button in header
         const pdHeader = document.getElementById('pd-patient-name');
         if (isAdmin && pdHeader) {
+            // Always remove existing button so the onclick reflects the CURRENT patientId
             const existingDelBtn = document.getElementById('admin-delete-patient-btn');
-            if (!existingDelBtn) {
-                const delPatientBtn = document.createElement('button');
-                delPatientBtn.id = 'admin-delete-patient-btn';
-                delPatientBtn.textContent = '🗑 Excluir Paciente';
-                delPatientBtn.style.cssText = 'margin-left: 1rem; background: none; border: 1px solid var(--primary-red); color: var(--primary-red); border-radius: 6px; padding: 4px 12px; font-size: 0.8rem; cursor: pointer;';
-                delPatientBtn.onclick = () => adminDeletePatient(patientId);
-                pdHeader.parentNode.appendChild(delPatientBtn);
-            }
+            if (existingDelBtn) existingDelBtn.remove();
+
+            const delPatientBtn = document.createElement('button');
+            delPatientBtn.id = 'admin-delete-patient-btn';
+            delPatientBtn.textContent = '🗑 Excluir Paciente';
+            delPatientBtn.style.cssText = 'margin-left: 1rem; background: none; border: 1px solid var(--primary-red); color: var(--primary-red); border-radius: 6px; padding: 4px 12px; font-size: 0.8rem; cursor: pointer;';
+            delPatientBtn.onclick = () => window.adminDeletePatient(patientId);
+            pdHeader.parentNode.appendChild(delPatientBtn);
         }
 
     } catch (e) {

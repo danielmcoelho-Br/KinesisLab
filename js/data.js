@@ -153,6 +153,24 @@ const referenceForcaQuadril = {
     }
 };
 
+// Reference: Deep Neck Flexor Muscle Endurance (seconds)
+// Source: Mean ± SD by gender and age group (active/sedentary combined)
+// Men 20-40y: 38.4±26.2s | Women 20-40y: 23.1±12.2s
+// Men 41-60y: 38.1±17.2s | Women 41-60y: 36.2±15.6s
+// Men 61-80y: 40.9±16.0s | Women 61-80y: 28.5±9.8s
+const referenceResistenciaFlexoraCervical = {
+    Masculino: [
+        { minAge: 20, maxAge: 40, mean: 38.4, sd: 26.2 },
+        { minAge: 41, maxAge: 60, mean: 38.1, sd: 17.2 },
+        { minAge: 61, maxAge: 80, mean: 40.9, sd: 16.0 }
+    ],
+    Feminino: [
+        { minAge: 20, maxAge: 40, mean: 23.1, sd: 12.2 },
+        { minAge: 41, maxAge: 60, mean: 36.2, sd: 15.6 },
+        { minAge: 61, maxAge: 80, mean: 28.5, sd: 9.8 }
+    ]
+};
+
 const questionnairesData = {
     af_cervical: {
         id: 'af_cervical',

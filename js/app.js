@@ -2880,6 +2880,24 @@ function renderChartsHtml(q, result) {
         });
     }
 
+    // --- Neck Flexor Endurance Chart HTML (cervical form) ---
+    if (state.clinicalData.resistencia_especiais) {
+        const resistFlex = state.clinicalData.resistencia_especiais.resist_flex;
+        if (resistFlex !== undefined && resistFlex !== '') {
+            html += `
+            <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
+                <h4 style="color: var(--primary-red); margin-bottom: 1rem;">An&aacute;lise de Resist&ecirc;ncia da Musculatura Flexora Cervical</h4>
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <div id="neck-flexor-text-results"></div>
+                    <div style="height: 300px; margin-top: 1.5rem;">
+                        <canvas id="neckFlexorChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+    }
+
     return html;
 }
 
@@ -3024,6 +3042,86 @@ function renderCharts() {
     renderIndividualChart('pinca_lateral', 'pincaLateralChart', 'pinca-lateral-text-results', 'Comparativo de Pinça Lateral (Chave)', referencePincaLateral);
     renderIndividualChart('pinca_tripode', 'pincaTripodeChart', 'pinca-tripode-text-results', 'Comparativo de Pinça Trípode (Palmer Pinch)', referencePincaTripode);
     renderIndividualChart('pinca_polpa', 'pincaPolpaChart', 'pinca-polpa-text-results', 'Comparativo de Pinça Polpa a Polpa (Tip Pinch)', referencePincaPolpa);
+
+    // --- Neck Flexor Endurance Chart Logic ---
+    if (state.clinicalData.resistencia_especiais && typeof referenceResistenciaFlexoraCervical !== 'undefined') {
+        const resistFlex = parseFloat(state.clinicalData.resistencia_especiais.resist_flex);
+        if (!isNaN(resistFlex)) {
+            const refArr = referenceResistenciaFlexoraCervical[gender];
+            if (refArr) {
+                const refData = refArr.find(r => age >= r.minAge && age <= r.maxAge) || refArr[refArr.length - 1];
+                const refMin = parseFloat((refData.mean - refData.sd).toFixed(1));
+                const refMax = parseFloat((refData.mean + refData.sd).toFixed(1));
+
+                const classification = resistFlex < refMin ? 'Abaixo do Normal' : resistFlex > refMax ? 'Acima do Normal' : 'Normal';
+                const color = classification === 'Normal' ? '#2ecc71' : classification === 'Abaixo do Normal' ? '#e74c3c' : '#3498db';
+
+                const textContainer = document.getElementById('neck-flexor-text-results');
+                if (textContainer) {
+                    textContainer.innerHTML = `
+                        <p style="margin-bottom: 0.5rem; color: #555;">Valores de Referência (${gender}, ${age} anos — Média ± DP): <strong>${refMin} a ${refMax} s</strong> (média: ${refData.mean}s)</p>
+                        <p>Resultado do paciente: <strong>${resistFlex} s</strong> — <strong style="color: ${color};">${classification}</strong></p>
+                    `;
+                }
+
+                const canvas = document.getElementById('neckFlexorChart');
+                if (canvas) {
+                    new Chart(canvas, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Resistência Flexora Cervical'],
+                            datasets: [
+                                {
+                                    label: 'Paciente (s)',
+                                    data: [resistFlex],
+                                    backgroundColor: `rgba(52, 152, 219, 0.7)`,
+                                    borderColor: 'rgba(41, 128, 185, 1)',
+                                    borderWidth: 1,
+                                    order: 2
+                                },
+                                {
+                                    label: 'Mínimo Normal (Média - DP)',
+                                    type: 'line',
+                                    data: [refMin],
+                                    borderColor: 'rgba(46, 204, 113, 1)',
+                                    borderWidth: 2,
+                                    borderDash: [5, 5],
+                                    fill: false,
+                                    pointRadius: 6,
+                                    order: 1
+                                },
+                                {
+                                    label: 'Máximo Normal (Média + DP)',
+                                    type: 'line',
+                                    data: [refMax],
+                                    borderColor: 'rgba(46, 204, 113, 1)',
+                                    borderWidth: 2,
+                                    fill: '-1',
+                                    backgroundColor: 'rgba(46, 204, 113, 0.2)',
+                                    pointRadius: 6,
+                                    order: 0
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: { display: true, text: 'Tempo (segundos)' }
+                                }
+                            },
+                            plugins: {
+                                legend: { position: 'bottom' },
+                                title: { display: true, text: `Comparativo de Resistência Flexora Cervical (${gender}, ${age} anos)` }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+    }
 
     // --- Hip Strength Charts Logic ---
     if (state.clinicalData.forca && typeof referenceForcaQuadril !== 'undefined') {

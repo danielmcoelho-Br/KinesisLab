@@ -130,6 +130,29 @@ const referencePincaPolpa = {
     ],
 };
 
+const referenceForcaQuadril = {
+    Masculino: {
+        Ativo: [
+            { minAge: 18, maxAge: 40, abd_d: 23.8, abd_e: 22.4, ext_d: 33.3, ext_e: 32.8, flx_d: 50.2, flx_e: 48.8, rotl_d: 20.0, rotl_e: 20.0, sd_abd_d: 6.9, sd_abd_e: 6.1, sd_ext_d: 13.2, sd_ext_e: 13.4, sd_flx_d: 16.9, sd_flx_e: 16.4, sd_rotl_d: 3.8, sd_rotl_e: 4.6 },
+            { minAge: 41, maxAge: 99, abd_d: 21.7, abd_e: 21.1, ext_d: 33.4, ext_e: 32.7, flx_d: 44.3, flx_e: 44.2, rotl_d: 18.2, rotl_e: 18.2, sd_abd_d: 4.0, sd_abd_e: 4.0, sd_ext_d: 5.0, sd_ext_e: 5.0, sd_flx_d: 7.7, sd_flx_e: 8.0, sd_rotl_d: 5.1, sd_rotl_e: 4.3 }
+        ],
+        Sedentario: [
+            { minAge: 18, maxAge: 40, abd_d: 23.9, abd_e: 22.5, ext_d: 30.7, ext_e: 32.1, flx_d: 45.2, flx_e: 43.8, rotl_d: 19.2, rotl_e: 19.3, sd_abd_d: 5.9, sd_abd_e: 4.6, sd_ext_d: 6.9, sd_ext_e: 7.7, sd_flx_d: 9.7, sd_flx_e: 9.1, sd_rotl_d: 4.6, sd_rotl_e: 4.2 },
+            { minAge: 41, maxAge: 99, abd_d: 20.4, abd_e: 20.6, ext_d: 29.9, ext_e: 30.6, flx_d: 41.3, flx_e: 40.7, rotl_d: 16.3, rotl_e: 16.6, sd_abd_d: 4.7, sd_abd_e: 4.6, sd_ext_d: 5.7, sd_ext_e: 6.3, sd_flx_d: 7.4, sd_flx_e: 6.8, sd_rotl_d: 3.3, sd_rotl_e: 3.5 }
+        ]
+    },
+    Feminino: {
+        Ativo: [
+            { minAge: 18, maxAge: 40, abd_d: 23.4, abd_e: 22.1, ext_d: 31.9, ext_e: 31.1, flx_d: 45.4, flx_e: 44.2, rotl_d: 18.7, rotl_e: 18.1, sd_abd_d: 5.4, sd_abd_e: 6.2, sd_ext_d: 10.0, sd_ext_e: 9.0, sd_flx_d: 22.6, sd_flx_e: 21.1, sd_rotl_d: 6.5, sd_rotl_e: 7.5 },
+            { minAge: 41, maxAge: 99, abd_d: 20.2, abd_e: 19.9, ext_d: 27.1, ext_e: 27.1, flx_d: 32.1, flx_e: 32.2, rotl_d: 14.5, rotl_e: 14.3, sd_abd_d: 3.9, sd_abd_e: 4.2, sd_ext_d: 6.3, sd_ext_e: 6.2, sd_flx_d: 6.0, sd_flx_e: 6.3, sd_rotl_d: 2.6, sd_rotl_e: 3.2 }
+        ],
+        Sedentario: [
+            { minAge: 18, maxAge: 40, abd_d: 20.4, abd_e: 18.1, ext_d: 26.9, ext_e: 26.2, flx_d: 34.8, flx_e: 33.2, rotl_d: 15.8, rotl_e: 15.7, sd_abd_d: 6.7, sd_abd_e: 7.4, sd_ext_d: 11.1, sd_ext_e: 11.6, sd_flx_d: 9.2, sd_flx_e: 11.5, sd_rotl_d: 4.2, sd_rotl_e: 4.6 },
+            { minAge: 41, maxAge: 99, abd_d: 19.0, abd_e: 18.1, ext_d: 24.3, ext_e: 24.3, flx_d: 30.9, flx_e: 30.0, rotl_d: 13.9, rotl_e: 13.4, sd_abd_d: 4.9, sd_abd_e: 4.3, sd_ext_d: 6.1, sd_ext_e: 6.9, sd_flx_d: 7.9, sd_flx_e: 7.1, sd_rotl_d: 3.4, sd_rotl_e: 3.3 }
+        ]
+    }
+};
+
 const questionnairesData = {
     af_cervical: {
         id: 'af_cervical',
@@ -1783,9 +1806,12 @@ const questionnairesData = {
                 columns: ['Músculo', 'Esquerdo', 'Direito', '% Déficit'],
                 rows: [
                     { id: 'abd_quadril', label: 'Abdução de Quadril', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
+                    { id: 'ext_quadril', label: 'Extensão de Quadril', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
+                    { id: 'flex_quadril', label: 'Flexão de Quadril', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
+                    { id: 'rot_int_quadril', label: 'Rotação Interna de Quadril', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
                     { id: 'ext_joelho', label: 'Extensão de Joelho', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
                     { id: 'flex_joelho', label: 'Flexão de Joelho', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
-                    { id: 'relacao_iq', label: 'Relação I/Q', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] }
+                    { id: 'relacao_iq', label: 'Relação I/Q (Joelho)', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] }
                 ]
             },
             {

@@ -472,6 +472,16 @@ function renderDashboard() {
                 }
             }
 
+            // Show activity level for MMII / Lombar / Geriatria where hip normatives or general health matter
+            const activityGroup = document.getElementById('patient-activity-group');
+            if (activityGroup) {
+                if (state.selectedSegment === 'mmii') {
+                    activityGroup.style.display = 'block';
+                } else {
+                    activityGroup.style.display = 'none';
+                }
+            }
+
             navigateTo('view-patient-info');
         });
         questionnaireList.appendChild(card);
@@ -487,6 +497,7 @@ function handlePatientFormSubmit(e) {
         age: document.getElementById('patient-age').value,
         gender: document.getElementById('patient-gender').value,
         dominance: document.getElementById('patient-dominance').value,
+        activityLevel: document.getElementById('patient-activity') ? document.getElementById('patient-activity').value : 'Ativo',
         date: document.getElementById('patient-date').value
     };
 
@@ -1924,6 +1935,33 @@ function renderChartsHtml(q, result) {
         `;
     }
 
+    // --- Hip Strength Charts HTML ---
+    if (state.clinicalData.forca) {
+        const tests = [
+            { id: 'abd_quadril', title: 'Abdução de Quadril' },
+            { id: 'ext_quadril', title: 'Extensão de Quadril' },
+            { id: 'flex_quadril', title: 'Flexão de Quadril' },
+            { id: 'rot_int_quadril', title: 'Rotação Interna de Quadril' }
+        ];
+
+        tests.forEach(test => {
+            const data = state.clinicalData.forca[test.id];
+            if (data && (data.esquerdo || data.direito)) {
+                html += `
+                <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
+                    <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Análise de ${test.title}</h4>
+                    <div class="glass-panel" style="padding: 1.5rem;">
+                        <div id="${test.id}-text-results"></div>
+                        <div style="height: 300px; margin-top: 1.5rem;">
+                            <canvas id="${test.id}-Chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }
+        });
+    }
+
     return html;
 }
 
@@ -2067,6 +2105,135 @@ function renderCharts() {
     renderIndividualChart('pinca_lateral', 'pincaLateralChart', 'pinca-lateral-text-results', 'Comparativo de Pinça Lateral (Chave)', referencePincaLateral);
     renderIndividualChart('pinca_tripode', 'pincaTripodeChart', 'pinca-tripode-text-results', 'Comparativo de Pinça Trípode (Palmer Pinch)', referencePincaTripode);
     renderIndividualChart('pinca_polpa', 'pincaPolpaChart', 'pinca-polpa-text-results', 'Comparativo de Pinça Polpa a Polpa (Tip Pinch)', referencePincaPolpa);
+
+    // --- Hip Strength Charts Logic ---
+    if (state.clinicalData.forca && typeof referenceForcaQuadril !== 'undefined') {
+        const activityLevel = state.patientInfo.activityLevel || 'Ativo';
+
+        // Helper specifically for Hip Strength (Mean +/- SD logic)
+        const renderIndividualHipChart = (testId, metricPrefix, canvasId, textContainerId, title) => {
+            const testData = state.clinicalData.forca[testId];
+            if (!testData || (!testData.esquerdo && !testData.direito)) return;
+
+            const esq = parseFloat(testData.esquerdo);
+            const dir = parseFloat(testData.direito);
+            if (isNaN(esq) && isNaN(dir)) return;
+
+            if (!referenceForcaQuadril[gender] || !referenceForcaQuadril[gender][activityLevel]) return;
+
+            // Find reference block for Hip (Activity Level included)
+            const refGroup = referenceForcaQuadril[gender][activityLevel];
+            const refData = refGroup.find(r => age >= r.minAge && age <= r.maxAge) || refGroup[refGroup.length - 1];
+
+            const labels = [];
+            const classResults = [];
+
+            // Calculate Normal Limits (Mean +/- SD)
+            const getLimits = (lado) => {
+                const suffix = lado === 'Direito' ? '_d' : '_e';
+                const mean = refData[`${metricPrefix}${suffix}`];
+                const sd = refData[`sd_${metricPrefix}${suffix}`];
+                return {
+                    min: parseFloat((mean - sd).toFixed(1)),
+                    max: parseFloat((mean + sd).toFixed(1)),
+                    mean: mean
+                };
+            };
+
+            const getClassification = (val, limits) => {
+                if (val < limits.min) return "Fraco";
+                if (val > limits.max) return "Forte";
+                return "Normal";
+            };
+
+            if (!isNaN(esq)) {
+                labels.push("Esquerdo");
+                classResults.push({ lado: "Esquerdo", valor: esq, limits: getLimits("Esquerdo") });
+            }
+            if (!isNaN(dir)) {
+                labels.push("Direito");
+                classResults.push({ lado: "Direito", valor: dir, limits: getLimits("Direito") });
+            }
+
+            classResults.forEach(r => {
+                r.class = getClassification(r.valor, r.limits);
+            });
+
+            const textContainer = document.getElementById(textContainerId);
+            if (textContainer) {
+                let textHtml = `<p style="margin-bottom: 0.5rem; color: #555;">Valores Normativos (${gender}, ${age} anos, ${activityLevel}):</p>`;
+
+                classResults.forEach(r => {
+                    let color = r.class === "Normal" ? "#2ecc71" : (r.class === "Fraco" ? "#e74c3c" : "#3498db");
+                    textHtml += `<p>Membro ${r.lado} (Média ${r.limits.mean} / Ref: ${r.limits.min} a ${r.limits.max} kgF): ${r.valor} kgF - <strong style="color: ${color};">${r.class}</strong></p>`;
+                });
+                textContainer.innerHTML = textHtml;
+            }
+
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
+            const pacienteData = classResults.map(r => r.valor);
+            const minNormalData = classResults.map(r => r.limits.min);
+            const maxNormalData = classResults.map(r => r.limits.max);
+
+            new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Paciente (kgF)',
+                            data: pacienteData,
+                            backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                            borderColor: 'rgba(41, 128, 185, 1)',
+                            borderWidth: 1,
+                            order: 2
+                        },
+                        {
+                            label: 'Desvio Inferior',
+                            type: 'line',
+                            data: minNormalData,
+                            borderColor: 'rgba(46, 204, 113, 1)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: false,
+                            order: 1
+                        },
+                        {
+                            label: 'Desvio Superior',
+                            type: 'line',
+                            data: maxNormalData,
+                            borderColor: 'rgba(46, 204, 113, 1)',
+                            borderWidth: 2,
+                            fill: '-1',
+                            backgroundColor: 'rgba(46, 204, 113, 0.2)',
+                            order: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Força (kgF)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        title: { display: true, text: title }
+                    }
+                }
+            });
+        };
+
+        renderIndividualHipChart('abd_quadril', 'abd', 'abd_quadril-Chart', 'abd_quadril-text-results', 'Percentil de Abdução');
+        renderIndividualHipChart('ext_quadril', 'ext', 'ext_quadril-Chart', 'ext_quadril-text-results', 'Percentil de Extensão');
+        renderIndividualHipChart('flex_quadril', 'flx', 'flex_quadril-Chart', 'flex_quadril-text-results', 'Percentil de Flexão');
+        renderIndividualHipChart('rot_int_quadril', 'rotl', 'rot_int_quadril-Chart', 'rot_int_quadril-text-results', 'Percentil de Rotação Interna');
+    }
 }
 
 // Run app

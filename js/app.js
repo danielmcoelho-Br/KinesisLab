@@ -381,6 +381,9 @@ window.openPatientDashboard = async function (patientId) {
     try {
         const assessments = await window.db.getPatientAssessments(patientId);
 
+        // Check if the current user is admin to show delete buttons
+        const isAdmin = window._currentUserProfile && window._currentUserProfile.role === 'admin';
+
         if (assessments.length === 0) {
             listContainer.innerHTML = '<p style="text-align:center; color: var(--text-muted); padding: 1rem;">Nenhuma avaliação cadastrada para este paciente.</p>';
         } else {
@@ -399,6 +402,13 @@ window.openPatientDashboard = async function (patientId) {
                     title = window.questionnairesData[a.assessment_type].title;
                 }
 
+                const deleteBtn = isAdmin ? `
+                    <button onclick="event.stopPropagation(); adminDeleteAssessment('${a.id}')" 
+                        style="margin-top:0.5rem; background: none; border: 1px solid var(--primary-red); color: var(--primary-red); 
+                               border-radius: 6px; padding: 2px 10px; font-size: 0.75rem; cursor: pointer;">
+                        🗑 Excluir Avaliação
+                    </button>` : '';
+
                 html += `
                     <div class="assessment-card" onclick="viewHistoricalAssessment('${a.id}')">
                         <div class="assessment-card-header">
@@ -406,17 +416,33 @@ window.openPatientDashboard = async function (patientId) {
                             <span class="assessment-card-date">${strDate}</span>
                         </div>
                         <span class="assessment-card-segment">${a.segment}</span>
+                        ${deleteBtn}
                     </div>
                 `;
             });
             listContainer.innerHTML = html;
         }
+
+        // Admin: show delete patient button in header
+        const pdHeader = document.getElementById('pd-patient-name');
+        if (isAdmin && pdHeader) {
+            const existingDelBtn = document.getElementById('admin-delete-patient-btn');
+            if (!existingDelBtn) {
+                const delPatientBtn = document.createElement('button');
+                delPatientBtn.id = 'admin-delete-patient-btn';
+                delPatientBtn.textContent = '🗑 Excluir Paciente';
+                delPatientBtn.style.cssText = 'margin-left: 1rem; background: none; border: 1px solid var(--primary-red); color: var(--primary-red); border-radius: 6px; padding: 4px 12px; font-size: 0.8rem; cursor: pointer;';
+                delPatientBtn.onclick = () => adminDeletePatient(patientId);
+                pdHeader.parentNode.appendChild(delPatientBtn);
+            }
+        }
+
     } catch (e) {
         console.error(e);
         listContainer.innerHTML = '<div style="text-align: center; color: var(--primary-red); padding: 1rem;">Erro ao carregar histórico.</div>';
     }
 
-    // Wire the "New Assessment" button inside the dashboard dashboard
+    // Wire the "New Assessment" button inside the dashboard
     const btnNewAssesmentDash = document.getElementById('btn-new-assessment-for-patient');
     if (btnNewAssesmentDash) {
         // Remove old listeners to avoid multiple fires
@@ -427,6 +453,34 @@ window.openPatientDashboard = async function (patientId) {
             state.isQuickAssessment = false;
             navigateTo('view-segments');
         });
+    }
+};
+
+// Admin delete functions
+window.adminDeleteAssessment = async function (assessmentId) {
+    if (!confirm('Tem certeza que deseja excluir esta avaliação? Esta ação é irreversível.')) return;
+    try {
+        await window.db.deleteAssessment(assessmentId);
+        // Remove from local map
+        if (window._loadedAssessmentsMap) delete window._loadedAssessmentsMap[assessmentId];
+        // Refresh the dashboard
+        openPatientDashboard(state.patientId);
+    } catch (err) {
+        alert('Erro ao excluir avaliação: ' + err.message);
+    }
+};
+
+window.adminDeletePatient = async function (patientId) {
+    if (!confirm('Tem certeza que deseja excluir este paciente e TODAS as suas avaliações? Esta ação é irreversível.')) return;
+    try {
+        await window.db.deletePatient(patientId);
+        state.patientId = null;
+        state.patientInfo = null;
+        navigateTo('view-home');
+        loadRecentPatients();
+        alert('Paciente excluído com sucesso.');
+    } catch (err) {
+        alert('Erro ao excluir paciente: ' + err.message);
     }
 };
 
@@ -462,195 +516,203 @@ window.viewHistoricalAssessment = function (assessmentId) {
 
 // Isolated function to compile results without triggering DB saves
 function recompileHistoricalResults(q) {
-    const actualAnswers = {};
-    const qaPairs = [];
-    let answerCount = 0;
-    const collectedBodySchemas = [];
+    try {
+        const actualAnswers = {};
+        const qaPairs = [];
+        let answerCount = 0;
+        const collectedBodySchemas = [];
 
-    // Reparse Answer arrays
-    if (q.questions) {
-        q.questions.forEach((question, index) => {
-            if (!question.isInstruction && state.answers[index] !== undefined) {
-                const value = state.answers[index];
-                actualAnswers[answerCount] = value;
-                answerCount++;
+        // Ensure patientInfo exists (needed by renderResults)
+        if (!state.patientInfo) {
+            state.patientInfo = { name: 'Paciente', age: '-', gender: '-', date: new Date().toISOString() };
+        }
 
-                const selectedOption = question.options ? question.options.find(opt => opt.value === value) : null;
-                let displayVal = selectedOption ? selectedOption.label : String(value);
-                if (typeof value === 'boolean') displayVal = value ? 'Positivo' : 'Negativo';
+        // Reparse Answer arrays
+        if (q.questions) {
+            q.questions.forEach((question, index) => {
+                if (!question.isInstruction && state.answers[index] !== undefined) {
+                    const value = state.answers[index];
+                    actualAnswers[answerCount] = value;
+                    answerCount++;
 
-                qaPairs.push({ question: question.text, answer: displayVal });
-            }
-        });
-    }
+                    const selectedOption = question.options ? question.options.find(opt => opt.value === value) : null;
+                    let displayVal = selectedOption ? selectedOption.label : String(value);
+                    if (typeof value === 'boolean') displayVal = value ? 'Positivo' : 'Negativo';
 
-    // Reparse Clinical Form Logic
-    if (q.type === 'clinical' && q.sections) {
-        q.sections.forEach(section => {
-            const sectionData = state.clinicalData[section.id];
-            if (!sectionData) return;
+                    qaPairs.push({ question: question.text, answer: displayVal });
+                }
+            });
+        }
 
-            if (section.fields) {
-                section.fields.forEach(field => {
-                    const val = sectionData[field.id];
-                    if (field.type === 'bodyschema' || field.type === 'paintmap') {
-                        collectedBodySchemas.push({
-                            title: field.label,
-                            image: field.image,
-                            dataUrl: sectionData[field.id],
-                            history: sectionData[field.id + '_history'] || []
-                        });
-                    } else if (val !== undefined && val !== null && val !== '' && field.type !== 'bodyschema' && field.type !== 'paintmap' && field.id !== 'intensidade_dor') {
-                        qaPairs.push({ section: section.title, question: field.label, answer: val });
-                    }
-                });
-            }
+        // Reparse Clinical Form Logic
+        if (q.type === 'clinical' && q.sections) {
+            q.sections.forEach(section => {
+                const sectionData = state.clinicalData[section.id];
+                if (!sectionData) return;
 
-            if (section.rows) {
-                if (section.id.includes('miofascial')) {
-                    const leftMuscles = [];
-                    const rightMuscles = [];
-                    section.rows.forEach(row => {
-                        const rowData = sectionData[row.id];
-                        if (rowData) {
-                            if (rowData.esquerdo) leftMuscles.push(row.label);
-                            if (rowData.direito) rightMuscles.push(row.label);
-                        }
-                    });
-                    if (leftMuscles.length > 0 || rightMuscles.length > 0) {
-                        let answerHtml = `<div style="display: flex; justify-content: space-between; gap: 2rem;">`;
-                        answerHtml += `<div style="flex: 1;"><strong>Esquerdo:</strong><br>${leftMuscles.length > 0 ? leftMuscles.join('<br>') : '-'}</div>`;
-                        answerHtml += `<div style="flex: 1;"><strong>Direito:</strong><br>${rightMuscles.length > 0 ? rightMuscles.join('<br>') : '-'}</div>`;
-                        answerHtml += `</div>`;
-                        qaPairs.push({ section: section.title, question: 'Músculos Positivos', answer: answerHtml, isHtml: true });
-                    }
-                } else if (section.id.includes('neuro_forca')) {
-                    const rowsContent = [];
-                    section.rows.forEach(row => {
-                        const rowData = sectionData[row.id];
-                        if (rowData && (rowData.esquerdo || rowData.direito)) {
-                            rowsContent.push(`
-                                <div style="display: flex; border-bottom: 1px dashed #f0f0f0; padding: 6px 0;">
-                                    <div style="flex: 2; font-weight: 500;">${row.label}</div>
-                                    <div style="flex: 1; text-align: center;">${rowData.esquerdo || '-'}</div>
-                                    <div style="flex: 1; text-align: center;">${rowData.direito || '-'}</div>
-                                </div>
-                            `);
-                        }
-                    });
-
-                    if (rowsContent.length > 0) {
-                        let answerHtml = `
-                            <div style="display: flex; background: #fafafa; padding: 6px 0; font-weight: bold; border-bottom: 1px solid #ccc; font-size: 0.9em; text-transform: uppercase;">
-                                <div style="flex: 2; padding-left: 4px;">Raiz / Músculo</div>
-                                <div style="flex: 1; text-align: center;">Esquerdo</div>
-                                <div style="flex: 1; text-align: center;">Direito</div>
-                            </div>
-                            <div style="font-size: 0.95rem; color: #444;">${rowsContent.join('')}</div>
-                        `;
-                        qaPairs.push({ section: section.title, question: 'Tabela de Força Muscular', answer: answerHtml, isHtml: true });
-                    }
-                } else if (section.id.includes('testes_neurais') || section.id.includes('teste_neural')) {
-                    const rowsContent = [];
-                    section.rows.forEach(row => {
-                        const rowData = sectionData[row.id];
-                        if (rowData) {
-                            let valEsq = rowData.esquerdo === true ? 'Positivo' : (rowData.esquerdo === false ? 'Negativo' : '-');
-                            let valDir = rowData.direito === true ? 'Positivo' : (rowData.direito === false ? 'Negativo' : '-');
-                            if (valEsq === '-' && valDir !== '-') valEsq = 'Negativo';
-                            if (valDir === '-' && valEsq !== '-') valDir = 'Negativo';
-                            if (valEsq !== '-' || valDir !== '-') {
-                                rowsContent.push(`
-                                    <div style="display: flex; border-bottom: 1px dashed #f0f0f0; padding: 6px 0;">
-                                        <div style="flex: 2; font-weight: 500;">${row.label}</div>
-                                        <div style="flex: 1; text-align: center; color: ${valEsq === 'Positivo' ? 'var(--primary-red)' : '#666'}">${valEsq}</div>
-                                        <div style="flex: 1; text-align: center; color: ${valDir === 'Positivo' ? 'var(--primary-red)' : '#666'}">${valDir}</div>
-                                    </div>
-                                `);
-                            }
-                        }
-                    });
-
-                    if (rowsContent.length > 0) {
-                        let answerHtml = `
-                            <div style="display: flex; background: #fafafa; padding: 6px 0; font-weight: bold; border-bottom: 1px solid #ccc; font-size: 0.9em; text-transform: uppercase;">
-                                <div style="flex: 2; padding-left: 4px;">Nervo / Teste</div>
-                                <div style="flex: 1; text-align: center;">Esquerdo</div>
-                                <div style="flex: 1; text-align: center;">Direito</div>
-                            </div>
-                            <div style="font-size: 0.95rem; color: #444;">${rowsContent.join('')}</div>
-                        `;
-                        qaPairs.push({ section: section.title, question: 'Resultados dos Testes de Tensão', answer: answerHtml, isHtml: true });
-                    }
-                } else {
-                    section.rows.forEach(row => {
-                        const rowData = sectionData[row.id];
-                        if (rowData) {
-                            const parts = [];
-                            if (row.fields) {
-                                row.fields.forEach(f => {
-                                    const fId = typeof f === 'object' ? f.id : f;
-                                    let val = rowData[fId];
-                                    if (section.id.includes('neurais') || section.id.includes('neural')) {
-                                        if (typeof f === 'object' && f.type === 'checkbox') {
-                                            if (val === undefined) val = false;
-                                            parts.push(`${fId.charAt(0).toUpperCase() + fId.slice(1)}: ${val ? 'Positivo' : 'Negativo'}`);
-                                            return;
-                                        }
-                                    }
-                                    if (val !== undefined && val !== null && val !== '' && val !== false) {
-                                        if (fId === 'dor') parts.push('Dor');
-                                        else if (fId === 'intensidade') parts.push(`Intensidade: ${val}`);
-                                        else if (['normal', 'hiper', 'hiperreflexia', 'hipo', 'hiporeflexia'].includes(fId.toLowerCase())) {
-                                            let reflexName = fId.charAt(0).toUpperCase() + fId.slice(1);
-                                            if (fId.toLowerCase() === 'hiper') reflexName = 'Hiperreflexia';
-                                            if (fId.toLowerCase() === 'hipo') reflexName = 'Hiporreflexia';
-                                            parts.push(reflexName);
-                                        } else if (section.id.includes('movimento')) {
-                                            if (fId === 'graus') parts.push(`${val} graus`);
-                                            else if (fId === 'observacoes') parts.push(val);
-                                        } else {
-                                            let labelText = typeof f === 'object' && f.label ? f.label : fId.charAt(0).toUpperCase() + fId.slice(1);
-                                            let displayVal = val;
-                                            if (typeof val === 'boolean' && val === true) displayVal = 'Sim';
-                                            parts.push(`${labelText}: ${displayVal}`);
-                                        }
-                                    }
-                                });
-                            }
-                            if (parts.length > 0) {
-                                let joinStr = ', ';
-                                if (!section.id.includes('neuro') && !section.id.includes('reflexo') && !section.id.includes('movimento') && !section.id.includes('palpacao') && !section.id.includes('neural') && !section.id.includes('miofascial')) {
-                                    joinStr = ' | ';
-                                }
-                                qaPairs.push({ section: section.title, question: row.label, answer: parts.join(joinStr) });
-                            }
+                if (section.fields) {
+                    section.fields.forEach(field => {
+                        const val = sectionData[field.id];
+                        if (field.type === 'bodyschema' || field.type === 'paintmap') {
+                            collectedBodySchemas.push({
+                                title: field.label,
+                                image: field.image,
+                                dataUrl: sectionData[field.id],
+                                history: sectionData[field.id + '_history'] || []
+                            });
+                        } else if (val !== undefined && val !== null && val !== '' && field.type !== 'bodyschema' && field.type !== 'paintmap' && field.id !== 'intensidade_dor') {
+                            qaPairs.push({ section: section.title, question: field.label, answer: val });
                         }
                     });
                 }
-            }
-        });
+
+                if (section.rows) {
+                    if (section.id.includes('miofascial')) {
+                        const leftMuscles = [];
+                        const rightMuscles = [];
+                        section.rows.forEach(row => {
+                            const rowData = sectionData[row.id];
+                            if (rowData) {
+                                if (rowData.esquerdo) leftMuscles.push(row.label);
+                                if (rowData.direito) rightMuscles.push(row.label);
+                            }
+                        });
+                        if (leftMuscles.length > 0 || rightMuscles.length > 0) {
+                            let answerHtml = `<div style="display: flex; justify-content: space-between; gap: 2rem;">`;
+                            answerHtml += `<div style="flex: 1;"><strong>Esquerdo:</strong><br>${leftMuscles.length > 0 ? leftMuscles.join('<br>') : '-'}</div>`;
+                            answerHtml += `<div style="flex: 1;"><strong>Direito:</strong><br>${rightMuscles.length > 0 ? rightMuscles.join('<br>') : '-'}</div>`;
+                            answerHtml += `</div>`;
+                            qaPairs.push({ section: section.title, question: 'Músculos Positivos', answer: answerHtml, isHtml: true });
+                        }
+                    } else if (section.id.includes('neuro_forca')) {
+                        const rowsContent = [];
+                        section.rows.forEach(row => {
+                            const rowData = sectionData[row.id];
+                            if (rowData && (rowData.esquerdo || rowData.direito)) {
+                                rowsContent.push(`
+                                    <div style="display: flex; border-bottom: 1px dashed #f0f0f0; padding: 6px 0;">
+                                        <div style="flex: 2; font-weight: 500;">${row.label}</div>
+                                        <div style="flex: 1; text-align: center;">${rowData.esquerdo || '-'}</div>
+                                        <div style="flex: 1; text-align: center;">${rowData.direito || '-'}</div>
+                                    </div>
+                                `);
+                            }
+                        });
+                        if (rowsContent.length > 0) {
+                            let answerHtml = `
+                                <div style="display: flex; background: #fafafa; padding: 6px 0; font-weight: bold; border-bottom: 1px solid #ccc; font-size: 0.9em; text-transform: uppercase;">
+                                    <div style="flex: 2; padding-left: 4px;">Raiz / Músculo</div>
+                                    <div style="flex: 1; text-align: center;">Esquerdo</div>
+                                    <div style="flex: 1; text-align: center;">Direito</div>
+                                </div>
+                                <div style="font-size: 0.95rem; color: #444;">${rowsContent.join('')}</div>
+                            `;
+                            qaPairs.push({ section: section.title, question: 'Tabela de Força Muscular', answer: answerHtml, isHtml: true });
+                        }
+                    } else if (section.id.includes('testes_neurais') || section.id.includes('teste_neural')) {
+                        const rowsContent = [];
+                        section.rows.forEach(row => {
+                            const rowData = sectionData[row.id];
+                            if (rowData) {
+                                let valEsq = rowData.esquerdo === true ? 'Positivo' : (rowData.esquerdo === false ? 'Negativo' : '-');
+                                let valDir = rowData.direito === true ? 'Positivo' : (rowData.direito === false ? 'Negativo' : '-');
+                                if (valEsq === '-' && valDir !== '-') valEsq = 'Negativo';
+                                if (valDir === '-' && valEsq !== '-') valDir = 'Negativo';
+                                if (valEsq !== '-' || valDir !== '-') {
+                                    rowsContent.push(`
+                                        <div style="display: flex; border-bottom: 1px dashed #f0f0f0; padding: 6px 0;">
+                                            <div style="flex: 2; font-weight: 500;">${row.label}</div>
+                                            <div style="flex: 1; text-align: center; color: ${valEsq === 'Positivo' ? 'var(--primary-red)' : '#666'}">${valEsq}</div>
+                                            <div style="flex: 1; text-align: center; color: ${valDir === 'Positivo' ? 'var(--primary-red)' : '#666'}">${valDir}</div>
+                                        </div>
+                                    `);
+                                }
+                            }
+                        });
+                        if (rowsContent.length > 0) {
+                            let answerHtml = `
+                                <div style="display: flex; background: #fafafa; padding: 6px 0; font-weight: bold; border-bottom: 1px solid #ccc; font-size: 0.9em; text-transform: uppercase;">
+                                    <div style="flex: 2; padding-left: 4px;">Nervo / Teste</div>
+                                    <div style="flex: 1; text-align: center;">Esquerdo</div>
+                                    <div style="flex: 1; text-align: center;">Direito</div>
+                                </div>
+                                <div style="font-size: 0.95rem; color: #444;">${rowsContent.join('')}</div>
+                            `;
+                            qaPairs.push({ section: section.title, question: 'Resultados dos Testes de Tensão', answer: answerHtml, isHtml: true });
+                        }
+                    } else {
+                        section.rows.forEach(row => {
+                            const rowData = sectionData[row.id];
+                            if (rowData) {
+                                const parts = [];
+                                if (row.fields) {
+                                    row.fields.forEach(f => {
+                                        const fId = typeof f === 'object' ? f.id : f;
+                                        let val = rowData[fId];
+                                        if (section.id.includes('neurais') || section.id.includes('neural')) {
+                                            if (typeof f === 'object' && f.type === 'checkbox') {
+                                                if (val === undefined) val = false;
+                                                parts.push(`${fId.charAt(0).toUpperCase() + fId.slice(1)}: ${val ? 'Positivo' : 'Negativo'}`);
+                                                return;
+                                            }
+                                        }
+                                        if (val !== undefined && val !== null && val !== '' && val !== false) {
+                                            if (fId === 'dor') parts.push('Dor');
+                                            else if (fId === 'intensidade') parts.push(`Intensidade: ${val}`);
+                                            else if (['normal', 'hiper', 'hiperreflexia', 'hipo', 'hiporeflexia'].includes(fId.toLowerCase())) {
+                                                let reflexName = fId.charAt(0).toUpperCase() + fId.slice(1);
+                                                if (fId.toLowerCase() === 'hiper') reflexName = 'Hiperreflexia';
+                                                if (fId.toLowerCase() === 'hipo') reflexName = 'Hiporreflexia';
+                                                parts.push(reflexName);
+                                            } else if (section.id.includes('movimento')) {
+                                                if (fId === 'graus') parts.push(`${val} graus`);
+                                                else if (fId === 'observacoes') parts.push(val);
+                                            } else {
+                                                let labelText = typeof f === 'object' && f.label ? f.label : fId.charAt(0).toUpperCase() + fId.slice(1);
+                                                let displayVal = val;
+                                                if (typeof val === 'boolean' && val === true) displayVal = 'Sim';
+                                                parts.push(`${labelText}: ${displayVal}`);
+                                            }
+                                        }
+                                    });
+                                }
+                                if (parts.length > 0) {
+                                    let joinStr = ', ';
+                                    if (!section.id.includes('neuro') && !section.id.includes('reflexo') && !section.id.includes('movimento') && !section.id.includes('palpacao') && !section.id.includes('neural') && !section.id.includes('miofascial')) {
+                                        joinStr = ' | ';
+                                    }
+                                    qaPairs.push({ section: section.title, question: row.label, answer: parts.join(joinStr) });
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        let result = {};
+        if (q.calculateScore) {
+            result = q.calculateScore(q.type === 'clinical' ? state.clinicalData : actualAnswers);
+        } else {
+            result = { score: 0, percentage: 0, interpretation: 'Avaliação Clínica concluída.', max: 0, unit: '' };
+        }
+
+        result.qaPairs = qaPairs;
+        if (collectedBodySchemas.length > 0) result.bodySchemas = collectedBodySchemas;
+
+        renderResults(result);
+
+        // Add a visual indicator that this is a historical file
+        const viewHeader = document.querySelector('#view-results .view-header h2');
+        if (viewHeader) {
+            viewHeader.innerHTML += ' <span style="font-size: 0.8rem; background: var(--primary-red-light); color: var(--primary-red); padding: 4px 8px; border-radius: 4px; vertical-align: middle;">ARQUIVO HISTÓRICO</span>';
+        }
+
+        navigateTo('view-results');
+    } catch (err) {
+        console.error('[recompileHistoricalResults] crash:', err);
+        alert('Erro ao abrir o histórico: ' + err.message + '\n\nVerifique o console F12 para mais detalhes.');
     }
-
-    let result = {};
-    if (q.calculateScore) {
-        result = q.calculateScore(q.type === 'clinical' ? state.clinicalData : actualAnswers);
-    } else {
-        result = { score: 0, percentage: 0, interpretation: 'Avaliação Clínica concluída.', max: 0, unit: '' };
-    }
-
-    result.qaPairs = qaPairs;
-    if (collectedBodySchemas.length > 0) result.bodySchemas = collectedBodySchemas;
-
-    renderResults(result);
-
-    // Add a visual indicator that this is a historical file
-    const viewHeader = document.querySelector('#view-results .view-header h2');
-    if (viewHeader) {
-        viewHeader.innerHTML += ' <span style="font-size: 0.8rem; background: var(--primary-red-light); color: var(--primary-red); padding: 4px 8px; border-radius: 4px; vertical-align: middle;">ARQUIVO HISTÓRICO</span>';
-    }
-
-    navigateTo('view-results');
 }
 
 

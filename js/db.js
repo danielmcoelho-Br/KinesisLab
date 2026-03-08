@@ -176,6 +176,47 @@ const db = {
             console.error('Error fetching patient assessments:', error);
             throw error;
         }
+    },
+
+    /**
+     * Deletes a patient (admin only). Cascade deletes assessments via Supabase FK.
+     * @param {string} patientId - The UUID of the patient
+     */
+    async deletePatient(patientId) {
+        try {
+            // First delete associated assessments
+            const { error: aErr } = await supabase
+                .from('assessments')
+                .delete()
+                .eq('patient_id', patientId);
+            if (aErr) throw aErr;
+
+            const { error } = await supabase
+                .from('patients')
+                .delete()
+                .eq('id', patientId);
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error deleting patient:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Deletes a single assessment record (admin only).
+     * @param {string} assessmentId - The UUID of the assessment
+     */
+    async deleteAssessment(assessmentId) {
+        try {
+            const { error } = await supabase
+                .from('assessments')
+                .delete()
+                .eq('id', assessmentId);
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error deleting assessment:', error);
+            throw error;
+        }
     }
 };
 

@@ -3050,16 +3050,15 @@ function renderCharts() {
             const refArr = referenceResistenciaFlexoraCervical[gender];
             if (refArr) {
                 const refData = refArr.find(r => age >= r.minAge && age <= r.maxAge) || refArr[refArr.length - 1];
-                const refMin = parseFloat((refData.mean - refData.sd).toFixed(1));
-                const refMax = parseFloat((refData.mean + refData.sd).toFixed(1));
+                const refMean = refData.mean;
 
-                const classification = resistFlex < refMin ? 'Abaixo do Normal' : resistFlex > refMax ? 'Acima do Normal' : 'Normal';
-                const color = classification === 'Normal' ? '#2ecc71' : classification === 'Abaixo do Normal' ? '#e74c3c' : '#3498db';
+                const classification = resistFlex < refMean ? 'Abaixo da Média' : resistFlex > refMean ? 'Acima da Média' : 'Na Média';
+                const color = resistFlex >= (refMean * 0.8) ? '#2ecc71' : '#e74c3c'; // within 20% below mean = acceptable
 
                 const textContainer = document.getElementById('neck-flexor-text-results');
                 if (textContainer) {
                     textContainer.innerHTML = `
-                        <p style="margin-bottom: 0.5rem; color: #555;">Valores de Referência (${gender}, ${age} anos — Média ± DP): <strong>${refMin} a ${refMax} s</strong> (média: ${refData.mean}s)</p>
+                        <p style="margin-bottom: 0.5rem; color: #555;">Valor de Referência (${gender}, ${age} anos — Média): <strong>${refMean} s</strong></p>
                         <p>Resultado do paciente: <strong>${resistFlex} s</strong> — <strong style="color: ${color};">${classification}</strong></p>
                     `;
                 }
@@ -3074,32 +3073,22 @@ function renderCharts() {
                                 {
                                     label: 'Paciente (s)',
                                     data: [resistFlex],
-                                    backgroundColor: `rgba(52, 152, 219, 0.7)`,
+                                    backgroundColor: 'rgba(52, 152, 219, 0.7)',
                                     borderColor: 'rgba(41, 128, 185, 1)',
                                     borderWidth: 1,
                                     order: 2
                                 },
                                 {
-                                    label: 'Mínimo Normal (Média - DP)',
+                                    label: `Média de Referência (${refMean} s)`,
                                     type: 'line',
-                                    data: [refMin],
+                                    data: [refMean],
                                     borderColor: 'rgba(46, 204, 113, 1)',
-                                    borderWidth: 2,
-                                    borderDash: [5, 5],
+                                    borderWidth: 2.5,
+                                    borderDash: [6, 4],
                                     fill: false,
                                     pointRadius: 6,
+                                    pointStyle: 'circle',
                                     order: 1
-                                },
-                                {
-                                    label: 'Máximo Normal (Média + DP)',
-                                    type: 'line',
-                                    data: [refMax],
-                                    borderColor: 'rgba(46, 204, 113, 1)',
-                                    borderWidth: 2,
-                                    fill: '-1',
-                                    backgroundColor: 'rgba(46, 204, 113, 0.2)',
-                                    pointRadius: 6,
-                                    order: 0
                                 }
                             ]
                         },

@@ -2544,3 +2544,6 @@ const questionnairesData = {
         }
     }
 };
+
+// Expose questionnairesData globally so app.js can access it
+window.questionnairesData = questionnairesData;

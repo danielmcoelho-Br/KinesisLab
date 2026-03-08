@@ -184,13 +184,7 @@ const db = {
      */
     async deletePatient(patientId) {
         try {
-            // First delete associated assessments
-            const { error: aErr } = await supabase
-                .from('assessments')
-                .delete()
-                .eq('patient_id', patientId);
-            if (aErr) throw aErr;
-
+            // ON DELETE CASCADE in Supabase handles assessments automatically
             const { error } = await supabase
                 .from('patients')
                 .delete()

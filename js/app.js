@@ -1214,6 +1214,17 @@ async function handlePatientFormSubmit(e) {
     // Also store local state info for immediate rendering
     state.patientInfo = { ...patientData, date };
 
+    // --- GUARD: If patient already exists in state, skip DB insertion ---
+    if (state.patientId) {
+        // Just go to segment selection using the existing patient record
+        if (state.currentQuestionnaire) {
+            startQuestionnaire();
+        } else {
+            navigateTo('view-segments');
+        }
+        return;
+    }
+
     // Disable button to prevent double submit
     const submitBtn = document.getElementById('btn-save-patient') || document.querySelector('#patient-form button[type="submit"]');
     const originalText = submitBtn.innerHTML;

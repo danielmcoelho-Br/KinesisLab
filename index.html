@@ -29,14 +29,12 @@
                 </div>
                 <h1>Kinesis<span class="highlight">Lab</span></h1>
             </div>
-            <nav style="display: flex; gap: 0.5rem; align-items: center;">
+            <nav class="header-nav">
                 <button id="btn-home" class="nav-btn active">Início</button>
-                <button id="btn-admin-panel" class="nav-btn hidden" style="color: var(--primary-red);">Painel
-                    Admin</button>
-                <div style="width: 1px; height: 24px; background: #E0E0E0; margin: 0 0.5rem;"></div>
-                <div id="user-greeting"
-                    style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500; margin-right: 0.5rem;"></div>
-                <button id="btn-logout" class="nav-btn" style="font-size: 0.85rem;">Sair</button>
+                <button id="btn-admin-panel" class="nav-btn hidden panel-admin-btn">Painel Admin</button>
+                <div class="nav-divider"></div>
+                <div id="user-greeting" class="user-greeting"></div>
+                <button id="btn-logout" class="nav-btn logout-btn">Sair</button>
             </nav>
         </div>
     </header>
@@ -80,14 +78,14 @@
                 <p>Busque um paciente cadastrado ou inicie uma avaliação rápida.</p>
             </header>
 
-            <div class="patient-actions-bar" style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
-                <div class="search-box" style="flex: 1; min-width: 250px; position: relative;">
+            <div class="patient-actions-bar">
+                <div class="search-box">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"
-                        style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%);">
+                        class="search-icon">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <input type="text" id="patient-search-input" class="form-input" style="padding-left: 3rem;"
+                    <input type="text" id="patient-search-input" class="form-input patient-search-input"
                         placeholder="Buscar paciente por nome...">
                 </div>
                 <button id="btn-new-patient" class="btn btn-secondary">
@@ -99,7 +97,7 @@
                     </svg>
                     Novo Paciente
                 </button>
-                <button id="btn-quick-assessment" class="btn btn-primary" style="background: var(--primary-red);">
+                <button id="btn-quick-assessment" class="btn btn-primary btn-quick-eval">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"></circle>
                         <polyline points="12 6 12 12 16 14"></polyline>
@@ -118,10 +116,9 @@
 
         <!-- Patient Dashboard (Historical Assessments) -->
         <div id="view-patient-dashboard" class="view hidden">
-            <header class="view-header"
-                style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
-                <div>
-                    <h2 id="pd-patient-name" style="margin-bottom: 0.25rem;">Nome do Paciente</h2>
+            <header class="view-header patient-dashboard-header">
+                <div class="patient-info-summary">
+                    <h2 id="pd-patient-name">Nome do Paciente</h2>
                     <p id="pd-patient-details">Idade | Sexo | Dominância</p>
                 </div>
                 <button id="btn-new-assessment-for-patient" class="btn btn-primary">
@@ -370,6 +367,11 @@
                                     placeholder="Senha segura temporária" minlength="6">
                             </div>
                             <div class="form-group" style="margin-bottom: 0;">
+                                <label for="new-user-crefito">CREFITO</label>
+                                <input type="text" id="new-user-crefito" class="form-input"
+                                    placeholder="Ex: CREFITO-3/12345-F">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
                                 <label for="new-user-role">Nível de Acesso (Função)</label>
                                 <select id="new-user-role" class="form-input">
                                     <option value="user">Usuário Padrão (Fisioterapeuta)</option>
@@ -404,6 +406,7 @@
                                     <th>Nome</th>
                                     <th>Função</th>
                                     <th>ID do Usuário</th>
+                                    <th>Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="users-table-body">

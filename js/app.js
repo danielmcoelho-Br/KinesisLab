@@ -42,6 +42,11 @@ async function initApp() {
         const profile = await window.db.getUserProfile(state.session.user.id);
         if (profile) {
             state.userProfile = profile;
+            // Store logged user info (name + crefito) for forms and reports
+            state.loggedUser = {
+                name: profile.name || state.session.user.user_metadata?.name || '',
+                crefito: profile.crefito || state.session.user.user_metadata?.crefito || ''
+            };
             document.getElementById('user-greeting').innerText = `Olá, ${profile.name || 'Usuário'}`;
             if (profile.role === 'admin') {
                 document.getElementById('btn-admin-panel').classList.remove('hidden');
@@ -121,7 +126,7 @@ async function initApp() {
                 if (scoreField) {
                     scoreField.style.transition = 'background-color 0.5s';
                     scoreField.style.backgroundColor = '#e6ffe6';
-                    scoreField.value = e.newValue + ' (Sync✓)';
+                    scoreField.value = e.newValue;
                     scoreField.dispatchEvent(new Event('change'));
                     setTimeout(() => { scoreField.style.backgroundColor = ''; }, 2000);
                 }
@@ -252,12 +257,13 @@ async function initApp() {
             const email = document.getElementById('new-user-email').value;
             const password = document.getElementById('new-user-password').value;
             const role = document.getElementById('new-user-role').value;
+            const crefito = (document.getElementById('new-user-crefito') ? document.getElementById('new-user-crefito').value : '') || '';
 
             btn.disabled = true;
             btn.innerHTML = 'Processando...';
 
             try {
-                await window.db.createUser(email, password, name, role);
+                await window.db.createUser(email, password, name, role, crefito);
                 successDiv.innerText = `Usuário ${name} criado com sucesso! As credenciais já podem ser enviadas ao profissional.`;
                 successDiv.style.display = 'block';
                 adminCreateUserForm.reset();
@@ -1359,6 +1365,7 @@ function startQuestionnaire() {
     state.answers = {};
     state.clinicalData = {}; // Clear previous clinical data
     state.currentQuestionIndex = 0;
+    state.assessmentSaved = false; // Reset flag to prevent duplicate saves
 
     renderQuestionnaire();
     navigateTo('view-questionnaire');
@@ -1506,6 +1513,21 @@ function renderClinicalForm() {
                                                     `;
         }
 
+        // Select 0-5 for neuro_forca fields (esquerdo/direito)
+        if ((fId === 'esquerdo' || fId === 'direito') && section.id.includes('neuro_forca')) {
+            return `
+                                                    <td>
+                                                        <select class="clinical-input clinical-select-grade"
+                                                                data-section="${section.id}"
+                                                                data-row="${row.id}"
+                                                                data-field="${fId}">
+                                                            <option value="">-</option>
+                                                            ${['0', '0.5', '1', '2', '3', '4', '5'].map(v => `<option value="${v}" ${val == v ? 'selected' : ''}>${v}</option>`).join('')}
+                                                        </select>
+                                                    </td>
+                                                `;
+        }
+
         // Default text input
         return `
                                                     <td>
@@ -1557,8 +1579,24 @@ function renderClinicalForm() {
                      <button type="button" class="btn btn-secondary btn-clear-canvas" data-target="canvas-${field.id}">Limpar / Refazer</button>
                  </div>
                </div>`
-                : field.type === 'paintmap'
-                    ? `<div class="paintmap-container" style="display: flex; gap: 20px; align-items: flex-start;">
+                : field.type === 'freecanvas'
+                    ? `<div class="freecanvas-wrapper" style="width:100%;">
+                    <div class="freecanvas-toolbar" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 0 10px;border-bottom:1px solid #eee;margin-bottom:10px;">
+                        <label style="display:flex;align-items:center;gap:6px;font-size:0.9em;font-weight:600;">Cor:
+                            <input type="color" id="fc-color-${field.id}" value="#222222" style="width:36px;height:30px;border:none;border-radius:6px;cursor:pointer;padding:2px;">
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:0.9em;font-weight:600;">Espessura:
+                            <input type="range" id="fc-size-${field.id}" min="1" max="30" value="4" style="width:90px;" oninput="document.getElementById('fc-size-val-${field.id}').textContent=this.value">
+                            <span id="fc-size-val-${field.id}" style="min-width:20px;">4</span>px
+                        </label>
+                        <button type="button" class="btn btn-secondary" id="fc-eraser-${field.id}" title="Borracha" onclick="window.fcToggleEraser && window.fcToggleEraser('${field.id}')" style="padding:6px 12px;font-size:0.85em;">🧹 Borracha</button>
+                        <button type="button" class="btn btn-secondary" onclick="window.fcUndo && window.fcUndo('${field.id}')" style="padding:6px 12px;font-size:0.85em;">↩ Desfazer</button>
+                        <button type="button" class="btn btn-secondary" onclick="window.fcClear && window.fcClear('${field.id}')" style="padding:6px 12px;font-size:0.85em;">🗑 Limpar Tudo</button>
+                    </div>
+                    <canvas id="freecanvas-${field.id}" data-section="${section.id}" data-field="${field.id}" style="background:#fff;border:1px solid #ddd;border-radius:8px;cursor:crosshair;display:block;width:100%;touch-action:none;"></canvas>
+                </div>`
+                    : field.type === 'paintmap'
+                        ? `<div class="paintmap-container" style="display: flex; gap: 20px; align-items: flex-start;">
                          <div style="flex: 1;">
                              <canvas class="paintmap-canvas" id="canvas-${field.id}" data-section="${section.id}" data-field="${field.id}" data-image="${field.image}" style="border: 1px solid #ddd; border-radius: 8px; cursor: crosshair;"></canvas>
                              <div class="bodyschema-controls" style="margin-top: 10px; display: flex; gap: 10px;">
@@ -1582,8 +1620,8 @@ function renderClinicalForm() {
                              </div>
                          </div>
                        </div>`
-                    : field.type === 'range'
-                        ? `<div class="range-container">
+                        : field.type === 'range'
+                            ? `<div class="range-container">
                          <div class="range-labels">
                              <span>${field.min || 0}</span>
                              <span class="range-val-view">${(state.clinicalData[section.id] && state.clinicalData[section.id][field.id]) !== undefined ? state.clinicalData[section.id][field.id] : (field.min || 0)}</span>
@@ -1591,9 +1629,9 @@ function renderClinicalForm() {
                          </div>
                          <input type="range" class="clinical-input range-slider" data-section="${section.id}" data-field="${field.id}" min="${field.min || 0}" max="${field.max || 10}" step="${field.step || 1}" value="${(state.clinicalData[section.id] && state.clinicalData[section.id][field.id]) !== undefined ? state.clinicalData[section.id][field.id] : (field.min || 0)}" oninput="this.parentElement.querySelector('.range-val-view').innerText = this.value">
                        </div>`
-                        : field.type === 'button'
-                            ? `<button type="button" class="btn btn-secondary clinical-input-button" data-section="${section.id}" data-field="${field.id}" ${field.props || ''}>${field.label}</button>`
-                            : `<input type="${field.type || 'text'}" class="clinical-input" ${field.props || ''} data-section="${section.id}" data-field="${field.id}" value="${(state.clinicalData[section.id] && state.clinicalData[section.id][field.id]) || ''}">`
+                            : field.type === 'button'
+                                ? `<button type="button" class="btn btn-secondary clinical-input-button" data-section="${section.id}" data-field="${field.id}" ${field.props || ''}>${field.label}</button>`
+                                : `<input type="${field.type || 'text'}" class="clinical-input" ${field.props || ''} data-section="${section.id}" data-field="${field.id}" value="${(state.clinicalData[section.id] && state.clinicalData[section.id][field.id]) || ''}">`
         }
                                 </div>
                             `).join('')}
@@ -1602,7 +1640,22 @@ function renderClinicalForm() {
                 </section>
             `).join('')}
 
-            <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
+            <div class="evaluator-signature-block" style="margin-top: 2rem; border-top: 2px solid #eee; padding-top: 1.5rem;">
+                ${state.loggedUser ? `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="clinical-field">
+                        <label>Avaliador(a)</label>
+                        <input type="text" class="clinical-input" value="${state.loggedUser.name || ''}" readonly style="background: #f9f9f9;">
+                    </div>
+                    <div class="clinical-field">
+                        <label>CREFITO</label>
+                        <input type="text" class="clinical-input" value="${state.loggedUser.crefito || ''}" readonly style="background: #f9f9f9;">
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+
+            <div style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 1rem;">
                 <button class="btn btn-secondary" onclick="navigateTo('view-dashboard')">Cancelar</button>
                 <button class="btn btn-primary" id="btn-finish-clinical" onclick="window.finishQuestionnaire()">Finalizar e Ver Resultado</button>
             </div>
@@ -1629,6 +1682,12 @@ function renderClinicalForm() {
 
             // Auto-calculate deficits if in 'forca', 'forca_ombro', or 'forca_preensao' section
             if (section === 'forca' || section === 'forca_ombro' || section === 'forca_preensao') {
+                updateDéficits(section);
+                // Para tornozelo, também calcular déficits dos grupos específicos
+                updateDéficitsGeneric(section, ['forca_dorsiflexores', 'forca_inversores', 'forca_eversores']);
+            }
+            // Auto-calcular déficit de perimetria
+            if (section === 'testes_especiais') {
                 updateDéficits(section);
             }
         });
@@ -1657,6 +1716,10 @@ function renderClinicalForm() {
     // Setup paintmap canvases
     document.querySelectorAll('.paintmap-canvas').forEach(canvas => {
         setupPaintmapCanvas(canvas);
+    });
+    // Setup free-draw canvases
+    document.querySelectorAll('[id^="freecanvas-"]').forEach(canvas => {
+        setupFreeCanvas(canvas);
     });
 
     document.querySelectorAll('.btn-clear-canvas').forEach(btn => {
@@ -1731,7 +1794,28 @@ function updateDéficits(section = 'forca') {
         ? ['abd_quadril', 'ext_quadril', 'flex_quadril', 'rot_int_quadril', 'ext_joelho', 'flex_joelho']
         : section === 'forca_preensao'
             ? ['preensao_palmar', 'pinca_polpa', 'pinca_lateral', 'pinca_tripode']
-            : ['abd_ombro', 'rl_ombro', 'rm_ombro'];
+            : section === 'testes_especiais'
+                ? ['peri_joelho', 'peri_coxa']
+                : ['abd_ombro', 'rl_ombro', 'rm_ombro'];
+
+    // Generic deficit calculator for sections with non-standard row names
+    function updateDéficitsGeneric(sectionId, rows) {
+        const sectionData = state.clinicalData[sectionId];
+        if (!sectionData) return;
+        rows.forEach(rowId => {
+            const rowData = sectionData[rowId];
+            if (rowData && rowData.esquerdo && rowData.direito) {
+                const e = parseFloat(rowData.esquerdo);
+                const d = parseFloat(rowData.direito);
+                if (!isNaN(e) && !isNaN(d) && (e > 0 || d > 0)) {
+                    const deficit = Math.abs(((e - d) / Math.max(e, d)) * 100).toFixed(1);
+                    state.clinicalData[sectionId][rowId].deficit = deficit + '%';
+                    const input = document.querySelector(`input[data-section="${sectionId}"][data-row="${rowId}"][data-field="deficit"]`);
+                    if (input) input.value = deficit + '%';
+                }
+            }
+        });
+    }
 
     rowsToCalculate.forEach(rowId => {
         const rowData = sectionData[rowId];
@@ -1765,12 +1849,7 @@ function updateDéficits(section = 'forca') {
 
         const iqE = parseFloat(state.clinicalData.forca.relacao_iq?.esquerdo);
         const iqD = parseFloat(state.clinicalData.forca.relacao_iq?.direito);
-        if (!isNaN(iqE) && !isNaN(iqD)) {
-            const deficit = Math.abs(((iqE - iqD) / Math.max(iqE, iqD)) * 100).toFixed(1);
-            state.clinicalData.forca.relacao_iq.deficit = deficit + '%';
-            const input = document.querySelector(`input[data-section="forca"][data-row="relacao_iq"][data-field="deficit"]`);
-            if (input) input.value = deficit + '%';
-        }
+        // Removed: deficit calculation for relacao_iq (not needed)
     } else if (section === 'forca_ombro') {
         ['esquerdo', 'direito'].forEach(side => {
             const rl = sectionData.rl_ombro && parseFloat(sectionData.rl_ombro[side]);
@@ -1942,9 +2021,9 @@ function setupCanvas(canvas) {
 }
 
 function restoreStrokeStyle(ctx) {
-    // Stroke style (Red paint for pain)
-    ctx.strokeStyle = 'rgba(217, 43, 43, 0.6)'; // Red color, slightly transparent
-    ctx.lineWidth = 24; // Original max width
+    // Stroke style (Red paint for pain) — pincel -20% menor e mais transparente
+    ctx.strokeStyle = 'rgba(217, 43, 43, 0.35)'; // Red color, more transparent
+    ctx.lineWidth = 19; // Reduced by ~20% from original 24
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 }
@@ -2161,18 +2240,13 @@ function setupPaintmapCanvas(canvas) {
             hexColor = colorInput.value;
         }
 
-        const rgbaColor = hexToRgba(hexColor);
-
-        try {
-            // Attempt to do a flood fill.
-            floodFill(pos.x, pos.y, rgbaColor);
-        } catch (err) {
-            // Fallback for CORS SecurityError
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, 8, 0, 2 * Math.PI); // Reduced radius to 8
-            ctx.fillStyle = hexColor;
-            ctx.fill();
-        }
+        // Draw a small filled circle at the click point (no flood fill)
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 10, 0, 2 * Math.PI);
+        ctx.fillStyle = hexColor;
+        ctx.globalAlpha = 0.85;
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
 
         // Push this vector action to history for robust undo / persistence
         pushAction(canvas, { x: pos.x, y: pos.y, color: hexColor });
@@ -2181,6 +2255,142 @@ function setupPaintmapCanvas(canvas) {
     canvas.addEventListener('mousedown', handleInteraction);
     canvas.addEventListener('touchstart', handleInteraction, { passive: false });
 }
+
+// ─── Free Drawing Canvas (Orientação para o Paciente) ───────────────────────
+function setupFreeCanvas(canvas) {
+    // Set canvas intrinsic size to wrapper width
+    const wrapper = canvas.parentElement;
+    const W = wrapper ? wrapper.clientWidth || 800 : 800;
+    canvas.width = W;
+    canvas.height = Math.round(W * 0.6);
+
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const fieldId = canvas.dataset.field;
+    const sectionId = canvas.dataset.section;
+
+    // Restore saved data if present
+    const saved = state.clinicalData[sectionId] && state.clinicalData[sectionId][fieldId];
+    if (saved) {
+        const img = new Image();
+        img.onload = () => ctx.drawImage(img, 0, 0);
+        img.src = saved;
+    }
+
+    // History for undo (each entry = ImageData snapshot)
+    canvas._fcHistory = [];
+    let isEraser = false;
+
+    function snapshot() {
+        canvas._fcHistory.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+        if (canvas._fcHistory.length > 50) canvas._fcHistory.shift();
+    }
+
+    function getColor() {
+        const el = document.getElementById(`fc-color-${fieldId}`);
+        return el ? el.value : '#222222';
+    }
+    function getSize() {
+        const el = document.getElementById(`fc-size-${fieldId}`);
+        return el ? parseInt(el.value) : 4;
+    }
+
+    function saveState() {
+        state.clinicalData[sectionId] = state.clinicalData[sectionId] || {};
+        try {
+            state.clinicalData[sectionId][fieldId] = canvas.toDataURL('image/png');
+        } catch (e) { }
+    }
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const sx = canvas.width / rect.width;
+        const sy = canvas.height / rect.height;
+        const src = e.touches ? e.touches[0] : e;
+        return {
+            x: (src.clientX - rect.left) * sx,
+            y: (src.clientY - rect.top) * sy
+        };
+    }
+
+    let drawing = false;
+
+    function onStart(e) {
+        if (e.cancelable) e.preventDefault();
+        snapshot();
+        drawing = true;
+        const pos = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+        ctx.strokeStyle = isEraser ? '#ffffff' : getColor();
+        ctx.lineWidth = isEraser ? getSize() * 3 : getSize();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+    }
+    function onMove(e) {
+        if (!drawing) return;
+        if (e.cancelable) e.preventDefault();
+        const pos = getPos(e);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+    }
+    function onEnd(e) {
+        if (!drawing) return;
+        drawing = false;
+        saveState();
+    }
+
+    canvas.addEventListener('mousedown', onStart);
+    canvas.addEventListener('mousemove', onMove);
+    canvas.addEventListener('mouseup', onEnd);
+    canvas.addEventListener('mouseleave', onEnd);
+    canvas.addEventListener('touchstart', onStart, { passive: false });
+    canvas.addEventListener('touchmove', onMove, { passive: false });
+    canvas.addEventListener('touchend', onEnd);
+
+    // Store references for global helpers
+    canvas._fcCtx = ctx;
+    canvas._fcField = fieldId;
+    canvas._fcSection = sectionId;
+    canvas._fcIsEraser = () => isEraser;
+    canvas._fcSetEraser = (v) => { isEraser = v; };
+}
+
+window.fcUndo = function (fieldId) {
+    const canvas = document.getElementById(`freecanvas-${fieldId}`);
+    if (!canvas || !canvas._fcHistory || canvas._fcHistory.length === 0) return;
+    const ctx = canvas._fcCtx || canvas.getContext('2d');
+    ctx.putImageData(canvas._fcHistory.pop(), 0, 0);
+    state.clinicalData[canvas.dataset.section] = state.clinicalData[canvas.dataset.section] || {};
+    try { state.clinicalData[canvas.dataset.section][canvas.dataset.field] = canvas.toDataURL('image/png'); } catch (e) { }
+};
+
+window.fcClear = function (fieldId) {
+    const canvas = document.getElementById(`freecanvas-${fieldId}`);
+    if (!canvas) return;
+    const ctx = canvas._fcCtx || canvas.getContext('2d');
+    if (canvas._fcHistory) {
+        canvas._fcHistory.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    state.clinicalData[canvas.dataset.section] = state.clinicalData[canvas.dataset.section] || {};
+    try { state.clinicalData[canvas.dataset.section][canvas.dataset.field] = canvas.toDataURL('image/png'); } catch (e) { }
+};
+
+window.fcToggleEraser = function (fieldId) {
+    const canvas = document.getElementById(`freecanvas-${fieldId}`);
+    if (!canvas) return;
+    const on = canvas._fcIsEraser();
+    canvas._fcSetEraser(!on);
+    const btn = document.getElementById(`fc-eraser-${fieldId}`);
+    if (btn) {
+        btn.style.background = !on ? 'var(--primary-red, #e74c3c)' : '';
+        btn.style.color = !on ? '#fff' : '';
+    }
+};
 
 function handlePrev() {
     if (state.currentQuestionIndex > 0) {
@@ -2472,8 +2682,16 @@ window.finishQuestionnaire = async function finishQuestionnaire() {
         };
 
     } else if (state.patientId) {
+        // Guard against double-submission (Correção 8 - bug duplicação)
+        if (state.assessmentSaved) {
+            renderResults(result);
+            navigateTo('view-results');
+            return;
+        }
+        state.assessmentSaved = true;
+
         // Patient is known, save silently in background
-        const submitBtnObj = document.getElementById('btn-next');
+        const submitBtnObj = document.getElementById('btn-next') || document.getElementById('btn-finish-clinical');
         const originalTextObj = submitBtnObj ? submitBtnObj.innerHTML : '';
         if (submitBtnObj) { submitBtnObj.innerHTML = 'Processando...'; submitBtnObj.disabled = true; }
 
@@ -2559,6 +2777,9 @@ function renderResults(result) {
         `;
     }
 
+    // Nome de arquivo com nome do paciente + data
+    const pdfFileName = `Avaliacao_${state.patientInfo.name.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}.pdf`;
+
     let html = `
         <header class="view-header">
             <h2 class="no-print">Resultado da Avaliação</h2>
@@ -2613,17 +2834,10 @@ function renderResults(result) {
                         <p><strong>Lysholm Score:</strong> ${result.details.lysholm.score} pts (${result.details.lysholm.interpretation})</p>
                     ` : ''}
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                        ${Object.keys(result.details).filter(k => k !== 'lysholm' && k !== 'relacao_iq' && k !== 'relacao_rlrm').map(m =>
-            result.details[m] ? `<div class="glass-panel" style="padding: 0.5rem; font-size: 0.9rem;">
-                                <strong>Déficit ${m.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ').replace('Abd ', 'Abdução ').replace('Rl ', 'RL ').replace('Rm ', 'RM ')}:</strong> ${result.details[m].deficit}
-                            </div>` : ''
-        ).join('')}
-                    </div>
 
                     ${result.details.relacao_iq ? `
                         <div class="glass-panel" style="margin-top: 1rem; padding: 0.8rem; border-left: 4px solid var(--primary-red);">
-                            <p><strong>Relação I/Q:</strong> Esq: ${result.details.relacao_iq.esquerdo} | Dir: ${result.details.relacao_iq.direito} | Déficit: ${result.details.relacao_iq.deficit}</p>
+                            <p><strong>Relação I/Q:</strong> Esq: ${result.details.relacao_iq.esquerdo} | Dir: ${result.details.relacao_iq.direito}</p>
                         </div>
                     ` : ''}
 
@@ -2634,27 +2848,37 @@ function renderResults(result) {
                         </div>
                     ` : ''}
                 </div>
-                
-                ${renderChartsHtml(q, result)}
             ` : ''}
 
             ${qaSectionHtml}
 
-            <div style="margin-top: 3rem; display: flex; gap: 1rem; justify-content: center;" class="no-print">
+            ${result.details ? renderChartsHtml(q, result) : ''}
+
+            ${state.loggedUser ? `
+            <div class="evaluator-footer" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid #eee; display: flex; gap: 2rem;">
+                <p style="margin: 0;"><strong>Avaliador(a):</strong> ${state.loggedUser.name || ''}</p>
+                <p style="margin: 0;"><strong>CREFITO:</strong> ${state.loggedUser.crefito || ''}</p>
+            </div>
+            ` : ''}
+
+            <div style="margin-top: 3rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;" class="no-print">
                 <button class="btn btn-secondary" id="btn-restart">
                     Nova Avaliação
                 </button>
-                <a class="btn btn-whatsapp" id="btn-whatsapp" target="_blank" rel="noopener">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="margin-right:0.5rem"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" /></svg>
-                    Compartilhar no WhatsApp
-                </a>
+                <button class="btn btn-email" id="btn-email">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:0.5rem"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                    Enviar por E-mail
+                </button>
                 <button class="btn btn-primary" onclick="window.print()">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:0.5rem"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                    Imprimir Resultado
+                    Imprimir / Salvar PDF
                 </button>
             </div>
         </div>
     `;
+
+    // Store pdfFileName for use in button handlers
+    state._pdfFileName = pdfFileName;
 
     views['view-results'].innerHTML = html;
 
@@ -2675,8 +2899,8 @@ function renderResults(result) {
                         bs.history.forEach(action => {
                             if (action.type === 'line' && action.points && action.points.length > 0) {
                                 ctx.beginPath();
-                                ctx.strokeStyle = 'rgba(217, 43, 43, 0.6)'; // Red color, slightly transparent
-                                ctx.lineWidth = 24; // Original max width
+                                ctx.strokeStyle = 'rgba(217, 43, 43, 0.35)'; // Red color, more transparent
+                                ctx.lineWidth = 19; // Reduced by ~20%
                                 ctx.lineCap = 'round';
                                 ctx.lineJoin = 'round';
                                 ctx.moveTo(action.points[0].x, action.points[0].y);
@@ -2697,70 +2921,58 @@ function renderResults(result) {
         });
     }
 
-    // Generate PDF and Share via WhatsApp/System Dialog
-    const btnWA = document.getElementById('btn-whatsapp');
-    if (btnWA) {
-        // Change from <a> to <button> style behavior
-        btnWA.removeAttribute('href');
-        btnWA.removeAttribute('target');
-        btnWA.style.cursor = 'pointer';
+    // Set document title so print dialog suggests correct filename (Correção 6)
+    const origTitle = document.title;
+    document.title = state._pdfFileName || `Avaliacao_${state.patientInfo.name.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}`;
 
-        btnWA.addEventListener('click', async (e) => {
+    // Generate PDF and Send via Email (Correção 5: substituir WhatsApp por E-mail)
+    const btnEmail = document.getElementById('btn-email');
+    if (btnEmail) {
+        btnEmail.addEventListener('click', async (e) => {
             e.preventDefault();
-            const originalText = btnWA.innerHTML;
-            btnWA.innerHTML = 'Gerando PDF...';
-            btnWA.style.opacity = '0.7';
-            btnWA.style.pointerEvents = 'none';
+            const originalText = btnEmail.innerHTML;
+            btnEmail.innerHTML = '⏳ Gerando PDF...';
+            btnEmail.style.opacity = '0.7';
+            btnEmail.style.pointerEvents = 'none';
 
             try {
                 const element = document.querySelector('.results-container');
+                const fileName = state._pdfFileName || `Avaliacao_${state.patientInfo.name.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}.pdf`;
                 const opt = {
                     margin: 10,
-                    filename: `Avaliacao_${state.patientInfo.name.replace(/\s+/g, '_')}.pdf`,
+                    filename: fileName,
                     image: { type: 'jpeg', quality: 0.98 },
                     html2canvas: { scale: 2, useCORS: true },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 };
 
-                const waMessage = `Olá ${state.patientInfo.name}, este é o resultado da sua avaliação: ${q.title}.${result.score !== undefined ? `\nScore: ${result.score}` : ''}`;
-                const encodedText = encodeURIComponent(waMessage);
-                const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
-
-                // Generate PDF as Blob
+                // Generate and download the PDF
                 const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
-                const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
+                const url = URL.createObjectURL(pdfBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
 
-                // Check if device supports native file sharing and is mobile
-                if (navigator.canShare && navigator.canShare({ files: [file] }) && /Mobi|Android/i.test(navigator.userAgent)) {
-                    await navigator.share({
-                        files: [file],
-                        title: 'Resultado de Avaliação',
-                        text: waMessage
-                    });
-                } else {
-                    // Fallback for browsers that don't support file sharing or Desktop: download and open WA link
-                    alert("Atenção: O WhatsApp Web não permite anexar arquivos de forma automática.\n\nO PDF foi baixado no seu computador. Quando a tela do WhatsApp abrir, anexe o PDF gerado manualmente na conversa.");
+                // Open email client after short delay
+                const emailSubject = encodeURIComponent(`Avaliação Fisioterapêutica - ${state.patientInfo.name} - ${formattedDate}`);
+                const emailBody = encodeURIComponent(
+                    `Olá,\n\nSegue em anexo o resultado da avaliação fisioterapêutica de ${state.patientInfo.name}.\n\nFormulário: ${q.title}\nData: ${formattedDate}\n\nO arquivo PDF foi salvo no seu computador. Por favor, anexe-o a este e-mail antes de enviar.\n\nAtenciosamente,\n${state.loggedUser ? state.loggedUser.name : 'Avaliador(a)'}`
+                );
+                setTimeout(() => {
+                    window.location.href = `mailto:?subject=${emailSubject}&body=${emailBody}`;
+                }, 800);
 
-                    const url = URL.createObjectURL(pdfBlob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = opt.filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-
-                    setTimeout(() => {
-                        window.open(whatsappUrl, '_blank');
-                    }, 500);
-                }
             } catch (err) {
-                console.error('Erro ao gerar/compartilhar PDF:', err);
-                alert("Houve um erro ao tentar gerar o PDF. Verifique se todas as imagens carregaram corretamente.");
+                console.error('Erro ao gerar PDF:', err);
+                alert('Houve um erro ao tentar gerar o PDF. Verifique se todas as imagens carregaram corretamente.');
             } finally {
-                btnWA.innerHTML = originalText;
-                btnWA.style.opacity = '1';
-                btnWA.style.pointerEvents = 'auto';
+                btnEmail.innerHTML = originalText;
+                btnEmail.style.opacity = '1';
+                btnEmail.style.pointerEvents = 'auto';
             }
         });
     }
@@ -2898,6 +3110,82 @@ function renderChartsHtml(q, result) {
         }
     }
 
+    // --- Trunk Flexor/Extensor Endurance Charts HTML (lombar form) ---
+    if (state.clinicalData.resistencia) {
+        const flexao60 = state.clinicalData.resistencia.flexao_60;
+        if (flexao60 !== undefined && flexao60 !== '') {
+            html += `
+            <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
+                <h4 style="color: var(--primary-red); margin-bottom: 1rem;">An&aacute;lise de Resist&ecirc;ncia dos Flexores do Tronco (Flex&atilde;o a 60&ordm;)</h4>
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <div id="trunk-flexor-text-results"></div>
+                    <div style="height: 300px; margin-top: 1.5rem;">
+                        <canvas id="trunkFlexorChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+
+        const sorensen = state.clinicalData.resistencia.sorensen;
+        if (sorensen !== undefined && sorensen !== '') {
+            html += `
+            <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
+                <h4 style="color: var(--primary-red); margin-bottom: 1rem;">An&aacute;lise de Resist&ecirc;ncia dos Extensores do Tronco (Teste de Sorensen)</h4>
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <div id="trunk-extensor-text-results"></div>
+                    <div style="height: 300px; margin-top: 1.5rem;">
+                        <canvas id="trunkExtensorChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+    }
+
+    // --- Geriatria Balance Charts HTML ---
+    if (state.clinicalData.testes_equilibrio) {
+        const balanceTests = [
+            { id: 'pes_juntos', label: 'Pés Juntos', ref: 30 },
+            { id: 'semi_tandem', label: 'Semi-tandem', ref: 30 },
+            { id: 'tandem', label: 'Tandem', ref: 17.56 }
+        ];
+        balanceTests.forEach(test => {
+            const val = state.clinicalData.testes_equilibrio[test.id];
+            if (val !== undefined && val !== '') {
+                html += `
+                <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
+                    <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Equilíbrio: ${test.label}</h4>
+                    <div class="glass-panel" style="padding: 1.5rem;">
+                        <div id="balance-${test.id}-text"></div>
+                        <div style="height: 260px; margin-top: 1.5rem;">
+                            <canvas id="balance-${test.id}-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }
+        });
+    }
+
+    // --- Geriatria TUG Chart HTML ---
+    if (state.clinicalData.testes_mobilidade) {
+        const tugVal = state.clinicalData.testes_mobilidade.tug;
+        if (tugVal !== undefined && tugVal !== '') {
+            html += `
+            <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
+                <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Timed Up and Go (TUG)</h4>
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <div id="tug-text-results"></div>
+                    <div style="height: 260px; margin-top: 1.5rem;">
+                        <canvas id="tugChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+    }
+
     return html;
 }
 
@@ -2979,12 +3267,14 @@ function renderCharts() {
             textContainer.innerHTML = textHtml;
         }
 
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) return;
+        // Simplified chart: only patient bar + reference line (no SD bands)
+        const pacienteColors = classResults.map(r => {
+            if (r.class === 'Normal') return 'rgba(46, 204, 113, 0.75)';
+            if (r.class === 'Fraco') return 'rgba(231, 76, 60, 0.75)';
+            return 'rgba(52, 152, 219, 0.75)';
+        });
 
-        const pacienteData = classResults.map(r => r.valor);
-        const minNormalData = classResults.map(r => r.limits.min);
-        const maxNormalData = classResults.map(r => r.limits.max);
+        const refLineValues = classResults.map(r => !isPinca ? ((r.limits.min + r.limits.max) / 2) : (r.limits.min + r.limits.max) / 2);
 
         new Chart(canvas, {
             type: 'bar',
@@ -2994,30 +3284,21 @@ function renderCharts() {
                     {
                         label: 'Paciente (kgF)',
                         data: pacienteData,
-                        backgroundColor: 'rgba(52, 152, 219, 0.7)',
-                        borderColor: 'rgba(41, 128, 185, 1)',
+                        backgroundColor: pacienteColors,
+                        borderColor: pacienteColors.map(c => c.replace('0.75', '1')),
                         borderWidth: 1,
                         order: 2
                     },
                     {
-                        label: 'Normal Mínimo',
+                        label: 'Referência',
                         type: 'line',
-                        data: minNormalData,
+                        data: refLineValues,
                         borderColor: 'rgba(46, 204, 113, 1)',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
+                        borderWidth: 2.5,
+                        borderDash: [6, 4],
                         fill: false,
+                        pointRadius: 5,
                         order: 1
-                    },
-                    {
-                        label: 'Normal Máximo',
-                        type: 'line',
-                        data: maxNormalData,
-                        borderColor: 'rgba(46, 204, 113, 1)',
-                        borderWidth: 2,
-                        fill: '-1',
-                        backgroundColor: 'rgba(46, 204, 113, 0.2)',
-                        order: 0
                     }
                 ]
             },
@@ -3180,8 +3461,13 @@ function renderCharts() {
             if (!canvas) return;
 
             const pacienteData = classResults.map(r => r.valor);
-            const minNormalData = classResults.map(r => r.limits.min);
-            const maxNormalData = classResults.map(r => r.limits.max);
+            // Mean reference for each side
+            const refMeanData = classResults.map(r => r.limits.mean);
+            // Color by classification
+            const pacienteColors = classResults.map(r =>
+                r.class === 'Normal' ? 'rgba(46, 204, 113, 0.75)' :
+                    r.class === 'Fraco' ? 'rgba(231, 76, 60, 0.75)' : 'rgba(52, 152, 219, 0.75)'
+            );
 
             new Chart(canvas, {
                 type: 'bar',
@@ -3191,30 +3477,21 @@ function renderCharts() {
                         {
                             label: 'Paciente (kgF)',
                             data: pacienteData,
-                            backgroundColor: 'rgba(52, 152, 219, 0.7)',
-                            borderColor: 'rgba(41, 128, 185, 1)',
+                            backgroundColor: pacienteColors,
+                            borderColor: pacienteColors.map(c => c.replace('0.75', '1')),
                             borderWidth: 1,
                             order: 2
                         },
                         {
-                            label: 'Desvio Inferior',
+                            label: 'Média de Referência',
                             type: 'line',
-                            data: minNormalData,
+                            data: refMeanData,
                             borderColor: 'rgba(46, 204, 113, 1)',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
+                            borderWidth: 2.5,
+                            borderDash: [6, 4],
                             fill: false,
+                            pointRadius: 5,
                             order: 1
-                        },
-                        {
-                            label: 'Desvio Superior',
-                            type: 'line',
-                            data: maxNormalData,
-                            borderColor: 'rgba(46, 204, 113, 1)',
-                            borderWidth: 2,
-                            fill: '-1',
-                            backgroundColor: 'rgba(46, 204, 113, 0.2)',
-                            order: 0
                         }
                     ]
                 },
@@ -3239,6 +3516,176 @@ function renderCharts() {
         renderIndividualHipChart('ext_quadril', 'ext', 'ext_quadril-Chart', 'ext_quadril-text-results', 'Percentil de Extensão');
         renderIndividualHipChart('flex_quadril', 'flx', 'flex_quadril-Chart', 'flex_quadril-text-results', 'Percentil de Flexão');
         renderIndividualHipChart('rot_int_quadril', 'rotl', 'rot_int_quadril-Chart', 'rot_int_quadril-text-results', 'Percentil de Rotação Interna');
+    }
+
+    // --- Lombar Endurance Charts Logic ---
+    const renderEnduranceChart = (value, canvasId, textContainerId, refTable, title, unit) => {
+        const val = parseFloat(value);
+        if (isNaN(val)) return;
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        const refArr = refTable ? refTable[gender] : null;
+        if (!refArr) return;
+        const refData = refArr.find(r => age >= r.minAge && age <= r.maxAge) || refArr[refArr.length - 1];
+        const refMean = refData.mean;
+
+        const color = val >= refMean * 0.8 ? '#2ecc71' : '#e74c3c';
+        const classification = val >= refMean ? 'Acima da Média' : val >= refMean * 0.8 ? 'Abaixo da Média (Aceitável)' : 'Insuficiente';
+
+        const textContainer = document.getElementById(textContainerId);
+        if (textContainer) {
+            textContainer.innerHTML = `
+                <p style="margin-bottom:0.5rem;color:#555;">Média de Referência (${gender}, ${age} anos): <strong>${refMean} ${unit}</strong></p>
+                <p>Resultado: <strong>${val} ${unit}</strong> — <strong style="color:${color};">${classification}</strong></p>
+            `;
+        }
+
+        new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: [title],
+                datasets: [
+                    {
+                        label: `Paciente (${unit})`,
+                        data: [val],
+                        backgroundColor: val >= refMean * 0.8 ? 'rgba(46, 204, 113, 0.75)' : 'rgba(231, 76, 60, 0.75)',
+                        borderColor: val >= refMean * 0.8 ? 'rgba(46, 204, 113, 1)' : 'rgba(231, 76, 60, 1)',
+                        borderWidth: 1,
+                        order: 2
+                    },
+                    {
+                        label: `Média de Referência (${refMean} ${unit})`,
+                        type: 'line',
+                        data: [refMean],
+                        borderColor: 'rgba(46, 204, 113, 1)',
+                        borderWidth: 2.5,
+                        borderDash: [6, 4],
+                        fill: false,
+                        pointRadius: 6,
+                        order: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, title: { display: true, text: `Tempo (${unit})` } } },
+                plugins: {
+                    legend: { position: 'bottom' },
+                    title: { display: true, text: `${title} — ${gender}, ${age} anos` }
+                }
+            }
+        });
+    };
+
+    if (state.clinicalData.resistencia && typeof referenceFlexorLombar !== 'undefined') {
+        renderEnduranceChart(
+            state.clinicalData.resistencia.flexao_60,
+            'trunkFlexorChart', 'trunk-flexor-text-results',
+            referenceFlexorLombar,
+            'Resistência Flexora (Flexão 60°)', 's'
+        );
+    }
+    if (state.clinicalData.resistencia && typeof referenceExtensorLombar !== 'undefined') {
+        renderEnduranceChart(
+            state.clinicalData.resistencia.sorensen,
+            'trunkExtensorChart', 'trunk-extensor-text-results',
+            referenceExtensorLombar,
+            'Resistência Extensora (Sorensen)', 's'
+        );
+    }
+    // Also handle MMII endurance fields (same sections, different names)
+    if (state.clinicalData.endurance && typeof referenceFlexorLombar !== 'undefined') {
+        renderEnduranceChart(
+            state.clinicalData.endurance.anterior_60,
+            'trunkFlexorChart', 'trunk-flexor-text-results',
+            referenceFlexorLombar,
+            'Resistência Flexora (Flexão 60°)', 's'
+        );
+    }
+    if (state.clinicalData.endurance && typeof referenceExtensorLombar !== 'undefined') {
+        renderEnduranceChart(
+            state.clinicalData.endurance.sorensen,
+            'trunkExtensorChart', 'trunk-extensor-text-results',
+            referenceExtensorLombar,
+            'Resistência Extensora (Sorensen)', 's'
+        );
+    }
+
+    // --- Geriatria Balance Charts Logic ---
+    if (state.clinicalData.testes_equilibrio) {
+        const balanceTests = [
+            { id: 'pes_juntos', label: 'Pés Juntos', ref: 30 },
+            { id: 'semi_tandem', label: 'Semi-tandem', ref: 30 },
+            { id: 'tandem', label: 'Tandem', ref: 17.56 }
+        ];
+        balanceTests.forEach(test => {
+            const val = parseFloat(state.clinicalData.testes_equilibrio[test.id]);
+            if (isNaN(val)) return;
+            const balCanvas = document.getElementById(`balance-${test.id}-chart`);
+            if (!balCanvas) return;
+            const achieved = val >= test.ref;
+            const balColor = achieved ? 'rgba(46, 204, 113, 0.75)' : 'rgba(231, 76, 60, 0.75)';
+            const balStatus = achieved ? 'Atingiu o Objetivo' : 'Abaixo do Objetivo';
+            const textEl = document.getElementById(`balance-${test.id}-text`);
+            if (textEl) {
+                textEl.innerHTML = `
+                    <p style="color:#555;margin-bottom:0.5rem;">Objetivo: <strong>${test.ref} s</strong></p>
+                    <p>Resultado: <strong>${val} s</strong> — <strong style="color:${achieved ? '#2ecc71' : '#e74c3c'};">${balStatus}</strong></p>
+                `;
+            }
+            new Chart(balCanvas, {
+                type: 'bar',
+                data: {
+                    labels: [test.label],
+                    datasets: [
+                        { label: 'Paciente (s)', data: [val], backgroundColor: balColor, borderColor: balColor.replace('0.75', '1'), borderWidth: 1, order: 2 },
+                        { label: `Objetivo (${test.ref} s)`, type: 'line', data: [test.ref], borderColor: 'rgba(46, 204, 113, 1)', borderWidth: 2.5, borderDash: [6, 4], fill: false, pointRadius: 6, order: 1 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Tempo (s)' } } },
+                    plugins: { legend: { position: 'bottom' }, title: { display: true, text: `${test.label} — Equilíbrio` } }
+                }
+            });
+        });
+    }
+
+    // --- Geriatria TUG Chart Logic ---
+    if (state.clinicalData.testes_mobilidade) {
+        const tugVal = parseFloat(state.clinicalData.testes_mobilidade.tug);
+        const tugRef = 12.47;
+        if (!isNaN(tugVal)) {
+            const tugCanvas = document.getElementById('tugChart');
+            if (tugCanvas) {
+                const tugOk = tugVal <= tugRef;
+                const tugColor = tugOk ? 'rgba(46, 204, 113, 0.75)' : 'rgba(231, 76, 60, 0.75)';
+                const tugText = document.getElementById('tug-text-results');
+                if (tugText) {
+                    tugText.innerHTML = `
+                        <p style="color:#555;margin-bottom:0.5rem;">Referência TUG: <strong>&lt; ${tugRef} s</strong></p>
+                        <p>Resultado: <strong>${tugVal} s</strong> — <strong style="color:${tugOk ? '#2ecc71' : '#e74c3c'};">${tugOk ? 'Normal' : 'Atenção'}</strong></p>
+                    `;
+                }
+                new Chart(tugCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: ['TUG'],
+                        datasets: [
+                            { label: 'Paciente (s)', data: [tugVal], backgroundColor: tugColor, borderColor: tugColor.replace('0.75', '1'), borderWidth: 1, order: 2 },
+                            { label: `Referência (${tugRef} s)`, type: 'line', data: [tugRef], borderColor: 'rgba(46, 204, 113, 1)', borderWidth: 2.5, borderDash: [6, 4], fill: false, pointRadius: 6, order: 1 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: { y: { beginAtZero: true, title: { display: true, text: 'Tempo (s)' } } },
+                        plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Timed Up and Go (TUG)' } }
+                    }
+                });
+            }
+        }
     }
 }
 

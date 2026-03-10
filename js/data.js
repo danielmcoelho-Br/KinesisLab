@@ -171,6 +171,36 @@ const referenceResistenciaFlexoraCervical = {
     ]
 };
 
+// Reference: Trunk Flexors Endurance — Flexão a 60° (seconds)
+// Source: Mean across active+inactive groups by gender and age (Olhendorf et al.)
+// Male 18-40: avg(284.4, 219.8)=252.1 | Female 18-40: avg(254.2, 213.5)=233.9
+// Male 41-65: avg(133.1, 106.2)=119.7 | Female 41-65: avg(110.4, 105.9)=108.2
+const referenceFlexorLombar = {
+    Masculino: [
+        { minAge: 18, maxAge: 40, mean: 252.1 },
+        { minAge: 41, maxAge: 99, mean: 119.7 }
+    ],
+    Feminino: [
+        { minAge: 18, maxAge: 40, mean: 233.9 },
+        { minAge: 41, maxAge: 99, mean: 108.2 }
+    ]
+};
+
+// Reference: Trunk Extensors Endurance — Teste de Sorensen (seconds)
+// Source: Mean across active+inactive groups by gender and age (Olhendorf et al.)
+// Male 18-40: avg(194.9, 167.3)=181.1 | Female 18-40: avg(182.1, 161.6)=171.9
+// Male 41-65: avg(100.3, 69.5)=84.9   | Female 41-65: avg(93.8, 82.5)=88.2
+const referenceExtensorLombar = {
+    Masculino: [
+        { minAge: 18, maxAge: 40, mean: 181.1 },
+        { minAge: 41, maxAge: 99, mean: 84.9 }
+    ],
+    Feminino: [
+        { minAge: 18, maxAge: 40, mean: 171.9 },
+        { minAge: 41, maxAge: 99, mean: 88.2 }
+    ]
+};
+
 const questionnairesData = {
     af_cervical: {
         id: 'af_cervical',
@@ -307,7 +337,6 @@ const questionnairesData = {
                 id: 'resistencia_especiais',
                 title: 'Testes Resistidos e Especiais',
                 fields: [
-                    { id: 'resistencia', label: 'Testes de Resistência Muscular (Geral)', type: 'textarea' },
                     { id: 'resist_flex', label: 'Resistência de Musculatura Flexora (segundos)', type: 'number' },
                     { id: 'resist_ext', label: 'Resistência de Musculatura Extensora (segundos)', type: 'number' },
                     { id: 'testes_especiais', label: 'Testes Especiais', type: 'textarea' }
@@ -451,8 +480,8 @@ const questionnairesData = {
                 id: 'resistencia',
                 title: '6. Testes de Resistência Muscular',
                 fields: [
-                    { id: 'flexao_60', label: 'Flexão a 60º - Isometria Anterior (resultado)', type: 'textarea' },
-                    { id: 'sorensen', label: 'Teste de Sorensen - Isometria Posterior (resultado)', type: 'textarea' }
+                    { id: 'flexao_60', label: 'Flexão a 60º - Isometria Anterior (segundos)', type: 'number', props: 'min="0" step="1" placeholder="Ex: 120"' },
+                    { id: 'sorensen', label: 'Teste de Sorensen - Isometria Posterior (segundos)', type: 'number', props: 'min="0" step="1" placeholder="Ex: 90"' }
                 ]
             },
             {
@@ -920,7 +949,7 @@ const questionnairesData = {
         sections: [
             {
                 id: 'anamnese',
-                title: '1. Anamnese e Exames',
+                title: 'Anamnese e Exames',
                 fields: [
                     { id: 'queixa', label: 'Queixa Principal', type: 'textarea' },
                     { id: 'area_dor', label: 'Área da Dor (Pinte as áreas afetadas)', type: 'bodyschema', image: 'img/esquema_corpo_inteiro.png' },
@@ -930,7 +959,7 @@ const questionnairesData = {
             },
             {
                 id: 'adm',
-                title: '2. Exame Físico - Amplitude de Movimento (ADM)',
+                title: 'Exame Físico - Amplitude de Movimento (ADM)',
                 type: 'table',
                 columns: ['Movimento', 'Esquerdo', 'Direito'],
                 rows: [
@@ -941,19 +970,10 @@ const questionnairesData = {
                     { id: 'flexao_plantar', label: 'Flexão Plantar', fields: ['esquerdo', 'direito'] }
                 ]
             },
-            {
-                id: 'questionarios',
-                title: '3. Resultados de Questionários',
-                fields: [
-                    { id: 'res_10cs', label: '10CS (Rastreio Cognitivo - pts)', type: 'number' },
-                    { id: 'res_man', label: 'MAN (Nutricional - pts)', type: 'number' },
-                    { id: 'res_ves13', label: 'VES-13 (Vulnerabilidade - pts)', type: 'number' },
-                    { id: 'res_brief', label: 'BRIEF (Dor - pts)', type: 'number' }
-                ]
-            },
+
             {
                 id: 'testes_equilibrio',
-                title: '4.1 Testes de Equilíbrio (Tempo de permanência)',
+                title: 'Testes de Equilíbrio (Tempo de permanência)',
                 fields: [
                     { id: 'pes_juntos', label: 'Pés Juntos (segundos - obj: 30s)', type: 'number' },
                     { id: 'semi_tandem', label: 'Semi-tandem (segundos - obj: 30s)', type: 'number' },
@@ -962,7 +982,7 @@ const questionnairesData = {
             },
             {
                 id: 'apoio_unipodal',
-                title: '4.2 Ficar em Pé em Uma Perna Só (Apoio Unipodal - obj: >10.43s)',
+                title: 'Ficar em Pé em Uma Perna Só (Apoio Unipodal - obj: >10.43s)',
                 type: 'table',
                 columns: ['Lado', '1ª Tentativa (seg)', '2ª Tentativa (seg)'],
                 rows: [
@@ -972,7 +992,7 @@ const questionnairesData = {
             },
             {
                 id: 'oito_toques',
-                title: '4.3 Oito Toques Consecutivos (obj: <10s)',
+                title: 'Oito Toques Consecutivos (obj: <10s)',
                 fields: [
                     { id: 'toques_tempo', label: 'Tempo (segundos)', type: 'number' },
                     { id: 'toques_qualidade', label: 'Qualidade do Movimento (1 a 5)', type: 'number' }
@@ -987,27 +1007,27 @@ const questionnairesData = {
             },
             {
                 id: 'testes_mobilidade',
-                title: '4.4 a 4.7 Testes de Mobilidade e Força',
+                title: 'Testes de Mobilidade e Força',
                 fields: [
-                    { id: 'tug', label: '4.4 Timed Up and Go (TUG - seg, obj: <12.47s)', type: 'number' },
-                    { id: 'vel_marcha', label: '4.5 Velocidade da Marcha (m/s, obj: >0.8m/s)', type: 'number' },
-                    { id: 'sentar_levantar', label: '4.6 Teste de Sentar/Levantar 5x (segundos)', type: 'number' },
-                    { id: 'preensao', label: '4.7 Força de Preensão Palmar (kg - obj: >16kg Fem / >27kg Masc)', type: 'number' }
+                    { id: 'tug', label: 'Timed Up and Go (TUG - seg, obj: <12.47s)', type: 'number' },
+                    { id: 'vel_marcha', label: 'Velocidade da Marcha (m/s, obj: >0.8m/s)', type: 'number' },
+                    { id: 'sentar_levantar', label: 'Teste de Sentar/Levantar 5x (segundos)', type: 'number' },
+                    { id: 'preensao', label: 'Força de Preensão Palmar (kg - obj: >16kg Fem / >27kg Masc)', type: 'number' }
                 ]
             },
             {
                 id: 'resultados_diagnostico',
-                title: '5 e 6. Resultados, Diagnóstico e Risco de Quedas',
+                title: 'Resultados, Diagnóstico e Risco de Quedas',
                 fields: [
-                    { id: 'diagnostico_funcional', label: '5. Resultados e Diagnóstico Funcional', type: 'textarea' },
-                    { id: 'risco_quedas', label: '6. Classificação do Risco de Quedas', type: 'textarea' }
+                    { id: 'diagnostico_funcional', label: 'Resultados e Diagnóstico Funcional', type: 'textarea' },
+                    { id: 'risco_quedas', label: 'Classificação do Risco de Quedas', type: 'textarea' }
                 ]
             },
             {
                 id: 'sugestoes',
-                title: '7. Sugestões Terapêuticas',
+                title: 'Sugestões Terapêuticas',
                 fields: [
-                    { id: 'sugestoes_obs', label: '7. Sugestões e Considerações Terapêuticas', type: 'textarea' }
+                    { id: 'sugestoes_obs', label: 'Sugestões e Considerações Terapêuticas', type: 'textarea' }
                 ]
             },
             {
@@ -1809,12 +1829,12 @@ const questionnairesData = {
             },
             {
                 id: 'testes_especiais',
-                title: 'Testes Especiais',
-                fields: [
-                    { id: 'peri_joelho_e', label: 'Perimetria Joelho Esq. (cm)', type: 'number' },
-                    { id: 'peri_joelho_d', label: 'Perimetria Joelho Dir. (cm)', type: 'number' },
-                    { id: 'peri_coxa_e', label: 'Perimetria Coxa Esq. (cm)', type: 'number' },
-                    { id: 'peri_coxa_d', label: 'Perimetria Coxa Dir. (cm)', type: 'number' }
+                title: 'Perimetria (cm)',
+                type: 'table',
+                columns: ['Local', 'Esquerdo', 'Direito', '% Déficit'],
+                rows: [
+                    { id: 'peri_joelho', label: 'Perimetria Joelho', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
+                    { id: 'peri_coxa', label: 'Perimetria Coxa', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] }
                 ]
             },
             {
@@ -1829,7 +1849,7 @@ const questionnairesData = {
                     { id: 'rot_int_quadril', label: 'Rotação Interna de Quadril', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
                     { id: 'ext_joelho', label: 'Extensão de Joelho', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
                     { id: 'flex_joelho', label: 'Flexão de Joelho', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
-                    { id: 'relacao_iq', label: 'Relação I/Q (Joelho)', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] }
+                    { id: 'relacao_iq', label: 'Relação I/Q (Joelho)', fields: ['esquerdo', 'direito'], readonly: ['esquerdo', 'direito'] }
                 ]
             },
             {
@@ -2060,27 +2080,21 @@ const questionnairesData = {
                     { id: 'single_leg_heel_raise', label: 'Single Leg Heel Raise Test (Repetições)', fields: ['esquerdo', 'direito'] }
                 ]
             },
-            {
-                id: 'questionarios',
-                title: '4. Resultados de Questionários',
-                fields: [
-                    { id: 'res_aofas', label: 'AOFAS (pts - 100 indica sem sintomas e 0 sintomas extremos)', type: 'number' }
-                ]
-            },
+
             {
                 id: 'forca',
-                title: '5. Força Muscular / Torque Muscular (kgF)',
+                title: 'Força Muscular / Torque Muscular (kgF)',
                 type: 'table',
                 columns: ['Movimento', 'Esquerdo', 'Direito', '% Déficit'],
                 rows: [
-                    { id: 'forca_dorsiflexores', label: 'Dorsiflexores', fields: ['esquerdo', 'direito', 'deficit'] },
-                    { id: 'forca_inversores', label: 'Inversores', fields: ['esquerdo', 'direito', 'deficit'] },
-                    { id: 'forca_eversores', label: 'Eversores', fields: ['esquerdo', 'direito', 'deficit'] }
+                    { id: 'forca_dorsiflexores', label: 'Dorsiflexores', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
+                    { id: 'forca_inversores', label: 'Inversores', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
+                    { id: 'forca_eversores', label: 'Eversores', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] }
                 ]
             },
             {
                 id: 'step_down',
-                title: '6. Step-Down Test',
+                title: 'Step-Down Test',
                 fields: [
                     { id: 'step_down_valgo_esq', label: 'Joelho Esquerdo - Valgo Dinâmico (°)', type: 'number' },
                     { id: 'step_down_pelv_esq', label: 'Joelho Esquerdo - Queda Pélvica (°)', type: 'number' },
@@ -2090,7 +2104,7 @@ const questionnairesData = {
             },
             {
                 id: 'y_balance',
-                title: '7. Y-Balance Test (YBT)',
+                title: 'Y-Balance Test (YBT)',
                 fields: [
                     { id: 'ybt_esq', label: 'Y apoio do membro inferior esquerdo (pts)', type: 'number' },
                     { id: 'ybt_dir', label: 'Y apoio do membro inferior direito (pts)', type: 'number' }
@@ -2098,7 +2112,7 @@ const questionnairesData = {
             },
             {
                 id: 'resultados_diagnostico',
-                title: '8. Resultados e Diagnóstico Funcional',
+                title: 'Resultados e Diagnóstico Funcional',
                 fields: [
                     { id: 'diagnostico_funcional', label: 'Resultados e Diagnóstico Funcional', type: 'textarea' },
                     { id: 'sugestoes_obs', label: 'Sugestões e Considerações Terapêuticas', type: 'textarea' }
@@ -2146,10 +2160,9 @@ const questionnairesData = {
         sections: [
             {
                 id: 'anamnese',
-                title: '2. Características da Disfunção',
+                title: 'Características da Disfunção',
                 fields: [
                     { id: 'queixa', label: 'Queixa Principal', type: 'textarea' },
-                    { id: 'lado_dominante', label: 'Lado Dominante', type: 'text' },
                     { id: 'lado_afetado', label: 'Lado Afetado (Direito/Esquerdo/Bilateral)', type: 'text' },
                     { id: 'intensidade_dor', label: 'Intensidade da Dor (EVA)', type: 'range', min: 0, max: 10, step: 1 },
                     { id: 'area_dor', label: 'Área da Dor (Pinte as áreas afetadas)', type: 'bodyschema', image: 'img/esquema_corpo_inteiro.png' },
@@ -2162,7 +2175,7 @@ const questionnairesData = {
             },
             {
                 id: 'inspecao_palpacao',
-                title: '3. Inspeção e Palpação',
+                title: 'Inspeção e Palpação',
                 fields: [
                     { id: 'inspecao', label: 'Inspeção (Deformidades, Edema, Cicatrizes, Trofismo)', type: 'textarea' },
                     { id: 'perimetria_punho_e', label: 'Perimetria Punho Esq. (cm)', type: 'number' },
@@ -2173,7 +2186,7 @@ const questionnairesData = {
             },
             {
                 id: 'palpacao_articular',
-                title: '3.1 Palpação Articular (Dor + / -)',
+                title: 'Palpação Articular',
                 type: 'table',
                 columns: ['Estrutura', 'Esquerdo', 'Direito'],
                 rows: [
@@ -2191,7 +2204,7 @@ const questionnairesData = {
             },
             {
                 id: 'palpacao_miofascial',
-                title: '3.2 Palpação Miofascial (+ / -)',
+                title: 'Palpação Miofascial',
                 type: 'table',
                 columns: ['Músculo', 'Esquerdo', 'Direito'],
                 rows: [
@@ -2207,7 +2220,7 @@ const questionnairesData = {
             },
             {
                 id: 'neuro_forca',
-                title: '4. Avaliação Neurológica (Força Muscular 0-5)',
+                title: 'Avaliação Neurológica (Força Muscular 0-5)',
                 type: 'table',
                 columns: ['Miótono / Músculo', 'Esquerdo (0-5)', 'Direito (0-5)'],
                 rows: [
@@ -2220,7 +2233,7 @@ const questionnairesData = {
             },
             {
                 id: 'neuro_reflexos',
-                title: '4.1 Avaliação Neurológica (Reflexos)',
+                title: 'Avaliação Neurológica (Reflexos)',
                 type: 'table',
                 columns: ['Reflexo', 'Normal', 'Hiperreflexia', 'Hiporeflexia'],
                 rows: [
@@ -2229,47 +2242,10 @@ const questionnairesData = {
                     { id: 'estiloradial', label: 'Estiloradial (C6)', fields: [{ id: 'normal', type: 'checkbox' }, { id: 'hiper', type: 'checkbox' }, { id: 'hipo', type: 'checkbox' }] }
                 ]
             },
-            {
-                id: 'neuro_sensitivo',
-                title: '4.2 Avaliação Sensitiva (Dermatomas)',
-                type: 'table',
-                columns: ['Nervo / Região', 'Normal (E)', 'Alterado (E)', 'Normal (D)', 'Alterado (D)'],
-                rows: [
-                    { id: 'mediano', label: 'Mediano (1º-4º dedos face palmar)', fields: [{ id: 'normal_e', type: 'checkbox' }, { id: 'alt_e', type: 'checkbox' }, { id: 'normal_d', type: 'checkbox' }, { id: 'alt_d', type: 'checkbox' }] },
-                    { id: 'ulnar', label: 'Ulnar (5º dedo e borda medial)', fields: [{ id: 'normal_e', type: 'checkbox' }, { id: 'alt_e', type: 'checkbox' }, { id: 'normal_d', type: 'checkbox' }, { id: 'alt_d', type: 'checkbox' }] },
-                    { id: 'radial', label: 'Radial (D. radial e face dorsal)', fields: [{ id: 'normal_e', type: 'checkbox' }, { id: 'alt_e', type: 'checkbox' }, { id: 'normal_d', type: 'checkbox' }, { id: 'alt_d', type: 'checkbox' }] }
-                ]
-            },
-            {
-                id: 'sensibilidade_monofilamento',
-                title: '4.3 Sensibilidade (Teste de Monofilamento)',
-                fields: [
-                    {
-                        id: 'mapa_sensibilidade',
-                        type: 'paintmap',
-                        image: 'img/mapa_sensibilidade.png',
-                        colors: [
-                            { hex: '#00FF00', label: 'Verde (Normal)' },
-                            { hex: '#0000FF', label: 'Azul (Diminuída)' },
-                            { hex: '#8A2BE2', label: 'Violeta (Protetora diminuída)' },
-                            { hex: '#8B0000', label: 'Vermelho escuro (Perda protetora)' },
-                            { hex: '#FFA500', label: 'Laranja (Perda protetora pé)' },
-                            { hex: '#FF00FF', label: 'Magenta / Rosa (Apenas pressão profunda)' },
-                            { hex: '#000000', label: 'Preta (Nenhuma resposta)' }
-                        ]
-                    }
-                ]
-            },
-            {
-                id: 'neuro_add',
-                title: 'Avaliação Neurológica Adicional',
-                fields: [
-                    { id: 'observacoes_neuro', label: 'Observações (Sinal de Tinel, parestesias, etc.)', type: 'textarea' }
-                ]
-            },
+
             {
                 id: 'adm_cotovelo',
-                title: '5. Amplitude de Movimento - Cotovelo (Graus)',
+                title: 'Amplitude de Movimento - Cotovelo (Graus)',
                 type: 'table',
                 columns: ['Movimento', { label: 'Esquerdo (°)', width: '22%' }, { label: 'Direito (°)', width: '22%' }, { label: 'Observações', width: '35%' }],
                 rows: [
@@ -2281,7 +2257,7 @@ const questionnairesData = {
             },
             {
                 id: 'adm_punho',
-                title: '5.1 Amplitude de Movimento - Punho (Graus)',
+                title: 'Amplitude de Movimento - Punho (Graus)',
                 type: 'table',
                 columns: ['Movimento', { label: 'Esquerdo (°)', width: '22%' }, { label: 'Direito (°)', width: '22%' }, { label: 'Observações', width: '35%' }],
                 rows: [
@@ -2293,7 +2269,7 @@ const questionnairesData = {
             },
             {
                 id: 'adm_mao',
-                title: '5.2 Amplitude de Movimento - Mão e Dedos (Graus)',
+                title: 'Amplitude de Movimento - Mão e Dedos (Graus)',
                 type: 'table',
                 columns: ['Articulação / Movimento', { label: 'Esquerdo (°)', width: '22%' }, { label: 'Direito (°)', width: '22%' }, { label: 'Observações', width: '35%' }],
                 rows: [
@@ -2306,13 +2282,13 @@ const questionnairesData = {
             },
             {
                 id: 'testes_especiais',
-                title: '6. Testes Especiais',
+                title: 'Testes Especiais',
                 type: 'table',
-                columns: ['Teste', 'Esquerdo (+ / -)', 'Direito (+ / -)'],
+                columns: ['Teste', 'Esquerdo', 'Direito'],
                 rows: [
                     { id: 'cozen', label: 'Teste de Cozen (Epicondilite Lateral)', fields: [{ id: 'esquerdo', type: 'checkbox' }, { id: 'direito', type: 'checkbox' }] },
                     { id: 'mill', label: 'Teste de Mill (Epicondilite Lateral)', fields: [{ id: 'esquerdo', type: 'checkbox' }, { id: 'direito', type: 'checkbox' }] },
-                    { id: 'epicondilite_medial', label: 'Teste Epicondilite Medial (Golfer\'s Elbow)', fields: [{ id: 'esquerdo', type: 'checkbox' }, { id: 'direito', type: 'checkbox' }] },
+                    { id: 'epicondilite_medial', label: "Teste Epicondilite Medial (Golfer's Elbow)", fields: [{ id: 'esquerdo', type: 'checkbox' }, { id: 'direito', type: 'checkbox' }] },
                     { id: 'valgo_stress', label: 'Teste de Valgo (Ligamento Colateral Medial)', fields: [{ id: 'esquerdo', type: 'checkbox' }, { id: 'direito', type: 'checkbox' }] },
                     { id: 'varo_stress', label: 'Teste de Varo (Ligamento Colateral Lateral)', fields: [{ id: 'esquerdo', type: 'checkbox' }, { id: 'direito', type: 'checkbox' }] },
                     { id: 'phalen', label: 'Teste de Phalen (Túnel do Carpo)', fields: [{ id: 'esquerdo', type: 'checkbox' }, { id: 'direito', type: 'checkbox' }] },
@@ -2326,9 +2302,9 @@ const questionnairesData = {
             },
             {
                 id: 'testes_neurais',
-                title: '6.1 Teste Neural',
+                title: 'Teste Neural',
                 type: 'table',
-                columns: ['Nervo', 'Esquerdo (+ / -)', 'Direito (+ / -)'],
+                columns: ['Nervo', 'Esquerdo', 'Direito'],
                 rows: [
                     { id: 'mediano', label: 'Mediano (ULNT1)', fields: [{ id: 'esquerdo', type: 'checkbox' }, { id: 'direito', type: 'checkbox' }] },
                     { id: 'ulnar', label: 'Ulnar (ULNT4)', fields: [{ id: 'esquerdo', type: 'checkbox' }, { id: 'direito', type: 'checkbox' }] },
@@ -2337,11 +2313,11 @@ const questionnairesData = {
             },
             {
                 id: 'forca_preensao',
-                title: '7. Força de Preensão e Pinça (kgF)',
+                title: 'Força de Preenção e Pinça (kgF)',
                 type: 'table',
                 columns: ['Teste', { label: 'Esquerdo', width: '22%' }, { label: 'Direito', width: '22%' }, { label: '% Déficit', width: '22%' }],
                 rows: [
-                    { id: 'preensao_palmar', label: 'Preensão Palmar (Dinamômetro)', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
+                    { id: 'preensao_palmar', label: 'Preenção Palmar (Dinamômetro)', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
                     { id: 'pinca_polpa', label: 'Pinça Polpa a Polpa', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
                     { id: 'pinca_lateral', label: 'Pinça Lateral (Chave)', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
                     { id: 'pinca_tripode', label: 'Pinça Trípode (3 dedos)', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] }
@@ -2349,10 +2325,10 @@ const questionnairesData = {
             },
             {
                 id: 'diagnostico_conclusoes',
-                title: '8 e 9. Diagnóstico e Conclusões',
+                title: 'Diagnóstico e Conclusões',
                 fields: [
-                    { id: 'diagnostico', label: '8. Diagnóstico Cinético Funcional', type: 'textarea' },
-                    { id: 'conclusao', label: '9. Conclusões e Sugestões Terapêuticas', type: 'textarea' }
+                    { id: 'diagnostico', label: 'Diagnóstico Cinético Funcional', type: 'textarea' },
+                    { id: 'conclusao', label: 'Conclusões e Sugestões Terapêuticas', type: 'textarea' }
                 ]
             }
         ],
@@ -2422,8 +2398,8 @@ const questionnairesData = {
                 ]
             },
             {
-                id: 'pontos_gatilhos',
-                title: 'Pontos Gatilhos / Palpação Miofascial',
+                id: 'palpacao_miofascial',
+                title: 'Palpação Miofascial (Pontos Gatilhos)',
                 type: 'table',
                 columns: ['Músculo', 'Esquerdo', 'Direito'],
                 rows: [
@@ -2558,6 +2534,43 @@ const questionnairesData = {
                 unit: '',
                 interpretation: 'Avaliação de sensibilidade registrada no mapa.',
                 clinicalData: data
+            };
+        }
+    },
+    af_orientacao: {
+        id: 'af_orientacao',
+        type: 'clinical',
+        segment: 'diversas',
+        title: 'Orientação para o Paciente',
+        description: 'Canvas livre para desenhar orientações, esquemas e diagramas para o paciente.',
+        icon: '<img src="icon_orientacao.png" alt="Orientação" style="width:100%; height:100%; object-fit:contain;">',
+        sections: [
+            {
+                id: 'desenho',
+                title: 'Desenho Livre',
+                fields: [
+                    {
+                        id: 'canvas_orientacao',
+                        type: 'freecanvas',
+                        label: 'Use o canvas abaixo para desenhar orientações para o paciente'
+                    }
+                ]
+            },
+            {
+                id: 'observacoes_orientacao',
+                title: 'Observações',
+                fields: [
+                    { id: 'obs_texto', label: 'Notas complementares', type: 'textarea' }
+                ]
+            }
+        ],
+        calculateScore: (data) => {
+            return {
+                score: 'Registrado',
+                max: '-',
+                unit: '',
+                interpretation: 'Orientação para o paciente registrada.',
+                details: {}
             };
         }
     }

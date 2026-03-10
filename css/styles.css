@@ -20,6 +20,11 @@
     --border-radius-lg: 16px;
     --border-radius-md: 12px;
     --border-radius-sm: 8px;
+
+    /* Breakpoints */
+    --breakpoint-mobile: 480px;
+    --breakpoint-tablet: 768px;
+    --breakpoint-desktop: 1024px;
 }
 
 * {
@@ -136,6 +141,8 @@ h3 {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
 .logo {
@@ -154,7 +161,7 @@ h3 {
 }
 
 .logo h1 {
-    font-size: 3.3rem;
+    font-size: 2.5rem;
     font-weight: 800;
     margin: 0;
     line-height: 1;
@@ -185,13 +192,41 @@ h3 {
     background: var(--primary-red-light);
 }
 
+.header-nav {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.panel-admin-btn {
+    color: var(--primary-red);
+}
+
+.nav-divider {
+    width: 1px;
+    height: 24px;
+    background: #E0E0E0;
+    margin: 0 0.5rem;
+}
+
+.user-greeting {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-right: 0.5rem;
+}
+
+.logout-btn {
+    font-size: 0.85rem;
+}
+
 /* Main Content Area */
 .app-main {
     flex: 1;
     width: 100%;
     max-width: 1000px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 2rem 1.5rem;
 }
 
 .view {
@@ -355,9 +390,44 @@ h3 {
     transform: translateY(-1px);
 }
 
-.evaluation-card {
+.patient-actions-bar {
     display: flex;
-    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.search-box {
+    flex: 1;
+    min-width: 250px;
+    position: relative;
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.patient-search-input {
+    padding-left: 3rem;
+}
+
+.btn-quick-eval {
+    background: var(--primary-red);
+}
+
+.patient-dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.patient-info-summary h2 {
+    margin-bottom: 0.25rem;
 }
 
 /* Forms */
@@ -501,8 +571,44 @@ h3 {
 
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
+    .app-header {
+        padding: 1rem;
+    }
+
+    .header-content {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .logo-img-container {
+        height: 64px;
+    }
+
+    .logo h1 {
+        font-size: 1.8rem;
+    }
+
     .app-main {
         padding: 1rem;
+    }
+
+    .view-header h2 {
+        font-size: 1.5rem;
+    }
+
+    .view-header p {
+        font-size: 1rem;
+    }
+
+    .card-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
     }
 
     .question-container {
@@ -516,6 +622,36 @@ h3 {
     .option-btn {
         padding: 1rem;
         font-size: 1rem;
+    }
+
+    .results-container {
+        padding: 1.5rem;
+    }
+
+    .score-circle {
+        width: 120px;
+        height: 120px;
+        font-size: 2.5rem;
+    }
+
+    .clinical-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-btn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.85rem;
+    }
+
+    .logo h1 {
+        font-size: 1.5rem;
+    }
+
+    .btn {
+        padding: 0.7rem 1.2rem;
+        font-size: 0.9rem;
     }
 }
 
@@ -1071,4 +1207,45 @@ h3 {
     font-size: 0.9rem;
     text-align: left;
     display: none;
+}
+
+/* Email Button */
+.btn-email {
+    background-color: #2563eb;
+    color: white;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+}
+
+.btn-email:hover {
+    background-color: #1d4ed8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+}
+
+/* Select de grau muscular (0–5) */
+.clinical-select-grade {
+    padding: 0.4rem 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius-sm);
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--text-main);
+    background: white;
+    width: 100%;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.clinical-select-grade:focus {
+    outline: none;
+    border-color: var(--primary-red);
+    box-shadow: 0 0 0 2px var(--primary-red-light);
+}
+
+/* Bloco de assinatura do avaliador (formulário e resultado) */
+.evaluator-signature-block,
+.evaluator-footer {
+    background: #fafafa;
+    border-radius: var(--border-radius-sm);
+    padding: 1rem;
 }

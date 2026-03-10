@@ -68,7 +68,7 @@ const db = {
         }
     },
 
-    async createUser(email, password, name, role) {
+    async createUser(email, password, name, role, crefito = '') {
         try {
             // Use the secondary client so the current admin user session is not modified
             const { data, error } = await adminSupabase.auth.signUp({
@@ -77,7 +77,8 @@ const db = {
                 options: {
                     data: {
                         name: name,
-                        role: role
+                        role: role,
+                        crefito: crefito
                     }
                 }
             });
@@ -209,6 +210,25 @@ const db = {
             if (error) throw error;
         } catch (error) {
             console.error('Error deleting assessment:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Deletes a user profile (admin only).
+     * Removes the user from the profiles table, blocking their access to the app.
+     * Note: The auth.users entry in Supabase is NOT removed (requires service_role key).
+     * @param {string} userId - The UUID of the user profile to delete
+     */
+    async deleteUserProfile(userId) {
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .delete()
+                .eq('id', userId);
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error deleting user profile:', error);
             throw error;
         }
     }

@@ -7,7 +7,8 @@ const state = {
     patientId: null,
     isQuickAssessment: false,
     answers: {},
-    currentQuestionIndex: 0
+    currentQuestionIndex: 0,
+    navigationHistory: [] // tracks visited views for the Back button
 };
 
 // DOM Elements
@@ -26,6 +27,22 @@ const views = {
 const btnHome = document.getElementById('btn-home');
 const questionnaireList = document.getElementById('questionnaire-list');
 const patientForm = document.getElementById('patient-form');
+
+// 9. Delete User (Admin)
+window.adminDeleteUser = async function (id, name) {
+    if (!confirm(`Tem certeza que deseja excluir o usuário ${name}? Esta ação não pode ser desfeita.`)) {
+        return;
+    }
+
+    try {
+        await window.db.deleteUserProfile(id);
+        alert(`Usuário ${name} excluído com sucesso.`);
+        loadAdminUsers(); // Refresh
+    } catch (err) {
+        console.error('Error deleting user:', err);
+        alert('Falha ao excluir usuário: ' + (err.message || 'Erro de conexão'));
+    }
+};
 
 // Initialize the application
 async function initApp() {
@@ -58,228 +75,333 @@ async function initApp() {
         loadRecentPatients();
     }
 
-    // Set today's date automatically in the form
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('patient-date').value = today;
+}
 
-    // Check for URL parameters to prepopulate patient data
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('name')) {
-        document.getElementById('patient-name').value = urlParams.get('name') || '';
-        document.getElementById('patient-age').value = urlParams.get('age') || '';
-        document.getElementById('patient-gender').value = urlParams.get('gender') || '';
-        if (urlParams.get('date')) {
-            document.getElementById('patient-date').value = urlParams.get('date');
+// --- Age Calculation Logic ---
+const dobInput = document.getElementById('patient-dob');
+const ageDisplay = document.getElementById('age-display');
+if (dobInput) {
+    dobInput.addEventListener('change', () => {
+        const dobValue = dobInput.value;
+        if (!dobValue) {
+            ageDisplay.innerText = 'Idade: -- anos';
+            return;
+        }
+        const dob = new Date(dobValue);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+            age--;
+        }
+        ageDisplay.innerText = `Idade: ${age} anos`;
+        // Store age in a data attribute for easier access during submit
+        dobInput.dataset.calculatedAge = age;
+    });
+}
+
+// Check for URL parameters to prepopulate patient data
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has('name')) {
+    document.getElementById('patient-name').value = urlParams.get('name') || '';
+    if (urlParams.get('dob')) {
+        document.getElementById('patient-dob').value = urlParams.get('dob');
+        dobInput.dispatchEvent(new Event('change'));
+    } else if (urlParams.get('age')) {
+        // Fallback for old links or direct age
+        ageDisplay.innerText = `Idade: ${urlParams.get('age')} anos`;
+        dobInput.dataset.calculatedAge = urlParams.get('age');
+        if (urlParams.get('patient_id')) {
+            state.patientId = urlParams.get('patient_id');
         }
 
-        // Auto select segment if requested
-        const targetQString = urlParams.get('questionnaire');
-        if (targetQString) {
-            const found = Object.values(questionnairesData).find(q => q.id === targetQString);
-            if (found) {
-                state.selectedSegment = found.segment;
-                state.currentQuestionnaire = found; // CRITICAL FIX: State must be populated
-                // Auto submit patient form and start questionnaire
-                setTimeout(() => {
-                    patientForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        // --- Handle Auto-Filling for Busca fields ---
+        window.handleBuscaFill = async () => {
+            if (state.patientId) {
+                const assessments = await window.db.getPatientAssessments(state.patientId);
+                if (assessments && assessments.length > 0) {
+                    // Look for latest NDI or Oswestry
+                    const latestNdi = assessments.find(a => a.assessment_type === 'ndi');
+                    const latestOswestry = assessments.find(a => a.assessment_type === 'oswestry');
 
-                    // Clean up URL to prevent reload loops
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                }, 500);
-            }
-        }
-    }
-
-    // Listen for NDI result synchronization from other tabs 
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'ndi_sync_result' && e.newValue) {
-            const scoreField = document.querySelector('input[data-field="ndi_score"]');
-            if (scoreField) {
-                scoreField.style.transition = 'background-color 0.5s';
-                scoreField.style.backgroundColor = '#e6ffe6';
-                scoreField.value = e.newValue + ' (Sync✓)';
-                scoreField.dispatchEvent(new Event('change'));
-                setTimeout(() => { scoreField.style.backgroundColor = ''; }, 2000);
-            }
-            localStorage.removeItem('ndi_sync_result');
-        }
-
-        if (e.key === 'oswestry_sync_result' && e.newValue) {
-            const scoreField = document.querySelector('input[data-field="oswestry_score"]');
-            if (scoreField) {
-                scoreField.style.transition = 'background-color 0.5s';
-                scoreField.style.backgroundColor = '#e6ffe6';
-                scoreField.value = e.newValue + ' (Sync✓)';
-                scoreField.dispatchEvent(new Event('change'));
-                setTimeout(() => { scoreField.style.backgroundColor = ''; }, 2000);
-            }
-            localStorage.removeItem('oswestry_sync_result');
-        }
-
-        const syncKeys = [
-            'quickdash', 'lysholm', 'womac', 'ikdc', 'aofas', 'man', 'ves13', 'lbpq', 'brief'
-        ];
-
-        syncKeys.forEach(key => {
-            if (e.key === `${key}_sync_result` && e.newValue) {
-                const scoreField = document.querySelector(`input[data-field="${key}_score"]`);
-                if (scoreField) {
-                    scoreField.style.transition = 'background-color 0.5s';
-                    scoreField.style.backgroundColor = '#e6ffe6';
-                    scoreField.value = e.newValue;
-                    scoreField.dispatchEvent(new Event('change'));
-                    setTimeout(() => { scoreField.style.backgroundColor = ''; }, 2000);
+                    if (latestNdi && document.getElementById('clinical-input-ndi_score')) {
+                        document.getElementById('clinical-input-ndi_score').value = `${latestNdi.clinical_data?.score || 0} pts`;
+                    }
+                    if (latestOswestry && document.getElementById('clinical-input-oswestry_score')) {
+                        document.getElementById('clinical-input-oswestry_score').value = `${latestOswestry.clinical_data?.percentage || 0}%`;
+                    }
                 }
-                localStorage.removeItem(`${key}_sync_result`);
             }
-        });
-    });
+        };
+    }
 
-    // Event Listeners
-    btnHome.addEventListener('click', () => {
-        // Only clear patient state if we're NOT returning from the patient dashboard flow
-        // (i.e., always fully reset when going home)
-        state.selectedSegment = null;
-        state.patientId = null;
+    // Auto select segment if requested
+    const targetQString = urlParams.get('questionnaire');
+    if (targetQString) {
+        const found = Object.values(questionnairesData).find(q => q.id === targetQString);
+        if (found) {
+            state.selectedSegment = found.segment;
+            state.currentQuestionnaire = found; // CRITICAL FIX: State must be populated
+
+            // Set patientId if provided (avoids duplicate patient creation)
+            const patientIdFromUrl = urlParams.get('patientId');
+            if (patientIdFromUrl) state.patientId = patientIdFromUrl;
+
+            // Auto-fill evaluation date to today so the form passes validation
+            const dateInput = document.getElementById('patient-date');
+            if (dateInput && !dateInput.value) {
+                dateInput.value = new Date().toISOString().split('T')[0];
+            }
+
+            // If age was provided but not dob, synthesize a fake dob that will compute to that age
+            const ageFromUrl = urlParams.get('age');
+            if (ageFromUrl && !document.getElementById('patient-dob').value) {
+                // Create a birthday that gives roughly this age
+                const fakeDob = new Date();
+                fakeDob.setFullYear(fakeDob.getFullYear() - parseInt(ageFromUrl));
+                const dobInput2 = document.getElementById('patient-dob');
+                if (dobInput2) {
+                    dobInput2.value = fakeDob.toISOString().split('T')[0];
+                    dobInput2.dispatchEvent(new Event('change'));
+                }
+            }
+
+            // Auto submit patient form and start questionnaire
+            setTimeout(() => {
+                patientForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+
+                // Clean up URL to prevent reload loops
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }, 500);
+        }
+    }
+}
+
+// Listen for NDI result synchronization from other tabs 
+window.addEventListener('storage', (e) => {
+    if (e.key === 'ndi_sync_result' && e.newValue) {
+        const scoreField = document.querySelector('input[data-field="ndi_score"]');
+        if (scoreField) {
+            scoreField.style.transition = 'background-color 0.5s';
+            scoreField.style.backgroundColor = '#e6ffe6';
+            scoreField.value = e.newValue + ' (Sync✓)';
+            scoreField.dispatchEvent(new Event('change'));
+            setTimeout(() => { scoreField.style.backgroundColor = ''; }, 2000);
+        }
+        localStorage.removeItem('ndi_sync_result');
+    }
+
+    if (e.key === 'oswestry_sync_result' && e.newValue) {
+        const scoreField = document.querySelector('input[data-field="oswestry_score"]');
+        if (scoreField) {
+            scoreField.style.transition = 'background-color 0.5s';
+            scoreField.style.backgroundColor = '#e6ffe6';
+            scoreField.value = e.newValue + ' (Sync✓)';
+            scoreField.dispatchEvent(new Event('change'));
+            setTimeout(() => { scoreField.style.backgroundColor = ''; }, 2000);
+        }
+        localStorage.removeItem('oswestry_sync_result');
+    }
+
+    const syncKeys = [
+        'quickdash', 'lysholm', 'womac', 'ikdc', 'aofas', 'man', 'ves13', 'lbpq', 'brief'
+    ];
+
+    syncKeys.forEach(key => {
+        if (e.key === `${key}_sync_result` && e.newValue) {
+            const scoreField = document.querySelector(`input[data-field="${key}_score"]`);
+            if (scoreField) {
+                scoreField.style.transition = 'background-color 0.5s';
+                scoreField.style.backgroundColor = '#e6ffe6';
+                scoreField.value = e.newValue;
+                scoreField.dispatchEvent(new Event('change'));
+                setTimeout(() => { scoreField.style.backgroundColor = ''; }, 2000);
+            }
+            localStorage.removeItem(`${key}_sync_result`);
+        }
+    });
+});
+
+// Event Listeners
+btnHome.addEventListener('click', () => {
+    // Fully reset state and return to home
+    state.selectedSegment = null;
+    state.patientId = null;
+    state.patientInfo = null;
+    state.isQuickAssessment = false;
+    state.navigationHistory = []; // clear history when going home
+    navigateTo('view-home');
+    loadRecentPatients();
+});
+
+// Back button: navigate to previous view in history
+const btnBack = document.getElementById('btn-back');
+if (btnBack) {
+    btnBack.addEventListener('click', () => {
+        if (state.navigationHistory.length > 1) {
+            // Remove current view from history
+            state.navigationHistory.pop();
+            // Navigate to previous view (without pushing to history again)
+            const prevView = state.navigationHistory[state.navigationHistory.length - 1];
+            state.navigationHistory.pop(); // navigateTo will push it again
+            navigateTo(prevView);
+        } else {
+            // Fallback: go home
+            state.navigationHistory = [];
+            navigateTo('view-home');
+            loadRecentPatients();
+        }
+    });
+}
+
+patientForm.addEventListener('submit', handlePatientFormSubmit);
+
+// New Home Screen Interactions
+const btnNewPatient = document.getElementById('btn-new-patient');
+if (btnNewPatient) {
+    btnNewPatient.addEventListener('click', () => {
         state.patientInfo = null;
+        state.patientId = null;
         state.isQuickAssessment = false;
-        navigateTo('view-home');
-        loadRecentPatients();
+        document.getElementById('patient-form').reset();
+
+        // Set today's date automatically in the form
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('patient-date').value = today;
+
+        navigateTo('view-patient-info');
     });
+}
 
-    patientForm.addEventListener('submit', handlePatientFormSubmit);
+const btnQuickAssesment = document.getElementById('btn-quick-assessment');
+if (btnQuickAssesment) {
+    btnQuickAssesment.addEventListener('click', () => {
+        // For Quick Assessments, skip registration entirely.
+        state.patientInfo = {
+            name: "Avaliação Rápida (Não Salva)",
+            age: 30, // Default placeholders useful for conditional equations
+            gender: "Masculino",
+            dominance: "Destro",
+            date: new Date().toISOString().split('T')[0]
+        };
+        state.patientId = null;
+        state.isQuickAssessment = true;
+        navigateTo('view-segments');
+    });
+}
 
-    // New Home Screen Interactions
-    const btnNewPatient = document.getElementById('btn-new-patient');
-    if (btnNewPatient) {
-        btnNewPatient.addEventListener('click', () => {
-            state.patientInfo = null;
-            state.patientId = null;
-            state.isQuickAssessment = false;
-            document.getElementById('patient-form').reset();
+const searchInput = document.getElementById('patient-search-input');
+if (searchInput) {
+    let debounceTimer;
+    searchInput.addEventListener('input', (e) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            loadRecentPatients(e.target.value);
+        }, 300);
+    });
+}
 
-            // Set today's date automatically in the form
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('patient-date').value = today;
+// Auth Event Listeners
+const loginForm = document.getElementById('login-form');
+if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-submit-login');
+        const errorDiv = document.getElementById('login-error');
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
 
-            navigateTo('view-patient-info');
-        });
-    }
+        btn.innerHTML = 'Carregando...';
+        btn.disabled = true;
+        errorDiv.style.display = 'none';
 
-    const btnQuickAssesment = document.getElementById('btn-quick-assessment');
-    if (btnQuickAssesment) {
-        btnQuickAssesment.addEventListener('click', () => {
-            // For Quick Assessments, skip registration entirely.
-            state.patientInfo = {
-                name: "Avaliação Rápida (Não Salva)",
-                age: 30, // Default placeholders useful for conditional equations
-                gender: "Masculino",
-                dominance: "Destro",
-                date: new Date().toISOString().split('T')[0]
-            };
-            state.patientId = null;
-            state.isQuickAssessment = true;
-            navigateTo('view-segments');
-        });
-    }
+        try {
+            await window.db.login(email, password);
+            // Restart app logic to fetch profile and load view-home
+            initApp();
+        } catch (err) {
+            console.error(err);
+            errorDiv.innerText = 'Email ou senha incorretos.';
+            errorDiv.style.display = 'block';
+        } finally {
+            btn.innerHTML = 'Entrar na Plataforma';
+            btn.disabled = false;
+        }
+    });
+}
 
-    const searchInput = document.getElementById('patient-search-input');
-    if (searchInput) {
-        let debounceTimer;
-        searchInput.addEventListener('input', (e) => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                loadRecentPatients(e.target.value);
-            }, 300);
-        });
-    }
+const btnLogout = document.getElementById('btn-logout');
+if (btnLogout) {
+    btnLogout.addEventListener('click', async () => {
+        await window.db.logout();
+        state.session = null;
+        state.userProfile = null;
+        document.getElementById('main-header').style.display = 'none';
+        navigateTo('view-login');
+    });
+}
 
-    // Auth Event Listeners
-    const loginForm = document.getElementById('login-form');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btn-submit-login');
-            const errorDiv = document.getElementById('login-error');
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
+const btnAdminPanel = document.getElementById('btn-admin-panel');
+if (btnAdminPanel) {
+    btnAdminPanel.addEventListener('click', () => {
+        navigateTo('view-admin');
+        loadAdminUsers();
+    });
+}
 
-            btn.innerHTML = 'Carregando...';
-            btn.disabled = true;
-            errorDiv.style.display = 'none';
+const adminCreateUserForm = document.getElementById('admin-create-user-form');
+if (adminCreateUserForm) {
+    adminCreateUserForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-submit-new-user');
+        const errorDiv = document.getElementById('admin-error');
+        const successDiv = document.getElementById('admin-success');
 
-            try {
-                await window.db.login(email, password);
-                // Restart app logic to fetch profile and load view-home
-                initApp();
-            } catch (err) {
-                console.error(err);
-                errorDiv.innerText = 'Email ou senha incorretos.';
-                errorDiv.style.display = 'block';
-            } finally {
-                btn.innerHTML = 'Entrar na Plataforma';
-                btn.disabled = false;
-            }
-        });
-    }
+        errorDiv.style.display = 'none';
+        successDiv.style.display = 'none';
 
-    const btnLogout = document.getElementById('btn-logout');
-    if (btnLogout) {
-        btnLogout.addEventListener('click', async () => {
-            await window.db.logout();
-            state.session = null;
-            state.userProfile = null;
-            document.getElementById('main-header').style.display = 'none';
-            navigateTo('view-login');
-        });
-    }
+        const name = document.getElementById('new-user-name').value;
+        const email = document.getElementById('new-user-email').value;
+        const password = document.getElementById('new-user-password').value;
+        const role = document.getElementById('new-user-role').value;
+        const crefito = (document.getElementById('new-user-crefito') ? document.getElementById('new-user-crefito').value : '') || '';
+        const editUserId = document.getElementById('edit-user-id')?.value || '';
 
-    const btnAdminPanel = document.getElementById('btn-admin-panel');
-    if (btnAdminPanel) {
-        btnAdminPanel.addEventListener('click', () => {
-            navigateTo('view-admin');
-            loadAdminUsers();
-        });
-    }
+        btn.disabled = true;
+        btn.innerHTML = 'Processando...';
 
-    const adminCreateUserForm = document.getElementById('admin-create-user-form');
-    if (adminCreateUserForm) {
-        adminCreateUserForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btn-submit-new-user');
-            const errorDiv = document.getElementById('admin-error');
-            const successDiv = document.getElementById('admin-success');
-
-            errorDiv.style.display = 'none';
-            successDiv.style.display = 'none';
-
-            const name = document.getElementById('new-user-name').value;
-            const email = document.getElementById('new-user-email').value;
-            const password = document.getElementById('new-user-password').value;
-            const role = document.getElementById('new-user-role').value;
-            const crefito = (document.getElementById('new-user-crefito') ? document.getElementById('new-user-crefito').value : '') || '';
-
-            btn.disabled = true;
-            btn.innerHTML = 'Processando...';
-
-            try {
-                await window.db.createUser(email, password, name, role, crefito);
+        try {
+            if (editUserId !== '') {
+                // Modo Edição
+                await window.db.updateUser(editUserId, {
+                    name,
+                    role,
+                    crefito
+                });
+                successDiv.innerText = `Usuário ${name} atualizado com sucesso!`;
+                successDiv.style.display = 'block';
+                window.cancelAdminEditUser();
+            } else {
+                // Modo Criação
+                const data = await window.db.createUser(email, password, name, role, crefito);
                 successDiv.innerText = `Usuário ${name} criado com sucesso! As credenciais já podem ser enviadas ao profissional.`;
                 successDiv.style.display = 'block';
                 adminCreateUserForm.reset();
-                loadAdminUsers(); // Refresh the table
-            } catch (err) {
-                console.error(err);
-                errorDiv.innerText = 'Falha ao criar usuário. Tente novamente.';
-                errorDiv.style.display = 'block';
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:0.5rem"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg> Criar Usuário';
             }
-        });
-    }
-
+            loadAdminUsers(); // Refresh the table
+        } catch (err) {
+            console.error('Error creating/updating user:', err);
+            errorDiv.innerText = 'Falha ao salvar usuário. Erro: ' + (err.message || 'Erro desconhecido');
+            errorDiv.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = editUserId !== '' ? 'Salvar Alterações' : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:0.5rem"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg> Criar Usuário';
+        }
+    });
 }
+
 
 // --- Admin Logic ---
 async function loadAdminUsers() {
@@ -290,7 +412,7 @@ async function loadAdminUsers() {
 
     try {
         const users = await window.db.getAllUsers();
-        if (users.length === 0) {
+        if (!users || users.length === 0) {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Nenhum usuário encontrado.</td></tr>';
             return;
         }
@@ -304,9 +426,18 @@ async function loadAdminUsers() {
             const roleLabel = u.role === 'admin' ? 'Admin' : 'Usuário';
             const isSelf = u.id === currentUserId;
 
+            const editBtn = `<button onclick="window.adminEditUser('${u.id}', '${(u.name || '').replace(/'/g, "\\'")}', '${u.role}', '${(u.crefito || '').replace(/'/g, "\\'")}')"
+                    style="background: none; border: 1px solid var(--primary); color: var(--primary);
+                           border-radius: 6px; padding: 3px 10px; font-size: 0.8rem; cursor: pointer;
+                           transition: background 0.2s; margin-right: 0.5rem;"
+                    onmouseover="this.style.background='rgba(59, 130, 246, 0.08)';"
+                    onmouseout="this.style.background='none';">
+                    ✎ Editar
+                   </button>`;
+
             const deleteBtn = isSelf
                 ? `<span style="font-size: 0.78rem; color: var(--text-muted); font-style: italic;">Conta atual</span>`
-                : `<button onclick="adminDeleteUser('${u.id}', '${u.name.replace(/'/g, "\\'")}')"
+                : `<button onclick="adminDeleteUser('${u.id}', '${(u.name || 'Sem nome').replace(/'/g, "\\'")}')"
                     style="background: none; border: 1px solid var(--primary-red); color: var(--primary-red);
                            border-radius: 6px; padding: 3px 10px; font-size: 0.8rem; cursor: pointer;
                            transition: background 0.2s;"
@@ -320,14 +451,15 @@ async function loadAdminUsers() {
                     <td style="font-weight: 500; color: var(--text-main);">${u.name}</td>
                     <td><span class="role-badge ${roleClass}">${roleLabel}</span></td>
                     <td style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem;">${u.id}</td>
-                    <td>${deleteBtn}</td>
+                    <td>${editBtn}${deleteBtn}</td>
                 </tr>
             `;
         });
         tbody.innerHTML = html;
 
     } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--primary-red);">Erro ao carregar lista de usuários.</td></tr>';
+        console.error('Error loading admin users:', err);
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--primary-red);">Erro ao carregar lista de usuários: ${err.message || 'Erro de conexão'}</td></tr>`;
     }
 }
 
@@ -352,6 +484,68 @@ window.adminDeleteUser = async function (userId, userName) {
         errorDiv.style.display = 'block';
         setTimeout(() => { errorDiv.style.display = 'none'; }, 5000);
     }
+};
+
+window.adminEditUser = function (userId, name, role, crefito) {
+    const formTitle = document.querySelector('#view-admin .form-container h3');
+    if (formTitle) formTitle.textContent = 'Editar Usuário';
+
+    document.getElementById('edit-user-id').value = userId;
+    document.getElementById('new-user-name').value = name;
+    document.getElementById('new-user-role').value = role;
+    const crefitoInput = document.getElementById('new-user-crefito');
+    if (crefitoInput) crefitoInput.value = crefito || '';
+
+    // Disable password and email since they require auth API to change
+    const pwdInput = document.getElementById('new-user-password');
+    if (pwdInput) {
+        pwdInput.disabled = true;
+        pwdInput.placeholder = 'Senha (não pode ser alterada aqui)';
+        pwdInput.value = '';
+        pwdInput.parentElement.style.opacity = '0.5';
+    }
+
+    const emailInput = document.getElementById('new-user-email');
+    if (emailInput) {
+        emailInput.disabled = true;
+        emailInput.placeholder = 'Email (não pode ser alterado aqui)';
+        emailInput.value = '';
+        emailInput.parentElement.style.opacity = '0.5';
+    }
+
+    document.getElementById('btn-submit-new-user').innerHTML = 'Salvar Alterações';
+    document.getElementById('btn-cancel-edit-user').style.display = 'inline-block';
+
+    // Scroll to top to see the form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.cancelAdminEditUser = function () {
+    const formTitle = document.querySelector('#view-admin .form-container h3');
+    if (formTitle) formTitle.textContent = 'Adicionar Novo Usuário';
+
+    const form = document.getElementById('admin-create-user-form');
+    if (form) form.reset();
+
+    document.getElementById('edit-user-id').value = '';
+
+    // Re-enable password and email
+    const pwdInput = document.getElementById('new-user-password');
+    if (pwdInput) {
+        pwdInput.disabled = false;
+        pwdInput.placeholder = 'SuaSenhaSegura123';
+        pwdInput.parentElement.style.opacity = '1';
+    }
+
+    const emailInput = document.getElementById('new-user-email');
+    if (emailInput) {
+        emailInput.disabled = false;
+        emailInput.placeholder = 'Ex: fisioterapeuta@clinica.com';
+        emailInput.parentElement.style.opacity = '1';
+    }
+
+    document.getElementById('btn-submit-new-user').innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:0.5rem"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg> Criar Usuário';
+    document.getElementById('btn-cancel-edit-user').style.display = 'none';
 };
 
 // --- DB Logic & Patient Home View Render ---
@@ -419,6 +613,19 @@ window.openPatientDashboard = async function (patientId) {
         const dateObj = new Date(patientData.created_at);
         document.getElementById('pd-patient-name').textContent = patientData.name;
         document.getElementById('pd-patient-details').textContent = `${patientData.age} anos | ${patientData.gender} | ${patientData.dominance || 'N/A'}`;
+
+        // Add Edit Patient Button
+        const pdDetails = document.getElementById('pd-patient-details');
+        const existingEditBtn = document.getElementById('btn-edit-patient-info');
+        if (existingEditBtn) existingEditBtn.remove();
+
+        const editBtn = document.createElement('button');
+        editBtn.id = 'btn-edit-patient-info';
+        editBtn.innerHTML = '✎ Editar Cadastro';
+        editBtn.className = 'btn-edit-small';
+        editBtn.style.cssText = 'margin-left: 1rem; background: #f0f4f8; border: 1px solid #cbd5e1; color: #475569; border-radius: 6px; padding: 2px 8px; font-size: 0.75rem; cursor: pointer;';
+        editBtn.onclick = () => window.editPatientInfo(patientId);
+        pdDetails.appendChild(editBtn);
     }
 
     navigateTo('view-patient-dashboard');
@@ -464,7 +671,14 @@ window.openPatientDashboard = async function (patientId) {
                             <span class="assessment-card-date">${strDate}</span>
                         </div>
                         <span class="assessment-card-segment">${a.segment}</span>
-                        ${deleteBtn}
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button onclick="event.stopPropagation(); window.editHistoricalAssessment('${a.id}')" 
+                                style="margin-top:0.5rem; background: #f0fdf4; border: 1px solid #16a34a; color: #16a34a; 
+                                       border-radius: 6px; padding: 2px 10px; font-size: 0.75rem; cursor: pointer;">
+                                ✎ Editar
+                            </button>
+                            ${deleteBtn}
+                        </div>
                     </div>
                 `;
             });
@@ -530,7 +744,75 @@ function showDeleteConfirm(title, message) {
     });
 }
 
-// Admin delete functions
+
+// --- Edit Functions ---
+window.editPatientInfo = function (patientId) {
+    const patientData = window._loadedPatientsMap ? window._loadedPatientsMap[patientId] : null;
+    if (!patientData) return;
+
+    navigateTo('view-patient-info');
+
+    document.getElementById('patient-name').value = patientData.name;
+    document.getElementById('patient-dob').value = patientData.dob || '';
+    document.getElementById('patient-gender').value = patientData.gender;
+    document.getElementById('patient-dominance').value = patientData.dominance || '';
+    const actEl = document.getElementById('patient-activity');
+    if (actEl) actEl.value = patientData.activity_level || 'Ativo';
+
+    const dobInput = document.getElementById('patient-dob');
+    if (dobInput) dobInput.dispatchEvent(new Event('change'));
+
+    // Auto-fill today's date so the form validation passes
+    const dateInput = document.getElementById('patient-date');
+    if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+
+    state.patientId = patientId;
+    state.isEditingPatient = true;
+    state.currentQuestionnaire = null;
+    state.assessmentSaved = false;
+
+    const saveBtn = document.getElementById('btn-save-patient');
+    if (saveBtn) saveBtn.innerHTML = 'Salvar Alterações';
+};
+
+window.editHistoricalAssessment = function (assessmentId) {
+    const a = window._loadedAssessmentsMap ? window._loadedAssessmentsMap[assessmentId] : null;
+    if (!a) return;
+
+    const q = questionnairesData[a.assessment_type];
+    if (!q) return;
+
+    state.currentQuestionnaire = q;
+    state.selectedSegment = a.segment;
+    state.patientId = a.patient_id;
+
+    // Load patient info for context (important for integrated questionnaires)
+    if (window._loadedPatientsMap && window._loadedPatientsMap[a.patient_id]) {
+        const p = window._loadedPatientsMap[a.patient_id];
+        state.patientInfo = {
+            name: p.name,
+            age: p.age,
+            gender: p.gender,
+            dominance: p.dominance,
+            date: new Date().toISOString().split('T')[0]
+        };
+    }
+
+    if (q.type === 'clinical') {
+        state.clinicalData = a.clinical_data || {};
+        renderClinicalForm();
+        navigateTo('view-questionnaire');
+    } else {
+        state.answers = a.questionnaire_answers || {};
+        state.currentQuestionIndex = 0;
+        renderQuestionnaire();
+        navigateTo('view-questionnaire');
+    }
+
+    state.assessmentSaved = false; // Reset so the edited form can be saved as a new record
+    state.assessmentId = null; // Ensure it's treated as new, not an update
+};
+
 window.adminDeleteAssessment = async function (assessmentId) {
     const confirmed = await showDeleteConfirm(
         'Excluir Avaliação',
@@ -797,136 +1079,79 @@ function recompileHistoricalResults(q) {
 }
 
 
+// Helper to launch any questionnaire in-app (preserves patientId for saving)
+function launchInAppQuestionnaire(questionnaireId, segmentOverride) {
+    const q = questionnairesData[questionnaireId];
+    if (!q) { console.error('Questionnaire not found:', questionnaireId); return; }
+
+    // Save clinical context so we can return to it after the sub-questionnaire
+    state._parentClinicalData = state.clinicalData ? { ...state.clinicalData } : null;
+    state._parentQuestionnaire = state.currentQuestionnaire || null;
+
+    state.currentQuestionnaire = q;
+    if (segmentOverride) state.selectedSegment = segmentOverride;
+    state.answers = {};
+    state.currentQuestionIndex = 0;
+    // Keep state.patientId and state.patientInfo as-is (critical for saving)
+    renderQuestionnaire();
+    navigateTo('view-questionnaire');
+}
+
 // Functionality for "Novo NDI" integration
 window.abrirModalNDI = function () {
-    if (!state.patientInfo || !state.patientInfo.name) {
-        alert("Por favor, preencha os dados do paciente primeiro.");
-        return;
-    }
-
-    // Construct URL parameters to pass patient data to the new tab
-    const params = new URLSearchParams({
-        name: state.patientInfo.name,
-        age: state.patientInfo.age,
-        gender: state.patientInfo.gender,
-        date: state.patientInfo.date,
-        segment: 'cervical',
-        questionnaire: 'ndi'
-    });
-
-    // Open in a new tab
-    const newWindow = window.open(`index.html?${params.toString()}`, '_blank');
-    if (newWindow) {
-        newWindow.focus();
-    } else {
-        alert("Por favor, permita pop-ups para abrir o questionário NDI.");
-    }
+    if (!state.patientInfo || !state.patientInfo.name) { alert("Por favor, preencha os dados do paciente primeiro."); return; }
+    launchInAppQuestionnaire('ndi', 'cervical');
 };
 
 window.abrirModalOswestry = function () {
-    if (!state.patientInfo || !state.patientInfo.name) {
-        alert("Por favor, preencha os dados do paciente primeiro.");
-        return;
-    }
-
-    // Construct URL parameters to pass patient data to the new tab
-    const params = new URLSearchParams({
-        name: state.patientInfo.name,
-        age: state.patientInfo.age,
-        gender: state.patientInfo.gender,
-        date: state.patientInfo.date,
-        segment: 'lombar',
-        questionnaire: 'oswestry'
-    });
-
-    // Open in a new tab
-    const newWindow = window.open(`index.html?${params.toString()}`, '_blank');
-    if (newWindow) {
-        newWindow.focus();
-    } else {
-        alert("Por favor, permita pop-ups para abrir o questionário Oswestry.");
-    }
+    if (!state.patientInfo || !state.patientInfo.name) { alert("Por favor, preencha os dados do paciente primeiro."); return; }
+    launchInAppQuestionnaire('oswestry', 'lombar');
 };
 
 window.abrirModalQuickdash = function () {
     if (!state.patientInfo || !state.patientInfo.name) { alert("Por favor, preencha os dados do paciente primeiro."); return; }
-    const params = new URLSearchParams({
-        name: state.patientInfo.name, age: state.patientInfo.age, gender: state.patientInfo.gender, date: state.patientInfo.date, segment: 'ombro', questionnaire: 'quickdash'
-    });
-    const newWindow = window.open(`index.html?${params.toString()}`, '_blank');
-    if (newWindow) newWindow.focus(); else alert("Por favor, permita pop-ups.");
+    launchInAppQuestionnaire('quickdash', 'ombro');
 };
 
 window.abrirModalLysholm = function () {
     if (!state.patientInfo || !state.patientInfo.name) { alert("Por favor, preencha os dados do paciente primeiro."); return; }
-    const params = new URLSearchParams({
-        name: state.patientInfo.name, age: state.patientInfo.age, gender: state.patientInfo.gender, date: state.patientInfo.date, segment: 'mmii', questionnaire: 'lysholm'
-    });
-    const newWindow = window.open(`index.html?${params.toString()}`, '_blank');
-    if (newWindow) newWindow.focus(); else alert("Por favor, permita pop-ups.");
+    launchInAppQuestionnaire('lysholm', state.selectedSegment || 'mmii');
 };
 
 window.abrirModalWomac = function () {
     if (!state.patientInfo || !state.patientInfo.name) { alert("Por favor, preencha os dados do paciente primeiro."); return; }
-    const params = new URLSearchParams({
-        name: state.patientInfo.name, age: state.patientInfo.age, gender: state.patientInfo.gender, date: state.patientInfo.date, segment: 'mmii', questionnaire: 'womac'
-    });
-    const newWindow = window.open(`index.html?${params.toString()}`, '_blank');
-    if (newWindow) newWindow.focus(); else alert("Por favor, permita pop-ups.");
+    launchInAppQuestionnaire('womac', state.selectedSegment || 'mmii');
 };
 
 window.abrirModalIkdc = function () {
     if (!state.patientInfo || !state.patientInfo.name) { alert("Por favor, preencha os dados do paciente primeiro."); return; }
-    const params = new URLSearchParams({
-        name: state.patientInfo.name, age: state.patientInfo.age, gender: state.patientInfo.gender, date: state.patientInfo.date, segment: 'mmii', questionnaire: 'ikdc'
-    });
-    const newWindow = window.open(`index.html?${params.toString()}`, '_blank');
-    if (newWindow) newWindow.focus(); else alert("Por favor, permita pop-ups.");
+    launchInAppQuestionnaire('ikdc', state.selectedSegment || 'mmii');
 };
 
 window.abrirModalAofas = function () {
     if (!state.patientInfo || !state.patientInfo.name) { alert("Por favor, preencha os dados do paciente primeiro."); return; }
-    const params = new URLSearchParams({
-        name: state.patientInfo.name, age: state.patientInfo.age, gender: state.patientInfo.gender, date: state.patientInfo.date, segment: 'tornozelo', questionnaire: 'aofas'
-    });
-    const newWindow = window.open(`index.html?${params.toString()}`, '_blank');
-    if (newWindow) newWindow.focus(); else alert("Por favor, permita pop-ups.");
+    launchInAppQuestionnaire('aofas', state.selectedSegment || 'tornozelo');
 };
 
 window.abrirModalMan = function () {
     if (!state.patientInfo || !state.patientInfo.name) { alert("Por favor, preencha os dados do paciente primeiro."); return; }
-    const params = new URLSearchParams({
-        name: state.patientInfo.name, age: state.patientInfo.age, gender: state.patientInfo.gender, date: state.patientInfo.date, segment: 'geriatria', questionnaire: 'man'
-    });
-    const newWindow = window.open(`index.html?${params.toString()}`, '_blank');
-    if (newWindow) newWindow.focus(); else alert("Por favor, permita pop-ups.");
+    launchInAppQuestionnaire('man', state.selectedSegment || 'geriatria');
 };
 
 window.abrirModalVes13 = function () {
     if (!state.patientInfo || !state.patientInfo.name) { alert("Por favor, preencha os dados do paciente primeiro."); return; }
-    const params = new URLSearchParams({
-        name: state.patientInfo.name, age: state.patientInfo.age, gender: state.patientInfo.gender, date: state.patientInfo.date, segment: 'geriatria', questionnaire: 'ves13'
-    });
-    const newWindow = window.open(`index.html?${params.toString()}`, '_blank');
-    if (newWindow) newWindow.focus(); else alert("Por favor, permita pop-ups.");
+    launchInAppQuestionnaire('ves13', 'geriatria');
 };
 
 window.abrirModalLbpq = function () {
     if (!state.patientInfo || !state.patientInfo.name) { alert("Por favor, preencha os dados do paciente primeiro."); return; }
-    const params = new URLSearchParams({
-        name: state.patientInfo.name, age: state.patientInfo.age, gender: state.patientInfo.gender, date: state.patientInfo.date, segment: 'geriatria', questionnaire: 'lbpq'
-    });
-    const newWindow = window.open(`index.html?${params.toString()}`, '_blank');
-    if (newWindow) newWindow.focus(); else alert("Por favor, permita pop-ups.");
+    launchInAppQuestionnaire('lbpq', 'geriatria');
 };
+
 
 window.abrirModalBrief = function () {
     if (!state.patientInfo || !state.patientInfo.name) { alert("Por favor, preencha os dados do paciente primeiro."); return; }
-    const params = new URLSearchParams({
-        name: state.patientInfo.name, age: state.patientInfo.age, gender: state.patientInfo.gender, date: state.patientInfo.date, segment: 'geriatria', questionnaire: 'brief'
-    });
-    const newWindow = window.open(`index.html?${params.toString()}`, '_blank');
-    if (newWindow) newWindow.focus(); else alert("Por favor, permita pop-ups.");
+    launchInAppQuestionnaire('brief', 'geriatria');
 };
 
 // UI Navigation
@@ -981,9 +1206,27 @@ function navigateTo(viewId) {
         state.currentView = viewId;
     }
 
+    // --- Navigation History & Back/Home button visibility ---
+    // Push to history (avoid duplicating the same view consecutively)
+    if (state.navigationHistory[state.navigationHistory.length - 1] !== viewId) {
+        state.navigationHistory.push(viewId);
+    }
+    const backBtn = document.getElementById('btn-back');
+    if (backBtn) {
+        if (viewId === 'view-home' || state.navigationHistory.length <= 1) {
+            backBtn.classList.add('hidden');
+        } else {
+            backBtn.classList.remove('hidden');
+        }
+    }
+
     // Scroll to top when changing views
     window.scrollTo(0, 0);
 
+    // If we have a patient ID, try to auto-fill busca fields
+    if (state.patientId && window.handleBuscaFill) {
+        window.handleBuscaFill();
+    }
     // Update nav button states
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     if (viewId === 'view-home' || viewId === 'view-patient-dashboard') {
@@ -993,19 +1236,14 @@ function navigateTo(viewId) {
     // Header Breadcrumb logic
     if (viewId === 'view-home') {
         btnHome.classList.add('active');
-        btnHome.textContent = 'Início';
     } else if (viewId === 'view-segments') {
         btnHome.classList.remove('active');
-        btnHome.textContent = '← Voltar ao Início';
     } else if (viewId === 'view-dashboard') {
         btnHome.classList.remove('active');
-        btnHome.textContent = '← Voltar para Segmentos';
     } else if (viewId === 'view-patient-dashboard') {
         btnHome.classList.remove('active');
-        btnHome.textContent = '← Voltar ao Início';
     } else {
         btnHome.classList.remove('active');
-        btnHome.textContent = '← Cancelar e Voltar';
 
         // If navigating to patient-info while a patient is already loaded,
         // skip the form entirely and go straight to segment selection.
@@ -1076,40 +1314,69 @@ async function shareBlankQuestionnairePDF(qId, event) {
             </p>
         `;
 
-        let qNum = 1;
-        q.questions.forEach((question) => {
-            if (question.isInstruction) {
+        if (q.questions) {
+            let qNum = 1;
+            q.questions.forEach((question) => {
+                if (question.isInstruction) {
+                    html += `<div style="margin-bottom: 20px; font-weight: 600; color: #444; background: #f9f9f9; padding: 10px; border-radius: 4px;">${question.text}</div>`;
+                    return;
+                }
+
                 html += `
-                    <div style="background-color: #f5f5f5; padding: 15px; margin: 20px 0; border-left: 4px solid #e02f2f;">
-                        <strong>Instrução:</strong> ${question.text}
+                    <div style="margin-bottom: 20px; page-break-inside: avoid;">
+                        <p style="font-weight: 600; margin-bottom: 8px;">${qNum}. ${question.text}</p>
+                        <div style="display: flex; flex-direction: column; gap: 6px; padding-left: 20px;">
+                            ${question.options.map(opt => `
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 14px; height: 14px; border: 1px solid #999; border-radius: 50%;"></div>
+                                    <span style="font-size: 14px;">(${opt.value}) ${opt.label}</span>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 `;
-                return;
-            }
+                qNum++;
+            });
+        } else if (q.sections) {
+            // Support for Clinical Forms in Blank PDF
+            q.sections.forEach(section => {
+                html += `<h3 style="color: #A31621; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 25px;">${section.title}</h3>`;
 
-            html += `
-                <div style="margin-bottom: 25px; page-break-inside: avoid;">
-                    <p style="font-weight: bold; margin: 0 0 10px 0;">${qNum}. ${question.text}</p>
-            `;
+                if (section.fields) {
+                    html += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">`;
+                    section.fields.forEach(field => {
+                        html += `
+                            <div style="display: flex; flex-direction: column; margin-bottom: 10px;">
+                                <label style="font-weight: 600; font-size: 13px; margin-bottom: 4px;">${field.label}</label>
+                                <div style="border: 1px solid #ddd; height: ${field.type === 'textarea' || field.type === 'bodyschema' ? '60px' : '25px'}; border-radius: 4px;"></div>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                }
 
-            if (question.options) {
-                question.options.forEach((opt) => {
+                if (section.rows) {
                     html += `
-                        <div style="margin-left: 20px; margin-bottom: 8px; display: flex; align-items:flex-start;">
-                            <div style="width: 16px; height: 16px; border: 1px solid #000; border-radius: 3px; display: inline-block; margin-right: 10px; flex-shrink:0; margin-top:2px;"></div>
-                            <span>${opt.label}</span>
-                        </div>
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px;">
+                            <thead>
+                                <tr style="background: #f5f5f5;">
+                                    <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Item</th>
+                                    ${section.columns ? section.columns.slice(1).map(c => `<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">${typeof c === 'object' ? c.label : c}</th>`).join('') : ''}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${section.rows.map(row => `
+                                    <tr>
+                                        <td style="border: 1px solid #ddd; padding: 6px;">${row.label}</td>
+                                        ${row.fields ? row.fields.map(() => `<td style="border: 1px solid #ddd; padding: 6px; text-align: center;"></td>`).join('') : ''}
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
                     `;
-                });
-            } else {
-                html += `
-                    <div style="margin-left: 20px; margin-top: 15px; border-bottom: 1px solid #000; height: 20px; width: 90%;"></div>
-                `;
-            }
-
-            html += `</div>`;
-            qNum++;
-        });
+                }
+            });
+        }
 
         html += `
             <div style="margin-top: 50px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #eee; padding-top: 20px;">
@@ -1166,8 +1433,14 @@ async function shareBlankQuestionnairePDF(qId, event) {
 function renderDashboard() {
     questionnaireList.innerHTML = '';
 
-    // Filter by segment
-    const segmentForms = Object.values(questionnairesData).filter(q => q.segment === state.selectedSegment);
+    // Filter by segment and sort: clinical forms first
+    const segmentForms = Object.values(questionnairesData)
+        .filter(q => q.segment === state.selectedSegment)
+        .sort((a, b) => {
+            if (a.type === 'clinical' && b.type !== 'clinical') return -1;
+            if (a.type !== 'clinical' && b.type === 'clinical') return 1;
+            return 0;
+        });
 
     if (segmentForms.length === 0) {
         questionnaireList.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color: var(--text-muted)">Nenhum questionário disponível para este segmento ainda.</p>';
@@ -1228,10 +1501,7 @@ function renderDashboard() {
             // If we already have a patient (from dash) or it's a quick assessment, skip the form
             if (state.patientId || state.isQuickAssessment) {
                 // Determine whether to skip info screen depending on the questionnaire type
-                if (q.type === 'clinical') {
-                    renderClinicalForm();
-                    navigateTo('view-questionnaire');
-                } else if (q.id === 'ndi') {
+                if (q.id === 'ndi') {
                     window.abrirModalNDI();
                 } else if (q.id === 'oswestry') {
                     window.abrirModalOswestry();
@@ -1254,10 +1524,7 @@ function renderDashboard() {
                 } else if (q.id === 'brief') {
                     window.abrirModalBrief();
                 } else {
-                    state.currentQuestionIndex = 0;
-                    state.answers = {};
-                    renderQuestion();
-                    navigateTo('view-questionnaire');
+                    startQuestionnaire();
                 }
             } else {
                 // Shouldn't happen in new architecture, but fallback just in case
@@ -1274,14 +1541,15 @@ async function handlePatientFormSubmit(e) {
     e.preventDefault();
 
     const name = document.getElementById('patient-name').value;
-    const age = document.getElementById('patient-age').value;
+    const dobValue = document.getElementById('patient-dob').value;
+    const age = document.getElementById('patient-dob').dataset.calculatedAge;
     const gender = document.getElementById('patient-gender').value;
     const dominance = document.getElementById('patient-dominance').value;
     const activity = document.getElementById('patient-activity') ? document.getElementById('patient-activity').value : 'Ativo'; // Default if not present
     const date = document.getElementById('patient-date').value;
 
-    if (!name || !age || !date) {
-        alert('Por favor, preencha nome, idade e data da avaliação.');
+    if (!name || !dobValue || !date) {
+        alert('Por favor, preencha nome, data de nascimento e data da avaliação.');
         return;
     }
 
@@ -1296,13 +1564,26 @@ async function handlePatientFormSubmit(e) {
     // Also store local state info for immediate rendering
     state.patientInfo = { ...patientData, date };
 
-    // --- GUARD: If patient already exists in state, skip DB insertion ---
+    // --- GUARD: If patient already exists in state, we should UPDATE DB instead of inserting ---
     if (state.patientId) {
-        // Just go to segment selection using the existing patient record
-        if (state.currentQuestionnaire) {
-            startQuestionnaire();
-        } else {
-            navigateTo('view-segments');
+        const submitBtn = document.getElementById('btn-save-patient') || document.querySelector('#patient-form button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = 'Atualizando...';
+        submitBtn.disabled = true;
+        try {
+            await window.db.updatePatient(state.patientId, patientData);
+            if (state.currentQuestionnaire && !state.isEditingPatient) {
+                startQuestionnaire();
+            } else {
+                openPatientDashboard(state.patientId); // Go back to dashboard to see updates
+            }
+            state.isEditingPatient = false; // Reset flag after update
+        } catch (e) {
+            alert('Erro ao atualizar paciente. Verifique sua conexão.');
+            console.error(e);
+        } finally {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
         }
         return;
     }
@@ -1478,10 +1759,16 @@ function renderClinicalForm() {
                                 <thead>
                                     <tr>
                                         ${section.columns.map(col => {
-        if (typeof col === 'object') {
-            return `<th style="${col.width ? `width:${col.width}` : ''}">${col.label}</th>`;
+        let label = typeof col === 'object' ? col.label : col;
+        let width = typeof col === 'object' && col.width ? `width:${col.width}` : '';
+
+        // Botão de auto-preenchimento para força muscular
+        if (section.id.includes('neuro_forca') && (label.includes('Esquerdo') || label.includes('Direito'))) {
+            const fieldTarget = label.includes('Esquerdo') ? 'esquerdo' : 'direito';
+            label = `${label} <button type="button" class="btn-fill-5" data-section="${section.id}" data-target="${fieldTarget}" style="font-size: 10px; padding: 2px 6px; margin-left: 5px; background: #3b82f6; color: #ffffff; border: none; border-radius: 4px; cursor: pointer;" title="Preencher todos com 5">Preencher Todos (5)</button>`;
         }
-        return `<th>${col}</th>`;
+
+        return `<th style="${width}">${label}</th>`;
     }).join('')}
                                     </tr>
                                 </thead>
@@ -1532,6 +1819,7 @@ function renderClinicalForm() {
         return `
                                                     <td>
                                                         <input type="${fType}" 
+                                                               id="clinical-input-${fId}"
                                                                class="clinical-input" 
                                                                ${fProps}
                                                                data-section="${section.id}" 
@@ -1571,7 +1859,7 @@ function renderClinicalForm() {
                                 <div class="clinical-field" style="${(field.type === 'textarea' || field.type === 'bodyschema' || field.type === 'range') ? 'grid-column: 1/-1' : ''}">
                                     <label>${field.label}</label>
                                     ${field.type === 'textarea'
-            ? `<textarea class="clinical-input" data-section="${section.id}" data-field="${field.id}">${(state.clinicalData[section.id] && state.clinicalData[section.id][field.id]) || ''}</textarea>`
+            ? `<textarea id="clinical-input-${field.id}" class="clinical-input" data-section="${section.id}" data-field="${field.id}">${(state.clinicalData[section.id] && state.clinicalData[section.id][field.id]) || ''}</textarea>`
             : field.type === 'bodyschema'
                 ? `<div class="bodyschema-container">
                  <canvas class="bodyschema-canvas" id="canvas-${field.id}" data-section="${section.id}" data-field="${field.id}" data-image="${field.image}"></canvas>
@@ -1629,9 +1917,30 @@ function renderClinicalForm() {
                          </div>
                          <input type="range" class="clinical-input range-slider" data-section="${section.id}" data-field="${field.id}" min="${field.min || 0}" max="${field.max || 10}" step="${field.step || 1}" value="${(state.clinicalData[section.id] && state.clinicalData[section.id][field.id]) !== undefined ? state.clinicalData[section.id][field.id] : (field.min || 0)}" oninput="this.parentElement.querySelector('.range-val-view').innerText = this.value">
                        </div>`
-                            : field.type === 'button'
-                                ? `<button type="button" class="btn btn-secondary clinical-input-button" data-section="${section.id}" data-field="${field.id}" ${field.props || ''}>${field.label}</button>`
-                                : `<input type="${field.type || 'text'}" class="clinical-input" ${field.props || ''} data-section="${section.id}" data-field="${field.id}" value="${(state.clinicalData[section.id] && state.clinicalData[section.id][field.id]) || ''}">`
+                            : field.type === 'angle_measurement'
+                                ? `<div class="angle-measure-wrapper" style="width:100%;">
+                                    <div class="angle-toolbar" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 0 10px;border-bottom:1px solid #eee;margin-bottom:10px;">
+                                        <input type="file" id="angle-upload-${field.id}" accept="image/*" style="display:none;" onchange="window.handleAngleImageUpload(event, '${field.id}')">
+                                        <button type="button" class="btn btn-primary" onclick="document.getElementById('angle-upload-${field.id}').click()" style="padding:6px 12px;font-size:0.85em;">📸 Carregar Foto</button>
+                                        <button type="button" class="btn btn-secondary" onclick="window.angleUndo && window.angleUndo('${field.id}')" style="padding:6px 12px;font-size:0.85em;">↩ Desfazer Ponto</button>
+                                        <button type="button" class="btn btn-secondary" onclick="window.angleClear && window.angleClear('${field.id}')" style="padding:6px 12px;font-size:0.85em;">🗑 Limpar Tudo</button>
+                                        <button type="button" class="btn btn-secondary" onclick="window.angleCopy && window.angleCopy('${field.id}')" style="padding:6px 12px;font-size:0.85em;">📋 Copiar</button>
+                                        <button type="button" class="btn btn-secondary" onclick="window.angleDownload && window.angleDownload('${field.id}')" style="padding:6px 12px;font-size:0.85em;">💾 Salvar Imagem</button>
+                                    </div>
+                                    <div style="text-align:center; background:#f9fafb; border:2px dashed #cbd5e1; border-radius:8px; padding:10px; position:relative; min-height: 400px; display:flex; justify-content:center; align-items:center;" id="angle-container-${field.id}">
+                                        <span id="angle-placeholder-${field.id}" style="color:#64748b;">Nenhuma imagem carregada. Use o botão acima.</span>
+                                        <canvas id="anglecanvas-${field.id}" data-section="${section.id}" data-field="${field.id}" style="display:none; cursor:crosshair; max-width:100%; border-radius:4px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);"></canvas>
+                                    </div>
+                                   </div>`
+                                : field.type === 'button'
+                                    ? `<button type="button" class="btn btn-secondary clinical-input-button" data-section="${section.id}" data-field="${field.id}" ${field.props || ''}>${field.label}</button>`
+                                    : `<input type="${field.type || 'text'}" 
+                                id="clinical-input-${field.id}"
+                                class="clinical-input" 
+                                ${field.props || ''} 
+                                data-section="${section.id}" 
+                                data-field="${field.id}" 
+                                value="${(state.clinicalData[section.id] && state.clinicalData[section.id][field.id]) || ''}">`
         }
                                 </div>
                             `).join('')}
@@ -1708,82 +2017,376 @@ function renderClinicalForm() {
         });
     });
 
-    // Setup body schema canvases
-    document.querySelectorAll('.bodyschema-canvas').forEach(canvas => {
-        setupCanvas(canvas);
-    });
-
-    // Setup paintmap canvases
-    document.querySelectorAll('.paintmap-canvas').forEach(canvas => {
-        setupPaintmapCanvas(canvas);
-    });
-    // Setup free-draw canvases
-    document.querySelectorAll('[id^="freecanvas-"]').forEach(canvas => {
-        setupFreeCanvas(canvas);
-    });
-
-    document.querySelectorAll('.btn-clear-canvas').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const canvasId = e.target.dataset.target;
-            const canvas = document.getElementById(canvasId);
-            if (canvas && canvas.ctx) {
-                canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
-                if (canvas.bgImage) {
-                    canvas.ctx.drawImage(canvas.bgImage, 0, 0, canvas.width, canvas.height);
-                }
-
-                if (canvas.strokeHistory) {
-                    canvas.strokeHistory = [];
-                    const section = canvas.dataset.section;
-                    const field = canvas.dataset.field;
-                    state.clinicalData[section][field + '_history'] = [];
-                }
-                saveCanvasData(canvas);
-                if (canvas.history) canvas.history = []; // Clear old history array if present
-            }
+    // Initialize Special Canvases
+    setTimeout(() => {
+        document.querySelectorAll('.bodyschema-canvas').forEach(canvas => {
+            setupCanvas(canvas);
         });
+        document.querySelectorAll('.paintmap-canvas').forEach(canvas => {
+            setupPaintmapCanvas(canvas);
+        });
+        document.querySelectorAll('[id^="freecanvas-"]').forEach(canvas => {
+            setupFreeCanvas(canvas);
+        });
+        document.querySelectorAll('[id^="anglecanvas-"]').forEach(canvas => {
+            setupAngleCanvas(canvas);
+        });
+    }, 100);
+}
+// Setup all canvas control buttons using delegation (handles dynamic content)
+document.addEventListener('click', (e) => {
+    // 1. Clear Canvas Button
+    if (e.target.classList.contains('btn-clear-canvas')) {
+        const targetId = e.target.dataset.target;
+        const canvas = document.getElementById(targetId);
+        if (canvas && canvas.ctx) {
+            canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (canvas.bgImage) {
+                canvas.ctx.drawImage(canvas.bgImage, 0, 0, canvas.width, canvas.height);
+            }
+            if (canvas.strokeHistory) canvas.strokeHistory = [];
+            
+            // Save state
+            const section = canvas.dataset.section;
+            const field = canvas.dataset.field;
+            if (!state.clinicalData[section]) state.clinicalData[section] = {};
+            state.clinicalData[section][field] = canvas.toDataURL('image/jpeg', 0.85);
+            state.clinicalData[section][field + '_history'] = [];
+        }
+    }
+    
+    // 2. Undo Canvas Button
+    if (e.target.classList.contains('btn-undo-canvas')) {
+        const targetId = e.target.dataset.target;
+        const canvas = document.getElementById(targetId);
+        if (canvas && canvas.ctx && canvas.strokeHistory && canvas.strokeHistory.length > 0) {
+            canvas.strokeHistory.pop();
+            canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (canvas.bgImage) {
+                canvas.ctx.drawImage(canvas.bgImage, 0, 0, canvas.width, canvas.height);
+            }
+            canvas.strokeHistory.forEach(action => {
+                canvas.ctx.beginPath();
+                canvas.ctx.arc(action.x, action.y, 8, 0, 2 * Math.PI);
+                canvas.ctx.fillStyle = action.color;
+                canvas.ctx.fill();
+            });
+            const section = canvas.dataset.section;
+            const field = canvas.dataset.field;
+            state.clinicalData[section][field] = canvas.toDataURL('image/jpeg', 0.85);
+            state.clinicalData[section][field + '_history'] = [...canvas.strokeHistory];
+        }
+    }
+});
+
+// Setup auto-fill buttons (Delegated to document for dynamic content)
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-fill-5');
+    if (!btn) return;
+    
+    const section = btn.dataset.section;
+    const targetField = btn.dataset.target; // 'esquerdo' or 'direito'
+
+    document.querySelectorAll(`select.clinical-select-grade[data-section="${section}"][data-field="${targetField}"]`).forEach(select => {
+        select.value = '5';
+        const event = new Event('change', { bubbles: true });
+        select.dispatchEvent(event);
     });
+});
 
-    document.querySelectorAll('.btn-undo-canvas').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const canvasId = e.target.dataset.target;
-            const canvas = document.getElementById(canvasId);
+// btn-finish-clinical now uses onclick="window.finishQuestionnaire()" directly
+// addEventListener kept as fallback for older renders:
+const btnFinish = document.getElementById('btn-finish-clinical');
+if (btnFinish && !btnFinish.dataset.wired) {
+    btnFinish.dataset.wired = 'true';
+    btnFinish.addEventListener('click', () => window.finishQuestionnaire());
+}
 
-            // Undo logic for paintmap (vector-based history)
-            if (canvas && canvas.ctx && canvas.strokeHistory && canvas.strokeHistory.length > 0) {
-                // Remove the last action
-                canvas.strokeHistory.pop();
+// ------------------------------------------------------------------------------------------------
+//  Angle Measurement Canvas Logic
+// ------------------------------------------------------------------------------------------------
 
-                // Redraw the original background
-                canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
-                if (canvas.bgImage) {
-                    canvas.ctx.drawImage(canvas.bgImage, 0, 0, canvas.width, canvas.height);
-                }
+window.handleAngleImageUpload = function (event, fieldId) {
+    const file = event.target.files[0];
+    if (!file) return;
 
-                // Replay all remaining actions in history
-                canvas.strokeHistory.forEach(action => {
-                    canvas.ctx.beginPath();
-                    canvas.ctx.arc(action.x, action.y, 8, 0, 2 * Math.PI);
-                    canvas.ctx.fillStyle = action.color;
-                    canvas.ctx.fill();
-                });
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+            const canvas = document.getElementById(`anglecanvas-${fieldId}`);
+            const placeholder = document.getElementById(`angle-placeholder-${fieldId}`);
+            const container = document.getElementById(`angle-container-${fieldId}`);
 
-                // Save updated state
+            if (!canvas) return;
+
+            placeholder.style.display = 'none';
+            canvas.style.display = 'block';
+
+            // Scale image to fit container width, keeping aspect ratio
+            const maxWidth = container.clientWidth - 20;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxWidth) {
+                height = (maxWidth / width) * height;
+                width = maxWidth;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Initialize custom properties
+            canvas.bgImage = img;
+            canvas.points = [];
+            canvas.angles = []; // Array of {points: [...]} to allow multiple angles
+
+            setupAngleCanvas(canvas);
+
+            // Trigger a save so the blank image is at least saved
+            setTimeout(() => {
                 const section = canvas.dataset.section;
                 const field = canvas.dataset.field;
-                state.clinicalData[section][field + '_history'] = [...canvas.strokeHistory];
-            }
+                if (!state.clinicalData[section]) state.clinicalData[section] = {};
+                state.clinicalData[section][field] = canvas.toDataURL('image/jpeg', 0.85);
+            }, 100);
+        }
+        img.src = e.target.result;
+    }
+    reader.readAsDataURL(file);
+};
+
+window.angleUndo = function (fieldId) {
+    const canvas = document.getElementById(`anglecanvas-${fieldId}`);
+    if (!canvas || !canvas.points) return;
+
+    if (canvas.points.length > 0) {
+        // Removing points from active angle
+        canvas.points.pop();
+    } else if (canvas.angles && canvas.angles.length > 0) {
+        // Redo last completed angle - pop it from completed array and put the first two points back to active
+        const lastAngle = canvas.angles.pop();
+        if (lastAngle && lastAngle.points) {
+            canvas.points = lastAngle.points.slice(0, 2);
+        }
+    }
+    redrawAngleCanvas(canvas);
+};
+
+window.angleClear = function (fieldId) {
+    const canvas = document.getElementById(`anglecanvas-${fieldId}`);
+    if (!canvas || !canvas.ctx) return;
+
+    canvas.points = [];
+    canvas.angles = [];
+
+    if (canvas.bgImage) {
+        canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.ctx.drawImage(canvas.bgImage, 0, 0, canvas.width, canvas.height);
+    }
+    redrawAngleCanvas(canvas);
+};
+
+window.angleCopy = async function (fieldId) {
+    const canvas = document.getElementById(`anglecanvas-${fieldId}`);
+    if (!canvas || canvas.style.display === 'none') {
+        alert("Nenhuma imagem para copiar!");
+        return;
+    }
+    try {
+        canvas.toBlob(async blob => {
+            const item = new ClipboardItem({ "image/png": blob });
+            await navigator.clipboard.write([item]);
+            alert("Imagem copiada para a área de transferência!");
         });
+    } catch (err) {
+        alert("Erro ao copiar imagem. Seu navegador pode não suportar isso.");
+        console.error(err);
+    }
+};
+
+window.angleDownload = function (fieldId) {
+    const canvas = document.getElementById(`anglecanvas-${fieldId}`);
+    if (!canvas || canvas.style.display === 'none') {
+        alert("Nenhuma imagem para salvar!");
+        return;
+    }
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/jpeg', 0.9);
+    a.download = `Analise_Angular_${new Date().toISOString().split('T')[0]}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+};
+
+function setupAngleCanvas(canvas) {
+    if (canvas.hasAngleListener) return;
+    canvas.hasAngleListener = true;
+    canvas.ctx = canvas.getContext('2d');
+
+    // Restore state if returning to form
+    const section = canvas.dataset.section;
+    const field = canvas.dataset.field;
+    if (state.clinicalData[section] && state.clinicalData[section][field]) {
+        const pastImage = new Image();
+        pastImage.onload = () => {
+            document.getElementById(`angle-placeholder-${field}`).style.display = 'none';
+            canvas.style.display = 'block';
+
+            // We just redraw the saved final composite if we are reloading
+            // For full point history we'd need to save canvas.points across reloads (complex)
+            // This simple reload assumes the image is flattened.
+            canvas.width = pastImage.width;
+            canvas.height = pastImage.height;
+            canvas.ctx.drawImage(pastImage, 0, 0);
+        };
+        pastImage.src = state.clinicalData[section][field];
+    }
+
+    canvas.addEventListener('mousedown', function (e) {
+        if (!canvas.bgImage) return; // Prevent clicking before image loads
+
+        const rect = canvas.getBoundingClientRect();
+
+        // Calculate scale factors
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+
+        if (!canvas.points) canvas.points = [];
+        if (!canvas.angles) canvas.angles = [];
+
+        canvas.points.push({ x, y });
+
+        // If 3 points collected, finalize an angle
+        if (canvas.points.length === 3) {
+            canvas.angles.push({ points: [...canvas.points] });
+            canvas.points = []; // start fresh for next
+        }
+
+        redrawAngleCanvas(canvas);
+    });
+}
+
+function redrawAngleCanvas(canvas) {
+    const ctx = canvas.ctx;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Background
+    if (canvas.bgImage) {
+        ctx.drawImage(canvas.bgImage, 0, 0, canvas.width, canvas.height);
+    }
+
+    // Configs
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // 1. Draw finalized angles
+    if (canvas.angles && canvas.angles.length > 0) {
+        canvas.angles.forEach(ang => {
+            drawAngle(ctx, ang.points, '#eab308'); // Yellow for finished
+        });
+    }
+
+    // 2. Draw current active points/lines
+    if (canvas.points && canvas.points.length > 0) {
+        drawAngle(ctx, canvas.points, '#ef4444'); // Red for active
+    }
+
+    // Save to state
+    requestAnimationFrame(() => {
+        const section = canvas.dataset.section;
+        const field = canvas.dataset.field;
+        if (!state.clinicalData[section]) state.clinicalData[section] = {};
+
+        // Save the flattened canvas state
+        state.clinicalData[section][field] = canvas.toDataURL('image/jpeg', 0.85);
+    });
+}
+
+function drawAngle(ctx, points, color) {
+    if (points.length === 0) return;
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.fillStyle = color;
+
+    // Draw Points
+    points.forEach((p, idx) => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 5, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Outline for points
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'white';
+        ctx.stroke();
     });
 
-    // btn-finish-clinical now uses onclick="window.finishQuestionnaire()" directly
-    // addEventListener kept as fallback for older renders:
-    const btnFinish = document.getElementById('btn-finish-clinical');
-    if (btnFinish && !btnFinish.dataset.wired) {
-        btnFinish.dataset.wired = 'true';
-        btnFinish.addEventListener('click', () => window.finishQuestionnaire());
+    // Draw Lines
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    if (points.length >= 2) {
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        ctx.lineTo(points[1].x, points[1].y);
+        ctx.stroke();
+    }
+    if (points.length === 3) {
+        ctx.beginPath();
+        ctx.moveTo(points[1].x, points[1].y);
+        ctx.lineTo(points[2].x, points[2].y);
+        ctx.stroke();
+
+        // Calculate Math Angle
+        // Vector A: p1 -> p0
+        const vAx = points[0].x - points[1].x;
+        const vAy = points[0].y - points[1].y;
+        // Vector B: p1 -> p2
+        const vBx = points[2].x - points[1].x;
+        const vBy = points[2].y - points[1].y;
+
+        const dotProd = (vAx * vBx) + (vAy * vBy);
+        const magA = Math.sqrt(vAx * vAx + vAy * vAy);
+        const magB = Math.sqrt(vBx * vBx + vBy * vBy);
+
+        // Avoid division by zero
+        if (magA !== 0 && magB !== 0) {
+            let cosTheta = dotProd / (magA * magB);
+            // Floating point errors might push cosTheta out of [-1, 1]
+            cosTheta = Math.max(-1, Math.min(1, cosTheta));
+
+            const angleRad = Math.acos(cosTheta);
+            const angleDeg = angleRad * (180 / Math.PI);
+
+            // Draw text near vertex
+            ctx.font = 'bold 18px Arial';
+            ctx.fillStyle = 'white';
+            const txt = angleDeg.toFixed(1) + "°";
+
+            // Text background pill
+            const textWidth = ctx.measureText(txt).width;
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+
+            let textX = points[1].x + 15;
+            let textY = points[1].y + 15;
+
+            ctx.beginPath();
+            ctx.roundRect(textX - 5, textY - 14, textWidth + 10, 22, 4);
+            ctx.fill();
+
+            // The text itself
+            ctx.fillStyle = color;
+            ctx.fillText(txt, textX, textY + 2);
+        }
     }
 }
+
 
 function updateDéficits(section = 'forca') {
     const sectionData = state.clinicalData[section];
@@ -1850,28 +2453,6 @@ function updateDéficits(section = 'forca') {
         const iqE = parseFloat(state.clinicalData.forca.relacao_iq?.esquerdo);
         const iqD = parseFloat(state.clinicalData.forca.relacao_iq?.direito);
         // Removed: deficit calculation for relacao_iq (not needed)
-    } else if (section === 'forca_ombro') {
-        ['esquerdo', 'direito'].forEach(side => {
-            const rl = sectionData.rl_ombro && parseFloat(sectionData.rl_ombro[side]);
-            const rm = sectionData.rm_ombro && parseFloat(sectionData.rm_ombro[side]);
-
-            if (!isNaN(rl) && !isNaN(rm) && rm > 0) {
-                const ratio = ((rl / rm) * 100).toFixed(1);
-                state.clinicalData.forca_ombro.relacao_rlrm = state.clinicalData.forca_ombro.relacao_rlrm || {};
-                state.clinicalData.forca_ombro.relacao_rlrm[side] = ratio + '%';
-                const input = document.querySelector(`input[data-section="forca_ombro"][data-row="relacao_rlrm"][data-field="${side}"]`);
-                if (input) input.value = ratio + '%';
-            }
-        });
-
-        const ratioE = parseFloat(state.clinicalData.forca_ombro.relacao_rlrm?.esquerdo);
-        const ratioD = parseFloat(state.clinicalData.forca_ombro.relacao_rlrm?.direito);
-        if (!isNaN(ratioE) && !isNaN(ratioD)) {
-            const deficit = Math.abs(((ratioE - ratioD) / Math.max(ratioE, ratioD)) * 100).toFixed(1);
-            state.clinicalData.forca_ombro.relacao_rlrm.deficit = deficit + '%';
-            const input = document.querySelector(`input[data-section="forca_ombro"][data-row="relacao_rlrm"][data-field="deficit"]`);
-            if (input) input.value = deficit + '%';
-        }
     }
 }
 
@@ -2051,53 +2632,91 @@ function setupPaintmapCanvas(canvas) {
     canvas.ctx = ctx;
 
     const imgSrc = canvas.dataset.image;
-    const img = new Image();
-    img.src = imgSrc;
-    img.onload = () => {
-        const maxWidth = 600;
-        let finalWidth = img.width;
-        let finalHeight = img.height;
 
-        if (finalWidth > maxWidth) {
-            const ratio = maxWidth / finalWidth;
-            finalWidth = maxWidth;
-            finalHeight = finalHeight * ratio;
-        }
+    // Load image as a data URI via a fetch so canvas won't be tainted
+    // (local file:// images taint canvases, preventing toDataURL)
+    function loadBgAndInit(dataUrl) {
+        const img = new Image();
+        img.onload = () => {
+            const maxWidth = 600;
+            let finalWidth = img.width;
+            let finalHeight = img.height;
 
-        canvas.width = finalWidth;
-        canvas.height = finalHeight;
+            if (finalWidth > maxWidth) {
+                const ratio = maxWidth / finalWidth;
+                finalWidth = maxWidth;
+                finalHeight = finalHeight * ratio;
+            }
 
-        canvas.bgImage = img;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            canvas.width = finalWidth;
+            canvas.height = finalHeight;
 
-        const section = canvas.dataset.section;
-        const field = canvas.dataset.field;
-        const existingData = state.clinicalData[section] && state.clinicalData[section][field];
-        const existingHistory = state.clinicalData[section] && state.clinicalData[section][field + '_history'];
+            canvas.bgImage = img;
+            canvas.bgDataUrl = dataUrl; // Store for safe re-draw
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        // Initialize vector history
-        canvas.strokeHistory = existingHistory ? [...existingHistory] : [];
+            const section = canvas.dataset.section;
+            const field = canvas.dataset.field;
+            const existingHistory = state.clinicalData[section] && state.clinicalData[section][field + '_history'];
 
-        if (existingHistory && existingHistory.length > 0) {
-            // Replay vector history
-            existingHistory.forEach(action => {
-                ctx.beginPath();
-                ctx.arc(action.x, action.y, 8, 0, 2 * Math.PI);
-                ctx.fillStyle = action.color;
-                ctx.fill();
-            });
-        } else if (existingData) {
-            // Fallback to image data if present
-            const savedImg = new Image();
-            savedImg.onload = () => {
-                ctx.drawImage(savedImg, 0, 0);
+            // Initialize vector history
+            canvas.strokeHistory = existingHistory ? [...existingHistory] : [];
+
+            if (existingHistory && existingHistory.length > 0) {
+                // Replay vector history
+                existingHistory.forEach(action => {
+                    ctx.beginPath();
+                    ctx.arc(action.x, action.y, 8, 0, 2 * Math.PI);
+                    ctx.fillStyle = action.color;
+                    ctx.fill();
+                });
+            }
+
+            // Save initial state (now untainted, toDataURL will work)
+            try {
+                state.clinicalData[section] = state.clinicalData[section] || {};
+                state.clinicalData[section][field] = canvas.toDataURL('image/png');
+            } catch (e) {
+                console.warn('paintmap toDataURL failed on init:', e);
+            }
+        };
+        img.src = dataUrl;
+    }
+
+    // Try to load via fetch to get a data URI
+    fetch(imgSrc)
+        .then(r => r.blob())
+        .then(blob => {
+            const reader = new FileReader();
+            reader.onload = () => loadBgAndInit(reader.result);
+            reader.readAsDataURL(blob);
+        })
+        .catch(() => {
+            // Fallback: load directly (may taint canvas on file://)
+            const img = new Image();
+            img.src = imgSrc;
+            img.onload = () => {
+                canvas.width = img.width > 600 ? 600 : img.width;
+                canvas.height = img.height * (canvas.width / img.width);
+                canvas.bgImage = img;
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                const section = canvas.dataset.section;
+                const field = canvas.dataset.field;
+                const existingHistory = state.clinicalData[section] && state.clinicalData[section][field + '_history'];
+                canvas.strokeHistory = existingHistory ? [...existingHistory] : [];
+                if (existingHistory) {
+                    existingHistory.forEach(a => {
+                        ctx.beginPath();
+                        ctx.arc(a.x, a.y, 8, 0, 2 * Math.PI);
+                        ctx.fillStyle = a.color;
+                        ctx.fill();
+                    });
+                }
             };
-            savedImg.src = existingData;
-        } else {
-            saveCanvasData(canvas);
-        }
-    };
+        });
+
 
     function hexToRgba(hex) {
         let r = parseInt(hex.slice(1, 3), 16);
@@ -2222,10 +2841,12 @@ function setupPaintmapCanvas(canvas) {
         state.clinicalData[section] = state.clinicalData[section] || {};
         state.clinicalData[section][field + '_history'] = [...canvas.strokeHistory];
 
-        // Try saving base64 for PDF rendering later if possible
+        // Save base64 after each interaction (canvas untainted since loaded via fetch)
         try {
             state.clinicalData[section][field] = canvas.toDataURL('image/png');
-        } catch (e) { }
+        } catch (e) {
+            console.warn('paintmap toDataURL failed on click:', e);
+        }
     }
 
     function handleInteraction(e) {
@@ -2258,11 +2879,11 @@ function setupPaintmapCanvas(canvas) {
 
 // ─── Free Drawing Canvas (Orientação para o Paciente) ───────────────────────
 function setupFreeCanvas(canvas) {
-    // Set canvas intrinsic size to wrapper width
+    // Aumentar para a largura total do container e 80% da altura da janela
     const wrapper = canvas.parentElement;
-    const W = wrapper ? wrapper.clientWidth || 800 : 800;
+    const W = wrapper ? wrapper.clientWidth || window.innerWidth - 40 : window.innerWidth - 40;
     canvas.width = W;
-    canvas.height = Math.round(W * 0.6);
+    canvas.height = window.innerHeight * 0.8;
 
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#ffffff';
@@ -2277,6 +2898,8 @@ function setupFreeCanvas(canvas) {
         const img = new Image();
         img.onload = () => ctx.drawImage(img, 0, 0);
         img.src = saved;
+    } else {
+        saveState();
     }
 
     // History for undo (each entry = ImageData snapshot)
@@ -2457,14 +3080,17 @@ window.finishQuestionnaire = async function finishQuestionnaire() {
             if (section.fields) {
                 section.fields.forEach(field => {
                     const val = sectionData[field.id];
-                    if (field.type === 'bodyschema' || field.type === 'paintmap') {
-                        collectedBodySchemas.push({
-                            title: field.label,
-                            image: field.image,
-                            dataUrl: sectionData[field.id],
-                            history: sectionData[field.id + '_history'] || []
-                        });
-                    } else if (val !== undefined && val !== null && val !== '' && field.type !== 'bodyschema' && field.type !== 'paintmap' && field.id !== 'intensidade_dor') {
+                    if (field.type === 'bodyschema' || field.type === 'paintmap' || field.type === 'angle_measurement' || field.type === 'freecanvas') {
+                        if (val || field.type === 'bodyschema' || field.type === 'paintmap' || field.type === 'freecanvas') {
+                            collectedBodySchemas.push({
+                                title: field.label,
+                                type: field.type,
+                                image: field.image || '', // angle/free might not have base image prop
+                                dataUrl: (val && val.startsWith('data:image')) ? val : '',
+                                history: sectionData[field.id + '_history'] || []
+                            });
+                        }
+                    } else if (val !== undefined && val !== null && val !== '' && field.id !== 'intensidade_dor') {
                         qaPairs.push({
                             section: section.title,
                             question: field.label,
@@ -2669,6 +3295,8 @@ window.finishQuestionnaire = async function finishQuestionnaire() {
 
         const modal = document.getElementById('modal-save-quick-assessment');
         modal.classList.remove('hidden');
+        modal.style.opacity = '1';
+        modal.style.zIndex = '9999';
         modal.style.pointerEvents = 'auto';
 
         // Expose global functions for the HTML buttons
@@ -2682,27 +3310,24 @@ window.finishQuestionnaire = async function finishQuestionnaire() {
         };
 
     } else if (state.patientId) {
-        // Guard against double-submission (Correção 8 - bug duplicação)
-        if (state.assessmentSaved) {
-            renderResults(result);
-            navigateTo('view-results');
-            return;
-        }
-        state.assessmentSaved = true;
-
-        // Patient is known, save silently in background
+        // Patient is known, save to DB as a new assessment (versioning)
         const submitBtnObj = document.getElementById('btn-next') || document.getElementById('btn-finish-clinical');
         const originalTextObj = submitBtnObj ? submitBtnObj.innerHTML : '';
         if (submitBtnObj) { submitBtnObj.innerHTML = 'Processando...'; submitBtnObj.disabled = true; }
 
         try {
-            await window.db.saveAssessment({
+            const assessmentData = {
                 patient_id: state.patientId,
                 assessment_type: q.id,
                 segment: state.selectedSegment,
                 clinical_data: q.type === 'clinical' ? state.clinicalData : null,
                 questionnaire_answers: q.type !== 'clinical' ? state.answers : null
-            });
+            };
+
+            // If state.selectedAssessmentId exists, it means we are editing an old one.
+            // User requested that edits save as NEW forms, so we force an insert 
+            // by NOT passing the primary key ID.
+            await window.db.saveAssessment(assessmentData);
         } catch (e) {
             console.error("Failed to save assessment to Supabase:", e);
             // Fail gracefully to results anyway
@@ -2787,7 +3412,7 @@ function renderResults(result) {
             <h2 class="print-only" style="font-size: 1.6rem; font-weight: 800; color: #1a1a1a; margin: 0;">${q.title}</h2>
         </header>
 
-        <div class="results-container glass-panel">
+        <div class="results-container glass-panel" id="view-results-content">
             <div style="text-align: left; border-bottom: 1px solid #eee; padding-bottom: 1.5rem; margin-bottom: 2rem;">
                 <p><strong>Paciente:</strong> ${state.patientInfo.name}</p>
                 <p><strong>Idade:</strong> ${state.patientInfo.age} anos</p>
@@ -2824,8 +3449,8 @@ function renderResults(result) {
                         <div class="glass-panel" style="margin-bottom: 1.5rem; text-align: center;">
                             <p><strong>${bs.title}:</strong></p>
                             ${bs.dataUrl
-            ? `<img src="${bs.dataUrl}" style="max-width: 50%; border-radius: 8px; border: 1px solid #eee; margin-top: 0.5rem; display: inline-block;">`
-            : `<canvas id="res-canvas-bs-${idx}" data-image="${bs.image}" style="max-width: 50%; border-radius: 8px; border: 1px solid #eee; margin-top: 0.5rem; display: inline-block;"></canvas>`
+            ? `<img src="${bs.dataUrl}" style="max-width: ${bs.type === 'freecanvas' ? '100%' : '50%'}; border-radius: 8px; border: 1px solid #eee; margin-top: 0.5rem; display: inline-block;">`
+            : `<canvas id="res-canvas-bs-${idx}" data-type="${bs.type}" data-image="${bs.image}" style="max-width: ${bs.type === 'freecanvas' ? '100%' : '50%'}; border-radius: 8px; border: 1px solid #eee; margin-top: 0.5rem; display: inline-block;"></canvas>`
         }
                         </div>
                     `).join('')}
@@ -2838,13 +3463,6 @@ function renderResults(result) {
                     ${result.details.relacao_iq ? `
                         <div class="glass-panel" style="margin-top: 1rem; padding: 0.8rem; border-left: 4px solid var(--primary-red);">
                             <p><strong>Relação I/Q:</strong> Esq: ${result.details.relacao_iq.esquerdo} | Dir: ${result.details.relacao_iq.direito}</p>
-                        </div>
-                    ` : ''}
-
-                    ${result.details.relacao_rlrm ? `
-                        <div class="glass-panel" style="margin-top: 1rem; padding: 0.8rem; border-left: 4px solid var(--primary-red);">
-                            <p><strong>Relação RL/RM:</strong> Esq: ${result.details.relacao_rlrm.esquerdo} | Dir: ${result.details.relacao_rlrm.direito} | Déficit: ${result.details.relacao_rlrm.deficit}</p>
-                            <p style="font-size: 0.8rem; color: #666; margin-top: 0.3rem;">* Valor normativo RL/RM: 72-76%</p>
                         </div>
                     ` : ''}
                 </div>
@@ -2865,13 +3483,12 @@ function renderResults(result) {
                 <button class="btn btn-secondary" id="btn-restart">
                     Nova Avaliação
                 </button>
-                <button class="btn btn-email" id="btn-email">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:0.5rem"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                    Enviar por E-mail
-                </button>
-                <button class="btn btn-primary" onclick="window.print()">
+                <button class="btn btn-primary" id="btn-pdf-download">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:0.5rem"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                    Imprimir / Salvar PDF
+                    Baixar PDF
+                </button>
+                <button class="btn btn-secondary" onclick="window.print()">
+                    Imprimir
                 </button>
             </div>
         </div>
@@ -2882,43 +3499,131 @@ function renderResults(result) {
 
     views['view-results'].innerHTML = html;
 
-    // Draw body schemas in results to bypass toDataURL taint issues
-    if (result.bodySchemas) {
-        result.bodySchemas.forEach((bs, idx) => {
-            const canvas = document.getElementById(`res-canvas-bs-${idx}`);
-            if (canvas) {
-                const ctx = canvas.getContext('2d');
-                const img = new Image();
-                img.src = bs.image;
-                img.onload = () => {
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0);
-                    // redraw history
-                    if (bs.history && bs.history.length > 0) {
-                        bs.history.forEach(action => {
-                            if (action.type === 'line' && action.points && action.points.length > 0) {
-                                ctx.beginPath();
-                                ctx.strokeStyle = 'rgba(217, 43, 43, 0.35)'; // Red color, more transparent
-                                ctx.lineWidth = 19; // Reduced by ~20%
-                                ctx.lineCap = 'round';
-                                ctx.lineJoin = 'round';
-                                ctx.moveTo(action.points[0].x, action.points[0].y);
-                                for (let i = 1; i < action.points.length; i++) {
-                                    ctx.lineTo(action.points[i].x, action.points[i].y);
-                                }
-                                ctx.stroke();
-                            } else if (action.x && action.y) {
-                                ctx.beginPath();
-                                ctx.arc(action.x, action.y, 8, 0, 2 * Math.PI);
-                                ctx.fillStyle = action.color || 'rgba(255, 0, 0, 0.5)';
-                                ctx.fill();
-                            }
-                        });
-                    }
+    // Attach PDF and DOC download event listeners
+    const btnPdf = document.getElementById('btn-pdf-download');
+    if (btnPdf) {
+        btnPdf.addEventListener('click', async () => {
+            const originalText = btnPdf.innerHTML;
+            btnPdf.innerHTML = '⏳ Gerando...';
+            btnPdf.disabled = true;
+            try {
+                const element = document.getElementById('view-results-content');
+                const opt = {
+                    margin: 10,
+                    filename: state._pdfFileName,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 };
+                await html2pdf().set(opt).from(element).save();
+            } catch (e) { console.error('Error generating PDF:', e); } finally {
+                btnPdf.innerHTML = originalText;
+                btnPdf.disabled = false;
             }
         });
+    }
+
+    const btnDoc = document.getElementById('btn-doc-download');
+    if (btnDoc) {
+        btnDoc.addEventListener('click', () => {
+            const element = document.getElementById('view-results-content');
+
+            // Basic styles for Word doc
+            const htmlContext = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head><meta charset='utf-8'><title>Export HTML to Word Docs</title></head>
+                <body>
+                    ${element.innerHTML}
+                </body>
+                </html>
+            `;
+            const blob = new Blob(['\ufeff', htmlContext], { type: 'application/msword;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = state._pdfFileName.replace('.pdf', '.doc');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+    }
+
+    // Draw body schemas in results - uses fetch to avoid canvas taint (file:// restriction)
+    if (result.bodySchemas) {
+        // Delay to ensure DOM canvas elements are fully rendered
+        setTimeout(() => {
+            result.bodySchemas.forEach((bs, idx) => {
+                const canvas = document.getElementById(`res-canvas-bs-${idx}`);
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+
+                function drawHistory() {
+                    if (!bs.history || bs.history.length === 0) return;
+                    bs.history.forEach(action => {
+                        if (action.type === 'line' && action.points && action.points.length > 0) {
+                            ctx.beginPath();
+                            ctx.strokeStyle = 'rgba(217, 43, 43, 0.35)';
+                            ctx.lineWidth = 19;
+                            ctx.lineCap = 'round';
+                            ctx.lineJoin = 'round';
+                            ctx.moveTo(action.points[0].x, action.points[0].y);
+                            for (let i = 1; i < action.points.length; i++) {
+                                ctx.lineTo(action.points[i].x, action.points[i].y);
+                            }
+                            ctx.stroke();
+                        } else if (action.x !== undefined && action.y !== undefined) {
+                            ctx.beginPath();
+                            ctx.arc(action.x, action.y, 10, 0, 2 * Math.PI);
+                            ctx.fillStyle = action.color || '#ff0000';
+                            ctx.globalAlpha = 0.85;
+                            ctx.fill();
+                            ctx.globalAlpha = 1.0;
+                        }
+                    });
+                }
+
+                function drawBg(dataUrl, onDone) {
+                    const img = new Image();
+                    img.onload = () => {
+                        const maxW = 600;
+                        let w = img.width, h = img.height;
+                        if (w > maxW) { h = h * (maxW / w); w = maxW; }
+                        canvas.width = w;
+                        canvas.height = h;
+                        ctx.drawImage(img, 0, 0, w, h);
+                        onDone();
+                    };
+                    img.onerror = () => {
+                        canvas.width = 600; canvas.height = 400;
+                        ctx.fillStyle = '#f9f9f9';
+                        ctx.fillRect(0, 0, 600, 400);
+                        onDone();
+                    };
+                    img.src = dataUrl;
+                }
+
+                if (bs.image) {
+                    // Use fetch + FileReader to convert to data URL (avoids canvas taint)
+                    fetch(bs.image)
+                        .then(r => r.blob())
+                        .then(blob => {
+                            const reader = new FileReader();
+                            reader.onload = () => drawBg(reader.result, drawHistory);
+                            reader.readAsDataURL(blob);
+                        })
+                        .catch(() => {
+                            // Fallback: load image directly anyway
+                            drawBg(bs.image, drawHistory);
+                        });
+                } else {
+                    canvas.width = 800; canvas.height = 600;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    drawHistory();
+                }
+            });
+        }, 200);
     }
 
     // Set document title so print dialog suggests correct filename (Correção 6)
@@ -2936,7 +3641,7 @@ function renderResults(result) {
             btnEmail.style.pointerEvents = 'none';
 
             try {
-                const element = document.querySelector('.results-container');
+                const element = document.getElementById('view-results-content');
                 const fileName = state._pdfFileName || `Avaliacao_${state.patientInfo.name.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}.pdf`;
                 const opt = {
                     margin: 10,
@@ -3291,13 +3996,11 @@ function renderCharts() {
                     },
                     {
                         label: 'Referência',
-                        type: 'line',
+                        type: 'bar',
                         data: refLineValues,
+                        backgroundColor: 'rgba(46, 204, 113, 0.2)',
                         borderColor: 'rgba(46, 204, 113, 1)',
-                        borderWidth: 2.5,
-                        borderDash: [6, 4],
-                        fill: false,
-                        pointRadius: 5,
+                        borderWidth: 1,
                         order: 1
                     }
                 ]
@@ -3361,14 +4064,11 @@ function renderCharts() {
                                 },
                                 {
                                     label: `Média de Referência (${refMean} s)`,
-                                    type: 'line',
+                                    type: 'bar',
                                     data: [refMean],
+                                    backgroundColor: 'rgba(46, 204, 113, 0.2)',
                                     borderColor: 'rgba(46, 204, 113, 1)',
-                                    borderWidth: 2.5,
-                                    borderDash: [6, 4],
-                                    fill: false,
-                                    pointRadius: 6,
-                                    pointStyle: 'circle',
+                                    borderWidth: 1,
                                     order: 1
                                 }
                             ]
@@ -3484,13 +4184,11 @@ function renderCharts() {
                         },
                         {
                             label: 'Média de Referência',
-                            type: 'line',
+                            type: 'bar',
                             data: refMeanData,
+                            backgroundColor: 'rgba(46, 204, 113, 0.2)',
                             borderColor: 'rgba(46, 204, 113, 1)',
-                            borderWidth: 2.5,
-                            borderDash: [6, 4],
-                            fill: false,
-                            pointRadius: 5,
+                            borderWidth: 1,
                             order: 1
                         }
                     ]
@@ -3556,13 +4254,11 @@ function renderCharts() {
                     },
                     {
                         label: `Média de Referência (${refMean} ${unit})`,
-                        type: 'line',
+                        type: 'bar',
                         data: [refMean],
+                        backgroundColor: 'rgba(46, 204, 113, 0.2)',
                         borderColor: 'rgba(46, 204, 113, 1)',
-                        borderWidth: 2.5,
-                        borderDash: [6, 4],
-                        fill: false,
-                        pointRadius: 6,
+                        borderWidth: 1,
                         order: 1
                     }
                 ]
@@ -3641,7 +4337,7 @@ function renderCharts() {
                     labels: [test.label],
                     datasets: [
                         { label: 'Paciente (s)', data: [val], backgroundColor: balColor, borderColor: balColor.replace('0.75', '1'), borderWidth: 1, order: 2 },
-                        { label: `Objetivo (${test.ref} s)`, type: 'line', data: [test.ref], borderColor: 'rgba(46, 204, 113, 1)', borderWidth: 2.5, borderDash: [6, 4], fill: false, pointRadius: 6, order: 1 }
+                        { label: `Objetivo (${test.ref} s)`, type: 'bar', data: [test.ref], backgroundColor: 'rgba(46, 204, 113, 0.2)', borderColor: 'rgba(46, 204, 113, 1)', borderWidth: 1, order: 1 }
                     ]
                 },
                 options: {
@@ -3675,7 +4371,7 @@ function renderCharts() {
                         labels: ['TUG'],
                         datasets: [
                             { label: 'Paciente (s)', data: [tugVal], backgroundColor: tugColor, borderColor: tugColor.replace('0.75', '1'), borderWidth: 1, order: 2 },
-                            { label: `Referência (${tugRef} s)`, type: 'line', data: [tugRef], borderColor: 'rgba(46, 204, 113, 1)', borderWidth: 2.5, borderDash: [6, 4], fill: false, pointRadius: 6, order: 1 }
+                            { label: `Referência (${tugRef} s)`, type: 'bar', data: [tugRef], backgroundColor: 'rgba(46, 204, 113, 0.2)', borderColor: 'rgba(46, 204, 113, 1)', borderWidth: 1, order: 1 }
                         ]
                     },
                     options: {

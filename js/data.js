@@ -380,7 +380,7 @@ const questionnairesData = {
         sections: [
             {
                 id: 'anamnese',
-                title: '2. Características da Disfunção',
+                title: 'Características da Disfunção',
                 fields: [
                     { id: 'queixa', label: 'Queixa Principal', type: 'textarea' },
                     { id: 'intensidade_dor', label: 'Intensidade da Dor', type: 'range', min: 0, max: 10, step: 1 },
@@ -393,7 +393,7 @@ const questionnairesData = {
             },
             {
                 id: 'neuro_forca',
-                title: '3. Avaliação Neurológica (Força Muscular)',
+                title: 'Avaliação Neurológica (Força Muscular)',
                 type: 'table',
                 columns: ['Miótono / Músculo', 'Esquerdo (0-5)', 'Direito (0-5)'],
                 rows: [
@@ -413,7 +413,7 @@ const questionnairesData = {
             },
             {
                 id: 'movimento_lombar',
-                title: '4. Avaliação do Movimento (Graus)',
+                title: 'Avaliação do Movimento (Graus)',
                 type: 'table',
                 columns: ['Movimento', { label: 'Graus', width: '25%' }, { label: 'Padrão / Observações', width: '55%' }],
                 rows: [
@@ -423,15 +423,15 @@ const questionnairesData = {
                     { id: 'incl_dir', label: 'Inclinação Direita', fields: ['graus', 'observacoes'] },
                     { id: 'flex_quad_esq', label: 'Flexão Quadril Esq.', fields: ['graus', 'observacoes'] },
                     { id: 'flex_quad_dir', label: 'Flexão Quadril Dir.', fields: ['graus', 'observacoes'] },
-                    { id: 'rot_med_quad_esq', label: 'Rot. Medial Quad. Esq. (90°)', fields: ['graus', 'observacoes'] },
-                    { id: 'rot_lat_quad_esq', label: 'Rot. Lateral Quad. Esq. (90°)', fields: ['graus', 'observacoes'] },
-                    { id: 'rot_med_quad_dir', label: 'Rot. Medial Quad. Dir. (90°)', fields: ['graus', 'observacoes'] },
-                    { id: 'rot_lat_quad_dir', label: 'Rot. Lateral Quad. Dir. (90°)', fields: ['graus', 'observacoes'] }
+                    { id: 'rot_med_quad_esq', label: 'Rot. Medial Quad. Esq.', fields: ['graus', 'observacoes'] },
+                    { id: 'rot_lat_quad_esq', label: 'Rot. Lateral Quad. Esq.', fields: ['graus', 'observacoes'] },
+                    { id: 'rot_med_quad_dir', label: 'Rot. Medial Quad. Dir.', fields: ['graus', 'observacoes'] },
+                    { id: 'rot_lat_quad_dir', label: 'Rot. Lateral Quad. Dir.', fields: ['graus', 'observacoes'] }
                 ]
             },
             {
                 id: 'palpacao_articular',
-                title: '5.1 Palpação e Irritabilidade - Articular',
+                title: 'Palpação e Irritabilidade - Articular',
                 type: 'table',
                 columns: ['Nível', 'Dor', 'Intensidade (0-10)'],
                 rows: [
@@ -451,7 +451,7 @@ const questionnairesData = {
             },
             {
                 id: 'testes_neurais',
-                title: '5.2 Teste Neural',
+                title: 'Teste Neural',
                 type: 'table',
                 columns: ['Teste', 'Esquerdo', 'Direito'],
                 rows: [
@@ -462,7 +462,7 @@ const questionnairesData = {
             },
             {
                 id: 'palpacao_miofascial',
-                title: '5.3 Palpação Miofascial',
+                title: 'Palpação Miofascial',
                 type: 'table',
                 columns: ['Músculo', 'Esquerdo', 'Direito'],
                 rows: [
@@ -478,7 +478,7 @@ const questionnairesData = {
             },
             {
                 id: 'resistencia',
-                title: '6. Testes de Resistência Muscular',
+                title: 'Testes de Resistência Muscular',
                 fields: [
                     { id: 'flexao_60', label: 'Flexão a 60º - Isometria Anterior (segundos)', type: 'number', props: 'min="0" step="1" placeholder="Ex: 120"' },
                     { id: 'sorensen', label: 'Teste de Sorensen - Isometria Posterior (segundos)', type: 'number', props: 'min="0" step="1" placeholder="Ex: 90"' }
@@ -486,10 +486,10 @@ const questionnairesData = {
             },
             {
                 id: 'diagnostico_conclusoes',
-                title: '7 e 8. Diagnóstico e Conclusões',
+                title: 'Diagnóstico e Conclusões',
                 fields: [
-                    { id: 'diagnostico', label: '7. Diagnóstico Cinético Funcional', type: 'textarea' },
-                    { id: 'conclusao', label: '8. Conclusões e Sugestões Terapêuticas', type: 'textarea' }
+                    { id: 'diagnostico', label: 'Diagnóstico Cinético Funcional', type: 'textarea' },
+                    { id: 'conclusao', label: 'Conclusões e Sugestões Terapêuticas', type: 'textarea' }
                 ]
             },
             {
@@ -2428,8 +2428,7 @@ const questionnairesData = {
                 rows: [
                     { id: 'abd_ombro', label: 'Abdução', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
                     { id: 'rl_ombro', label: 'Rotadores Laterais (RL)', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
-                    { id: 'rm_ombro', label: 'Rotadores Mediais (RM)', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
-                    { id: 'relacao_rlrm', label: 'Relação RL/RM (%)', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] }
+                    { id: 'rm_ombro', label: 'Rotadores Mediais (RM)', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] }
                 ]
             },
             {
@@ -2466,17 +2465,6 @@ const questionnairesData = {
                     const d = parseFloat(data[muscle].direito);
                     const deficit = Math.abs(((e - d) / Math.max(e, d)) * 100).toFixed(1);
                     results[muscle] = { deficit: deficit + '%' };
-                }
-            });
-
-            // Cálculo Relação RL/RM (Normal: 72-76%)
-            ['esquerdo', 'direito'].forEach(side => {
-                if (data.rl_ombro?.[side] && data.rm_ombro?.[side]) {
-                    const rl = parseFloat(data.rl_ombro[side]);
-                    const rm = parseFloat(data.rm_ombro[side]);
-                    const ratio = ((rl / rm) * 100).toFixed(1);
-                    results.relacao_rlrm = results.relacao_rlrm || {};
-                    results.relacao_rlrm[side] = ratio + '%';
                 }
             });
 
@@ -2533,6 +2521,44 @@ const questionnairesData = {
                 max: '-',
                 unit: '',
                 interpretation: 'Avaliação de sensibilidade registrada no mapa.',
+                clinicalData: data
+            };
+        }
+    },
+    af_analise_angular: {
+        id: 'af_analise_angular',
+        title: 'Análise Angular (Foto)',
+        segment: 'diversas',
+        description: 'Faça o upload de uma foto do paciente e trace ângulos articulares/posturais.',
+        icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>',
+        type: 'clinical',
+        sections: [
+            {
+                id: 'dadosClinicos',
+                title: 'Informações da Avaliação',
+                fields: [
+                    { id: 'diagnostico', label: 'Descrição da Postura/Movimento', type: 'textarea' },
+                    { id: 'observacoes', label: 'Observações Adicionais', type: 'textarea' }
+                ]
+            },
+            {
+                id: 'analiseAngular',
+                title: 'Estúdio de Análise',
+                fields: [
+                    {
+                        id: 'canvas_angular',
+                        type: 'angle_measurement',
+                        label: 'Clique abaixo para carregar a foto. Clique 3 vezes na imagem para formar um ângulo.'
+                    }
+                ]
+            }
+        ],
+        calculateScore: (data) => {
+            return {
+                score: 'Concluído',
+                max: '-',
+                unit: '',
+                interpretation: 'Análise fotográfica registrada.',
                 clinicalData: data
             };
         }

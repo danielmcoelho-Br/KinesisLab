@@ -192,6 +192,32 @@ h3 {
     background: var(--primary-red-light);
 }
 
+.nav-back-btn,
+.nav-home-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.nav-back-btn {
+    border: 1.5px solid #E0E0E0 !important;
+    color: var(--text-main) !important;
+    background: rgba(255,255,255,0.6) !important;
+    font-size: 0.9rem !important;
+    padding: 0.4rem 0.85rem !important;
+}
+
+.nav-back-btn:hover {
+    border-color: var(--primary-red) !important;
+    color: var(--primary-red) !important;
+    background: var(--primary-red-light) !important;
+}
+
+.nav-back-btn svg,
+.nav-home-btn svg {
+    flex-shrink: 0;
+}
+
 .header-nav {
     display: flex;
     gap: 0.5rem;

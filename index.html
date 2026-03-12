@@ -30,7 +30,14 @@
                 <h1>Kinesis<span class="highlight">Lab</span></h1>
             </div>
             <nav class="header-nav">
-                <button id="btn-home" class="nav-btn active">Início</button>
+                <button id="btn-back" class="nav-btn nav-back-btn hidden" title="Voltar">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    Voltar
+                </button>
+                <button id="btn-home" class="nav-btn nav-home-btn active" title="Página Inicial">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    Início
+                </button>
                 <button id="btn-admin-panel" class="nav-btn hidden panel-admin-btn">Painel Admin</button>
                 <div class="nav-divider"></div>
                 <div id="user-greeting" class="user-greeting"></div>
@@ -253,9 +260,12 @@
                     </div>
 
                     <div class="form-row">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="patient-age">Idade</label>
-                            <input type="number" id="patient-age" class="form-input" placeholder="Ex: 45">
+                        <div class="form-group" style="flex: 1.5;">
+                            <label for="patient-dob">Data de Nascimento</label>
+                            <input type="date" id="patient-dob" class="form-input">
+                            <span id="age-display"
+                                style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem;">Idade: --
+                                anos</span>
                         </div>
                         <div class="form-group" style="flex: 1.5;">
                             <label for="patient-gender">Sexo</label>
@@ -310,12 +320,13 @@
                 <p style="margin-bottom: 1.5rem; line-height: 1.5; color: #475569;">Gostaria de cadastrar o paciente
                     agora para salvar estes dados no histórico?</p>
                 <div style="display: flex; justify-content: flex-end; gap: 1rem;">
-                    <button class="btn btn-secondary"
-                        onclick="document.getElementById('modal-save-quick-assessment').classList.add('hidden'); document.getElementById('modal-save-quick-assessment').style.pointerEvents = 'none'; showResultsWithoutSaving();">Não,
+                    <button type="button" class="btn btn-secondary"
+                        onclick="document.getElementById('modal-save-quick-assessment').style.opacity = '0'; document.getElementById('modal-save-quick-assessment').style.pointerEvents = 'none'; setTimeout(() => document.getElementById('modal-save-quick-assessment').classList.add('hidden'), 300); showResultsWithoutSaving();">Não,
                         apenas mostrar</button>
-                    <button class="btn btn-primary"
-                        onclick="document.getElementById('modal-save-quick-assessment').classList.add('hidden'); document.getElementById('modal-save-quick-assessment').style.pointerEvents = 'none'; navigateToPatientRegistrationForQuickSave();">Sim,
+                    <button type="button" class="btn btn-primary"
+                        onclick="document.getElementById('modal-save-quick-assessment').style.opacity = '0'; document.getElementById('modal-save-quick-assessment').style.pointerEvents = 'none'; setTimeout(() => document.getElementById('modal-save-quick-assessment').classList.add('hidden'), 300); navigateToPatientRegistrationForQuickSave();">Sim,
                         cadastrar paciente</button>
+
                 </div>
             </div>
         </div>
@@ -380,7 +391,12 @@
                             </div>
                         </div>
 
-                        <div style="margin-top: 1rem; text-align: right;">
+                        <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                            <input type="hidden" id="edit-user-id" value="">
+                            <button type="button" class="btn btn-secondary" id="btn-cancel-edit-user"
+                                style="display: none;" onclick="window.cancelAdminEditUser()">
+                                Cancelar Edição
+                            </button>
                             <button type="submit" class="btn btn-primary" id="btn-submit-new-user">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2" style="margin-right:0.5rem">

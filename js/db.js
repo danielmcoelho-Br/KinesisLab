@@ -92,6 +92,27 @@ const db = {
     },
 
     /**
+     * Updates an existing user profile (admin only).
+     * @param {string} userId - The UUID of the user
+     * @param {Object} userData - { name, role, crefito }
+     */
+    async updateUser(userId, userData) {
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .update(userData)
+                .eq('id', userId)
+                .select();
+
+            if (error) throw error;
+            return data[0];
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            throw error;
+        }
+    },
+
+    /**
      * Saves a new patient to the database
      * @param {Object} patientData - { name, age, gender, dominance, activity_level }
      * @returns {Promise<Object>} The saved patient record with its new ID
@@ -139,6 +160,28 @@ const db = {
     },
 
     /**
+     * Updates an existing patient in the database
+     * @param {string} patientId - The UUID of the patient
+     * @param {Object} patientData - Data to update
+     * @returns {Promise<Object>} The updated patient record
+     */
+    async updatePatient(patientId, patientData) {
+        try {
+            const { data, error } = await supabase
+                .from('patients')
+                .update(patientData)
+                .eq('id', patientId)
+                .select();
+
+            if (error) throw error;
+            return data[0];
+        } catch (error) {
+            console.error('Error updating patient:', error);
+            throw error;
+        }
+    },
+
+    /**
      * Saves an assessment record linked to a patient
      * @param {Object} assessmentData - { patient_id, assessment_type, segment, clinical_data, questionnaire_answers }
      * @returns {Promise<Object>} The saved assessment record
@@ -154,6 +197,28 @@ const db = {
             return data[0];
         } catch (error) {
             console.error('Error saving assessment:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Updates an existing assessment record
+     * @param {string} assessmentId - The UUID of the assessment
+     * @param {Object} assessmentData - Data to update
+     * @returns {Promise<Object>} The updated assessment record
+     */
+    async updateAssessment(assessmentId, assessmentData) {
+        try {
+            const { data, error } = await supabase
+                .from('assessments')
+                .update(assessmentData)
+                .eq('id', assessmentId)
+                .select();
+
+            if (error) throw error;
+            return data[0];
+        } catch (error) {
+            console.error('Error updating assessment:', error);
             throw error;
         }
     },

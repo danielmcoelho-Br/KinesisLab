@@ -1,0 +1,73 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+
+model Patient {
+  id             String       @id @default(cuid())
+  name           String
+  birth_date     DateTime?
+  age            Int?
+  gender         String?
+
+  dominance      String?
+  activity_level String?
+  created_at     DateTime?    @default(now()) @db.Timestamptz(6)
+  assessments    Assessment[]
+
+  @@map("patients")
+}
+
+model Assessment {
+  id                    String    @id @default(cuid())
+  patient_id            String
+  assessment_type       String
+  segment               String
+  clinical_data         Json?
+  questionnaire_answers Json?
+  created_at            DateTime? @default(now()) @db.Timestamptz(6)
+  change_logs           Json?
+
+  patient               Patient   @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+
+
+  @@map("assessments")
+}
+
+
+model User {
+  id         String    @id @default(cuid())
+  email      String    @unique
+  password   String
+  name       String?
+  role       String    @default("user")
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@map("users")
+}
+
+model Profile {
+  id         String    @id @default(cuid())
+  user_id    String    @unique
+  name       String?
+  role       String?   @default("user")
+  crefito    String?
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@map("profiles")
+}
+
+

@@ -354,7 +354,9 @@ const questionnairesData = {
                 id: 'ndi_integracao',
                 title: 'NDI (Neck Disability Index)',
                 fields: [
-                    { id: 'ndi_busca', label: 'Buscar resposta NDI na base de dados (Ex: ID do paciente)', type: 'text' },
+                    { id: 'ndi_score_previo', label: 'Score Questionário Prévio', type: 'text' },
+                    { id: 'ndi_data_previo', label: 'Data da Avaliação Prévia', type: 'date' },
+                    { id: 'ndi_obs_previo', label: 'Observações Básicas', type: 'textarea' },
                     { id: 'ndi_novo', label: 'Preencher novo Questionário NDI', type: 'button', props: "value='Abrir NDI' onclick='window.abrirModalNDI && window.abrirModalNDI()'" },
                     { id: 'ndi_score', label: 'Resultado/Score NDI Atual', type: 'text', props: 'readonly placeholder="O score aparecerá automaticamente aqui"' }
                 ]
@@ -496,7 +498,9 @@ const questionnairesData = {
                 id: 'oswestry_integracao',
                 title: 'ODI (Índice de Incapacidade de Oswestry)',
                 fields: [
-                    { id: 'oswestry_busca', label: 'Buscar resposta ODI na base de dados (Ex: ID do paciente)', type: 'text' },
+                    { id: 'oswestry_score_previo', label: 'Score Questionário Prévio', type: 'text' },
+                    { id: 'oswestry_data_previo', label: 'Data da Avaliação Prévia', type: 'date' },
+                    { id: 'oswestry_obs_previo', label: 'Observações Básicas', type: 'textarea' },
                     { id: 'oswestry_novo', label: 'Preencher novo Questionário ODI', type: 'button', props: "value='Abrir ODI' onclick='window.abrirModalOswestry && window.abrirModalOswestry()'" },
                     { id: 'oswestry_score', label: 'Resultado/Score ODI Atual', type: 'text', props: 'readonly placeholder="O score aparecerá automaticamente aqui"' }
                 ]
@@ -2330,6 +2334,14 @@ const questionnairesData = {
                     { id: 'diagnostico', label: 'Diagnóstico Cinético Funcional', type: 'textarea' },
                     { id: 'conclusao', label: 'Conclusões e Sugestões Terapêuticas', type: 'textarea' }
                 ]
+            },
+            {
+                id: 'quickdash_integracao',
+                title: 'Quick DASH (Braço, Ombro e Mão)',
+                fields: [
+                    { id: 'quickdash_novo', label: 'Preencher novo Questionário Quick DASH', type: 'button', props: "value='Abrir Quick DASH' onclick='window.abrirModalQuickdash && window.abrirModalQuickdash()'" },
+                    { id: 'quickdash_score', label: 'Resultado/Score Quick DASH Atual', type: 'text', props: 'readonly placeholder="O score aparecerá automaticamente aqui"' }
+                ]
             }
         ],
         calculateScore: (data) => {
@@ -2428,7 +2440,8 @@ const questionnairesData = {
                 rows: [
                     { id: 'abd_ombro', label: 'Abdução', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
                     { id: 'rl_ombro', label: 'Rotadores Laterais (RL)', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
-                    { id: 'rm_ombro', label: 'Rotadores Mediais (RM)', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] }
+                    { id: 'rm_ombro', label: 'Rotadores Mediais (RM)', fields: ['esquerdo', 'direito', 'deficit'], readonly: ['deficit'] },
+                    { id: 'relacao_rl_rm', label: 'Relação RL/RM', fields: ['esquerdo', 'direito'], readonly: ['esquerdo', 'direito'] }
                 ]
             },
             {
@@ -2458,15 +2471,31 @@ const questionnairesData = {
         calculateScore: (data) => {
             const results = {};
 
-            // Cálculo Déficits de Força
+            // Cálculo Déficit de Força - Abdução, RL e RM
             ['abd_ombro', 'rl_ombro', 'rm_ombro'].forEach(muscle => {
                 if (data[muscle] && data[muscle].esquerdo && data[muscle].direito) {
                     const e = parseFloat(data[muscle].esquerdo);
                     const d = parseFloat(data[muscle].direito);
-                    const deficit = Math.abs(((e - d) / Math.max(e, d)) * 100).toFixed(1);
-                    results[muscle] = { deficit: deficit + '%' };
+                    if (!isNaN(e) && !isNaN(d) && Math.max(e, d) > 0) {
+                        const deficit = Math.abs(((e - d) / Math.max(e, d)) * 100).toFixed(1);
+                        results[muscle] = { deficit: deficit + '%' };
+                    }
                 }
             });
+
+            // Cálculo Relação RL/RM (por lado)
+            const rl = data['rl_ombro'];
+            const rm = data['rm_ombro'];
+            if (rl && rm) {
+                const relacaoEsq = (rl.esquerdo && rm.esquerdo) ? (parseFloat(rl.esquerdo) / parseFloat(rm.esquerdo)) : null;
+                const relacaoDir = (rl.direito && rm.direito) ? (parseFloat(rl.direito) / parseFloat(rm.direito)) : null;
+                if (relacaoEsq !== null || relacaoDir !== null) {
+                    results['relacao_rl_rm'] = {
+                        esquerdo: relacaoEsq !== null && !isNaN(relacaoEsq) ? relacaoEsq.toFixed(2) : '',
+                        direito: relacaoDir !== null && !isNaN(relacaoDir) ? relacaoDir.toFixed(2) : ''
+                    };
+                }
+            }
 
             return {
                 score: 'Concluído',

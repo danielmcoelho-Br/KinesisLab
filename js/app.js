@@ -448,7 +448,7 @@ async function loadAdminUsers() {
 
             html += `
                 <tr>
-                    <td style="font-weight: 500; color: var(--text-main);">${u.name}</td>
+                    <td style="font-weight: 500; color: #2C3E50;">${u.name}</td>
                     <td><span class="role-badge ${roleClass}">${roleLabel}</span></td>
                     <td style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem;">${u.id}</td>
                     <td>${editBtn}${deleteBtn}</td>
@@ -810,7 +810,7 @@ window.editHistoricalAssessment = function (assessmentId) {
     }
 
     state.assessmentSaved = false; // Reset so the edited form can be saved as a new record
-    state.assessmentId = null; // Ensure it's treated as new, not an update
+    state._subQuestionnaireAssessmentId = null; // Reset session lock ID to ensure it creates a NEW record (version history)
 };
 
 window.adminDeleteAssessment = async function (assessmentId) {
@@ -1079,6 +1079,40 @@ function recompileHistoricalResults(q) {
 }
 
 
+// Helper to return to the parent clinical form from a sub-questionnaire
+window.returnToParentForm = function() {
+    if (!state._parentClinicalData || !state._parentQuestionnaire) return;
+    
+    // Restore parent state
+    state.currentQuestionnaire = state._parentQuestionnaire;
+    state.clinicalData = state._parentClinicalData;
+    state._subQuestionnaireAssessmentId = state._parentAssessmentId || null;
+    
+    // Apply synced values from localStorage directly into the clinicalData state
+    const syncKeys = ['ndi', 'oswestry', 'quickdash', 'lysholm', 'womac', 'ikdc', 'aofas', 'man', 'ves13', 'lbpq', 'brief'];
+    syncKeys.forEach(key => {
+        const val = localStorage.getItem(`${key}_sync_result`);
+        if (val) {
+            state.currentQuestionnaire.sections?.forEach(sec => {
+                const targetFieldId = `${key}_score`;
+                if (sec.fields && sec.fields.find(f => f.id === targetFieldId)) {
+                    if (!state.clinicalData[sec.id]) state.clinicalData[sec.id] = {};
+                    state.clinicalData[sec.id][targetFieldId] = val;
+                }
+            });
+            localStorage.removeItem(`${key}_sync_result`);
+        }
+    });
+
+    // Clear parent state to signify we're back in the main form
+    state._parentClinicalData = null;
+    state._parentQuestionnaire = null;
+    state._parentAssessmentId = null;
+
+    renderClinicalForm();
+    navigateTo('view-questionnaire');
+};
+
 // Helper to launch any questionnaire in-app (preserves patientId for saving)
 function launchInAppQuestionnaire(questionnaireId, segmentOverride) {
     const q = questionnairesData[questionnaireId];
@@ -1087,11 +1121,13 @@ function launchInAppQuestionnaire(questionnaireId, segmentOverride) {
     // Save clinical context so we can return to it after the sub-questionnaire
     state._parentClinicalData = state.clinicalData ? { ...state.clinicalData } : null;
     state._parentQuestionnaire = state.currentQuestionnaire || null;
+    state._parentAssessmentId = state._subQuestionnaireAssessmentId || null;
 
     state.currentQuestionnaire = q;
     if (segmentOverride) state.selectedSegment = segmentOverride;
     state.answers = {};
     state.currentQuestionIndex = 0;
+    state._subQuestionnaireAssessmentId = null; // Clear ID so sub-questionnaire saves as NEW
     // Keep state.patientId and state.patientInfo as-is (critical for saving)
     renderQuestionnaire();
     navigateTo('view-questionnaire');
@@ -1251,7 +1287,6 @@ function navigateTo(viewId) {
             navigateTo('view-segments');
             return;
         }
-
     }
 }
 
@@ -1263,173 +1298,6 @@ window.selectSegment = function (segmentId) {
 };
 
 // 2. Render Dashboard for Selected Segment
-async function shareBlankQuestionnairePDF(qId, event) {
-    if (event) event.preventDefault();
-
-    // Find the questionnaire
-    let q = questionnairesData[qId] || null;
-
-    if (!q) return;
-
-    // Show loading state on the clicked button
-    const btn = event.currentTarget;
-    const originalHtml = btn.innerHTML;
-    if (btn) {
-        btn.innerHTML = 'Gerando...';
-        btn.style.opacity = '0.5';
-        btn.style.pointerEvents = 'none';
-    }
-
-    try {
-        // Create an invisible container for the PDF content
-        const container = document.createElement('div');
-        container.style.position = 'absolute';
-        container.style.left = '-9999px';
-        container.style.top = '0';
-        container.style.width = '800px';
-        container.style.backgroundColor = '#ffffff';
-        container.style.padding = '40px';
-        container.style.fontFamily = "'Inter', sans-serif";
-        container.style.color = '#333';
-
-        let html = `
-            <div style="text-align: center; border-bottom: 2px solid #e02f2f; padding-bottom: 20px; margin-bottom: 30px;">
-                <h1 style="color: #e02f2f; margin: 0; font-size: 24px;">KINESIS LAB</h1>
-                <h2 style="color: #555; margin: 10px 0 0 0; font-size: 20px;">${q.title}</h2>
-            </div>
-            
-            <div style="margin-bottom: 30px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">
-                    <span style="font-weight: bold;">Nome do Paciente:</span>
-                    <span style="flex-grow: 1; border-bottom: 1px solid #000; margin-left: 10px;"></span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">
-                    <span style="font-weight: bold;">Data:</span>
-                    <span style="width: 200px; border-bottom: 1px solid #000; margin-left: 10px;"></span>
-                </div>
-            </div>
-            
-            <p style="font-style: italic; color: #666; margin-bottom: 30px;">
-                Por favor, leia atentamente cada questão e marque a alternativa que melhor descreve sua condição ou responda no espaço adequado.
-            </p>
-        `;
-
-        if (q.questions) {
-            let qNum = 1;
-            q.questions.forEach((question) => {
-                if (question.isInstruction) {
-                    html += `<div style="margin-bottom: 20px; font-weight: 600; color: #444; background: #f9f9f9; padding: 10px; border-radius: 4px;">${question.text}</div>`;
-                    return;
-                }
-
-                html += `
-                    <div style="margin-bottom: 20px; page-break-inside: avoid;">
-                        <p style="font-weight: 600; margin-bottom: 8px;">${qNum}. ${question.text}</p>
-                        <div style="display: flex; flex-direction: column; gap: 6px; padding-left: 20px;">
-                            ${question.options.map(opt => `
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <div style="width: 14px; height: 14px; border: 1px solid #999; border-radius: 50%;"></div>
-                                    <span style="font-size: 14px;">(${opt.value}) ${opt.label}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-                qNum++;
-            });
-        } else if (q.sections) {
-            // Support for Clinical Forms in Blank PDF
-            q.sections.forEach(section => {
-                html += `<h3 style="color: #A31621; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 25px;">${section.title}</h3>`;
-
-                if (section.fields) {
-                    html += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">`;
-                    section.fields.forEach(field => {
-                        html += `
-                            <div style="display: flex; flex-direction: column; margin-bottom: 10px;">
-                                <label style="font-weight: 600; font-size: 13px; margin-bottom: 4px;">${field.label}</label>
-                                <div style="border: 1px solid #ddd; height: ${field.type === 'textarea' || field.type === 'bodyschema' ? '60px' : '25px'}; border-radius: 4px;"></div>
-                            </div>
-                        `;
-                    });
-                    html += `</div>`;
-                }
-
-                if (section.rows) {
-                    html += `
-                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px;">
-                            <thead>
-                                <tr style="background: #f5f5f5;">
-                                    <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Item</th>
-                                    ${section.columns ? section.columns.slice(1).map(c => `<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">${typeof c === 'object' ? c.label : c}</th>`).join('') : ''}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${section.rows.map(row => `
-                                    <tr>
-                                        <td style="border: 1px solid #ddd; padding: 6px;">${row.label}</td>
-                                        ${row.fields ? row.fields.map(() => `<td style="border: 1px solid #ddd; padding: 6px; text-align: center;"></td>`).join('') : ''}
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    `;
-                }
-            });
-        }
-
-        html += `
-            <div style="margin-top: 50px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #eee; padding-top: 20px;">
-                Documento gerado por Kinesis Lab - Fisioterapia Especializada
-            </div>
-        `;
-
-        container.innerHTML = html;
-        document.body.appendChild(container);
-
-        const opt = {
-            margin: 10,
-            filename: `Questionario_${q.title.replace(/\s+/g, '_')}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        const pdfBlob = await html2pdf().set(opt).from(container).output('blob');
-        const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
-
-        document.body.removeChild(container);
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-                files: [file],
-                title: q.title,
-                text: `Olá! Segue em anexo o questionário: ${q.title}. Por favor, preencha e nos devolva.`
-            });
-        } else {
-            alert("Seu navegador não suporta compartilhamento direto de arquivos. O PDF será baixado no seu computador. Após abrir o WhatsApp, por favor, anexe o arquivo manualmente na conversa do paciente.");
-            const url = URL.createObjectURL(pdfBlob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = opt.filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-    } catch (err) {
-        console.error('Erro ao gerar questionário:', err);
-        alert("Ops! Houve um erro ao gerar o PDF deste questionário.");
-    } finally {
-        if (btn) {
-            btn.innerHTML = originalHtml;
-            btn.style.opacity = '1';
-            btn.style.pointerEvents = 'auto';
-        }
-    }
-}
-
 function renderDashboard() {
     questionnaireList.innerHTML = '';
 
@@ -1451,8 +1319,6 @@ function renderDashboard() {
         const card = document.createElement('div');
         card.className = 'evaluation-card glass-panel';
 
-        const canSendToPatient = q.questions && !q.type;
-
         card.innerHTML = `
             <div class="card-icon">
                 ${q.icon}
@@ -1463,14 +1329,6 @@ function renderDashboard() {
                 Selecionar
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </div>
-            ${canSendToPatient ? `
-            <a class="card-send-patient" 
-               href="#" 
-               onclick="shareBlankQuestionnairePDF('${q.id}', event)"
-               title="Gerar PDF e compartilhar questionário em branco">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-                Compartilhar
-            </a>` : ''}
         `;
 
         card.addEventListener('click', (e) => {
@@ -1647,6 +1505,7 @@ function startQuestionnaire() {
     state.clinicalData = {}; // Clear previous clinical data
     state.currentQuestionIndex = 0;
     state.assessmentSaved = false; // Reset flag to prevent duplicate saves
+    state._subQuestionnaireAssessmentId = null; // Clear any previous sub-quest id
 
     renderQuestionnaire();
     navigateTo('view-questionnaire');
@@ -1677,6 +1536,13 @@ function renderQuestionnaire() {
         <header class="view-header">
             <h2>${q.title}</h2>
             <p>Paciente: ${state.patientInfo.name}</p>
+            ${state._parentQuestionnaire ? `
+                <div style="margin-top: 1rem;">
+                    <button class="btn btn-secondary" onclick="window.returnToParentForm && window.returnToParentForm()">
+                        Cancelar e Voltar ao Formulário
+                    </button>
+                </div>
+            ` : ''}
         </header>
 
         <div class="question-container">
@@ -1701,7 +1567,7 @@ function renderQuestionnaire() {
                 </button>
                 ${isInstruction
             ? `<button class="btn btn-primary" id="btn-next">Continuar</button>`
-            : `<button class="btn btn-primary" id="btn-next" ${state.answers[state.currentQuestionIndex] !== undefined ? '' : 'disabled style="opacity:0.5;cursor:not-allowed;"'}>Próxima</button>`
+            : `<button class="btn btn-primary" id="btn-next" ${state.answers[state.currentQuestionIndex] !== undefined ? '' : 'disabled style="opacity:0.5;cursor:not-allowed;"'}>${state.currentQuestionIndex === q.questions.length - 1 ? 'Finalizar' : 'Próxima'}</button>`
         }
             </div>
         </div>
@@ -1723,7 +1589,10 @@ function renderQuestionnaire() {
                 nextBtn.style.opacity = '1';
                 nextBtn.style.cursor = 'pointer';
 
-                setTimeout(handleNext, 400);
+                // Auto-advance only if it's NOT the last question
+                if (state.currentQuestionIndex < q.questions.length - 1) {
+                    setTimeout(handleNext, 400);
+                }
             });
         });
     }
@@ -2388,6 +2257,24 @@ function drawAngle(ctx, points, color) {
 }
 
 
+function updateDéficitsGeneric(sectionId, rows) {
+    const sectionData = state.clinicalData[sectionId];
+    if (!sectionData) return;
+    rows.forEach(rowId => {
+        const rowData = sectionData[rowId];
+        if (rowData && rowData.esquerdo && rowData.direito) {
+            const e = parseFloat(rowData.esquerdo);
+            const d = parseFloat(rowData.direito);
+            if (!isNaN(e) && !isNaN(d) && (e > 0 || d > 0)) {
+                const deficit = Math.abs(((e - d) / Math.max(e, d)) * 100).toFixed(1);
+                state.clinicalData[sectionId][rowId].deficit = deficit + '%';
+                const input = document.querySelector(`input[data-section="${sectionId}"][data-row="${rowId}"][data-field="deficit"]`);
+                if (input) input.value = deficit + '%';
+            }
+        }
+    });
+}
+
 function updateDéficits(section = 'forca') {
     const sectionData = state.clinicalData[section];
     if (!sectionData) return;
@@ -2399,26 +2286,9 @@ function updateDéficits(section = 'forca') {
             ? ['preensao_palmar', 'pinca_polpa', 'pinca_lateral', 'pinca_tripode']
             : section === 'testes_especiais'
                 ? ['peri_joelho', 'peri_coxa']
-                : ['abd_ombro', 'rl_ombro', 'rm_ombro'];
-
-    // Generic deficit calculator for sections with non-standard row names
-    function updateDéficitsGeneric(sectionId, rows) {
-        const sectionData = state.clinicalData[sectionId];
-        if (!sectionData) return;
-        rows.forEach(rowId => {
-            const rowData = sectionData[rowId];
-            if (rowData && rowData.esquerdo && rowData.direito) {
-                const e = parseFloat(rowData.esquerdo);
-                const d = parseFloat(rowData.direito);
-                if (!isNaN(e) && !isNaN(d) && (e > 0 || d > 0)) {
-                    const deficit = Math.abs(((e - d) / Math.max(e, d)) * 100).toFixed(1);
-                    state.clinicalData[sectionId][rowId].deficit = deficit + '%';
-                    const input = document.querySelector(`input[data-section="${sectionId}"][data-row="${rowId}"][data-field="deficit"]`);
-                    if (input) input.value = deficit + '%';
-                }
-            }
-        });
-    }
+                : section === 'forca_ombro'
+                    ? ['abd_ombro', 'rl_ombro', 'rm_ombro']
+                    : [];
 
     rowsToCalculate.forEach(rowId => {
         const rowData = sectionData[rowId];
@@ -2434,7 +2304,7 @@ function updateDéficits(section = 'forca') {
         }
     });
 
-    // Relações Específicas
+    // Relações Específicas: I/Q (Joelho)
     if (section === 'forca') {
         const forca = sectionData;
         ['esquerdo', 'direito'].forEach(side => {
@@ -2449,10 +2319,22 @@ function updateDéficits(section = 'forca') {
                 if (input) input.value = ratio;
             }
         });
+    }
 
-        const iqE = parseFloat(state.clinicalData.forca.relacao_iq?.esquerdo);
-        const iqD = parseFloat(state.clinicalData.forca.relacao_iq?.direito);
-        // Removed: deficit calculation for relacao_iq (not needed)
+    // Relação RL/RM (Ombro) — calculada por lado, sem déficit bilateral
+    if (section === 'forca_ombro') {
+        ['esquerdo', 'direito'].forEach(side => {
+            const rl = sectionData.rl_ombro && parseFloat(sectionData.rl_ombro[side]);
+            const rm = sectionData.rm_ombro && parseFloat(sectionData.rm_ombro[side]);
+
+            if (!isNaN(rl) && !isNaN(rm) && rm > 0) {
+                const ratio = (rl / rm).toFixed(2);
+                state.clinicalData.forca_ombro.relacao_rl_rm = state.clinicalData.forca_ombro.relacao_rl_rm || {};
+                state.clinicalData.forca_ombro.relacao_rl_rm[side] = ratio;
+                const input = document.querySelector(`input[data-section="forca_ombro"][data-row="relacao_rl_rm"][data-field="${side}"]`);
+                if (input) input.value = ratio;
+            }
+        });
     }
 }
 
@@ -3035,6 +2917,9 @@ function handleNext() {
 
 // 5. Finish and Calculate
 window.finishQuestionnaire = async function finishQuestionnaire() {
+    if (state.isSaving) return; // Prevent concurrent saves
+    state.isSaving = true;
+
     // Ensure patientInfo exists with a valid date (required for renderResults)
     if (!state.patientInfo) {
         state.patientInfo = { name: 'Paciente', age: '-', gender: '-', date: new Date().toISOString() };
@@ -3042,7 +2927,7 @@ window.finishQuestionnaire = async function finishQuestionnaire() {
     if (!state.patientInfo.date) {
         state.patientInfo.date = new Date().toISOString();
     }
-    const q = state.currentQuestionnaire;
+        const q = state.currentQuestionnaire;
 
     const actualAnswers = {};
     const qaPairs = [];
@@ -3177,8 +3062,8 @@ window.finishQuestionnaire = async function finishQuestionnaire() {
                                 rowsContent.push(`
                                     <div style="display: flex; border-bottom: 1px dashed #f0f0f0; padding: 6px 0;">
                                         <div style="flex: 2; font-weight: 500;">${row.label}</div>
-                                        <div style="flex: 1; text-align: center; color: ${valEsq === 'Positivo' ? 'var(--primary-red)' : '#666'}">${valEsq}</div>
-                                        <div style="flex: 1; text-align: center; color: ${valDir === 'Positivo' ? 'var(--primary-red)' : '#666'}">${valDir}</div>
+                                        <div style="flex: 1; text-align: center; color: ${valEsq === 'Positivo' ? '#A31621' : '#666'}">${valEsq}</div>
+                                        <div style="flex: 1; text-align: center; color: ${valDir === 'Positivo' ? '#A31621' : '#666'}">${valDir}</div>
                                     </div>
                                 `);
                             }
@@ -3301,13 +3186,22 @@ window.finishQuestionnaire = async function finishQuestionnaire() {
 
         // Expose global functions for the HTML buttons
         window.showResultsWithoutSaving = () => {
+            state.isSaving = false;
+            const m = document.getElementById('modal-save-quick-assessment');
+            if (m) { m.classList.add('hidden'); m.style.opacity = '0'; m.style.pointerEvents = 'none'; }
             renderResults(result);
             navigateTo('view-results');
         };
 
         window.navigateToPatientRegistrationForQuickSave = () => {
+            state.isSaving = false;
+            const m = document.getElementById('modal-save-quick-assessment');
+            if (m) { m.classList.add('hidden'); m.style.opacity = '0'; m.style.pointerEvents = 'none'; }
             navigateTo('view-patient-info');
         };
+
+        // Return early so we DON'T run the unconditional renderResults at the bottom yet
+        return;
 
     } else if (state.patientId) {
         // Patient is known, save to DB as a new assessment (versioning)
@@ -3325,23 +3219,26 @@ window.finishQuestionnaire = async function finishQuestionnaire() {
             };
 
             // If state.selectedAssessmentId exists, it means we are editing an old one.
-            // User requested that edits save as NEW forms, so we force an insert 
-            // by NOT passing the primary key ID.
-            await window.db.saveAssessment(assessmentData);
+            if (state._subQuestionnaireAssessmentId) {
+                // We already saved this specific sub-questionnaire instance in this run. Update it to prevent duplicates.
+                await window.db.updateAssessment(state._subQuestionnaireAssessmentId, assessmentData);
+            } else {
+                const savedRecord = await window.db.saveAssessment(assessmentData);
+                if (savedRecord && savedRecord.id) {
+                    state._subQuestionnaireAssessmentId = savedRecord.id;
+                }
+            }
         } catch (e) {
             console.error("Failed to save assessment to Supabase:", e);
-            // Fail gracefully to results anyway
         } finally {
             if (submitBtnObj) { submitBtnObj.innerHTML = originalTextObj; submitBtnObj.disabled = false; }
         }
-
-        renderResults(result);
-        navigateTo('view-results');
-    } else {
-        // Edge case fallback
-        renderResults(result);
-        navigateTo('view-results');
     }
+    
+    // Unconditionally render and navigate if not quick assessment break
+    state.isSaving = false;
+    renderResults(result);
+    navigateTo('view-results');
 }
 
 // 6. Render Results with Patient Info
@@ -3362,7 +3259,7 @@ function renderResults(result) {
             let sectionHeader = '';
             if (pair.section && pair.section !== lastSection) {
                 // Changed to dark red for the section headers 
-                sectionHeader = `<div style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: bold; color: var(--primary-red); text-transform: uppercase; font-size: 0.9rem; border-bottom: 1px solid #ccc; padding-bottom: 0.2rem;">${pair.section}</div>`;
+                sectionHeader = `<div style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: bold; color: #A31621; text-transform: uppercase; font-size: 0.9rem; border-bottom: 1px solid #ccc; padding-bottom: 0.2rem;">${pair.section}</div>`;
                 lastSection = pair.section;
             }
 
@@ -3394,7 +3291,7 @@ function renderResults(result) {
         // Duplicated Detalhamento header removed
         qaSectionHtml = `
             <div class="results-qa-section" style="text-align: left; margin-top: 1rem;">
-                ${q.type === 'clinical' ? '' : `<h4 style="color: var(--primary-red); margin-bottom: 1.2rem;">Respostas do Paciente</h4>`}
+                ${q.type === 'clinical' ? '' : `<h4 style="color: #A31621; margin-bottom: 1.2rem;">Respostas do Paciente</h4>`}
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                     ${qaListHtml}
                 </div>
@@ -3408,11 +3305,11 @@ function renderResults(result) {
     let html = `
         <header class="view-header">
             <h2 class="no-print">Resultado da Avaliação</h2>
-            <p class="no-print" style="color: var(--text-muted);">${q.title}</p>
+            <p class="no-print" style="color: #6C7A89;">${q.title}</p>
             <h2 class="print-only" style="font-size: 1.6rem; font-weight: 800; color: #1a1a1a; margin: 0;">${q.title}</h2>
         </header>
 
-        <div class="results-container glass-panel" id="view-results-content">
+        <div class="results-container" id="view-results-content" style="background: white; border-radius: 0; border: 1px solid #e2e8f0;">
             <div style="text-align: left; border-bottom: 1px solid #eee; padding-bottom: 1.5rem; margin-bottom: 2rem;">
                 <p><strong>Paciente:</strong> ${state.patientInfo.name}</p>
                 <p><strong>Idade:</strong> ${state.patientInfo.age} anos</p>
@@ -3426,8 +3323,8 @@ function renderResults(result) {
                     ${result.percentage !== undefined ? result.percentage : result.score}<span style="font-size:1.5rem">${result.unit === '%' ? '%' : ''}</span>
                 </div>
                 
-                <h3 style="font-size:2rem; margin-bottom: 0.5rem; color: var(--text-main);">
-                    Score: ${result.score} <span style="font-size:1rem; color:var(--text-muted)">/ ${result.max} ${result.unit !== '%' ? result.unit : ''}</span>
+                <h3 style="font-size:2rem; margin-bottom: 0.5rem; color: #2C3E50;">
+                    Score: ${result.score} <span style="font-size:1rem; color:#6C7A89">/ ${result.max} ${result.unit !== '%' ? result.unit : ''}</span>
                 </h3>
                 
                 <div class="results-interpretation">
@@ -3437,16 +3334,16 @@ function renderResults(result) {
 
             ${result.details ? `
                 <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-                    <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Detalhamento Clínico</h4>
+                    <h4 style="color: #A31621; margin-bottom: 1rem;">Detalhamento Clínico</h4>
                     
                     ${state.clinicalData && state.clinicalData.anamnese && state.clinicalData.anamnese.intensidade_dor !== undefined ? `
-                        <div class="glass-panel" style="margin-bottom: 1.5rem; text-align: center;">
-                            <p><strong>Intensidade da Dor (EVA):</strong> <span style="font-size: 1.5rem; font-weight: bold; color: var(--primary-red);">${state.clinicalData.anamnese.intensidade_dor}</span> / 10</p>
+                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center;">
+                            <p><strong>Intensidade da Dor (EVA):</strong> <span style="font-size: 1.5rem; font-weight: bold; color: #A31621;">${state.clinicalData.anamnese.intensidade_dor}</span> / 10</p>
                         </div>
                     ` : ''}
 
                     ${(result.bodySchemas || []).map((bs, idx) => `
-                        <div class="glass-panel" style="margin-bottom: 1.5rem; text-align: center;">
+                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center;">
                             <p><strong>${bs.title}:</strong></p>
                             ${bs.dataUrl
             ? `<img src="${bs.dataUrl}" style="max-width: ${bs.type === 'freecanvas' ? '100%' : '50%'}; border-radius: 8px; border: 1px solid #eee; margin-top: 0.5rem; display: inline-block;">`
@@ -3461,7 +3358,7 @@ function renderResults(result) {
 
 
                     ${result.details.relacao_iq ? `
-                        <div class="glass-panel" style="margin-top: 1rem; padding: 0.8rem; border-left: 4px solid var(--primary-red);">
+                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; margin-top: 1rem; padding: 0.8rem; border-left: 4px solid #A31621;">
                             <p><strong>Relação I/Q:</strong> Esq: ${result.details.relacao_iq.esquerdo} | Dir: ${result.details.relacao_iq.direito}</p>
                         </div>
                     ` : ''}
@@ -3480,15 +3377,18 @@ function renderResults(result) {
             ` : ''}
 
             <div style="margin-top: 3rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;" class="no-print">
-                <button class="btn btn-secondary" id="btn-restart">
-                    Nova Avaliação
-                </button>
-                <button class="btn btn-primary" id="btn-pdf-download">
+                ${state._parentQuestionnaire ? `
+                    <button class="btn btn-primary" onclick="window.returnToParentForm && window.returnToParentForm()">
+                        Voltar ao Formulário Original
+                    </button>
+                ` : `
+                    <button class="btn btn-secondary" id="btn-restart">
+                        Nova Avaliação
+                    </button>
+                `}
+                <button class="btn btn-primary" onclick="window.print()">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:0.5rem"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                    Baixar PDF
-                </button>
-                <button class="btn btn-secondary" onclick="window.print()">
-                    Imprimir
+                    Imprimir Resultado
                 </button>
             </div>
         </div>
@@ -3498,56 +3398,6 @@ function renderResults(result) {
     state._pdfFileName = pdfFileName;
 
     views['view-results'].innerHTML = html;
-
-    // Attach PDF and DOC download event listeners
-    const btnPdf = document.getElementById('btn-pdf-download');
-    if (btnPdf) {
-        btnPdf.addEventListener('click', async () => {
-            const originalText = btnPdf.innerHTML;
-            btnPdf.innerHTML = '⏳ Gerando...';
-            btnPdf.disabled = true;
-            try {
-                const element = document.getElementById('view-results-content');
-                const opt = {
-                    margin: 10,
-                    filename: state._pdfFileName,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-                await html2pdf().set(opt).from(element).save();
-            } catch (e) { console.error('Error generating PDF:', e); } finally {
-                btnPdf.innerHTML = originalText;
-                btnPdf.disabled = false;
-            }
-        });
-    }
-
-    const btnDoc = document.getElementById('btn-doc-download');
-    if (btnDoc) {
-        btnDoc.addEventListener('click', () => {
-            const element = document.getElementById('view-results-content');
-
-            // Basic styles for Word doc
-            const htmlContext = `
-                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-                <head><meta charset='utf-8'><title>Export HTML to Word Docs</title></head>
-                <body>
-                    ${element.innerHTML}
-                </body>
-                </html>
-            `;
-            const blob = new Blob(['\ufeff', htmlContext], { type: 'application/msword;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = state._pdfFileName.replace('.pdf', '.doc');
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        });
-    }
 
     // Draw body schemas in results - uses fetch to avoid canvas taint (file:// restriction)
     if (result.bodySchemas) {
@@ -3625,76 +3475,27 @@ function renderResults(result) {
             });
         }, 200);
     }
-
     // Set document title so print dialog suggests correct filename (Correção 6)
-    const origTitle = document.title;
     document.title = state._pdfFileName || `Avaliacao_${state.patientInfo.name.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}`;
 
-    // Generate PDF and Send via Email (Correção 5: substituir WhatsApp por E-mail)
-    const btnEmail = document.getElementById('btn-email');
-    if (btnEmail) {
-        btnEmail.addEventListener('click', async (e) => {
-            e.preventDefault();
-            const originalText = btnEmail.innerHTML;
-            btnEmail.innerHTML = '⏳ Gerando PDF...';
-            btnEmail.style.opacity = '0.7';
-            btnEmail.style.pointerEvents = 'none';
+    const btnRestart = document.getElementById('btn-restart');
+    if (btnRestart) {
+        btnRestart.addEventListener('click', () => {
+            // Clear patient info and select segment again
+            state.patientInfo = null;
+            state.clinicalData = {};
+            state.answers = {};
+            state.currentQuestionnaire = null;
+            state.currentQuestionIndex = 0;
+            const patientForm = document.getElementById('patient-form');
+            if (patientForm) patientForm.reset();
 
-            try {
-                const element = document.getElementById('view-results-content');
-                const fileName = state._pdfFileName || `Avaliacao_${state.patientInfo.name.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}.pdf`;
-                const opt = {
-                    margin: 10,
-                    filename: fileName,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-
-                // Generate and download the PDF
-                const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
-                const url = URL.createObjectURL(pdfBlob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-
-                // Open email client after short delay
-                const emailSubject = encodeURIComponent(`Avaliação Fisioterapêutica - ${state.patientInfo.name} - ${formattedDate}`);
-                const emailBody = encodeURIComponent(
-                    `Olá,\n\nSegue em anexo o resultado da avaliação fisioterapêutica de ${state.patientInfo.name}.\n\nFormulário: ${q.title}\nData: ${formattedDate}\n\nO arquivo PDF foi salvo no seu computador. Por favor, anexe-o a este e-mail antes de enviar.\n\nAtenciosamente,\n${state.loggedUser ? state.loggedUser.name : 'Avaliador(a)'}`
-                );
-                setTimeout(() => {
-                    window.location.href = `mailto:?subject=${emailSubject}&body=${emailBody}`;
-                }, 800);
-
-            } catch (err) {
-                console.error('Erro ao gerar PDF:', err);
-                alert('Houve um erro ao tentar gerar o PDF. Verifique se todas as imagens carregaram corretamente.');
-            } finally {
-                btnEmail.innerHTML = originalText;
-                btnEmail.style.opacity = '1';
-                btnEmail.style.pointerEvents = 'auto';
-            }
+            // Return to Home page
+            state.selectedSegment = null;
+            navigateTo('view-home');
+            loadRecentPatients();
         });
     }
-
-    document.getElementById('btn-restart').addEventListener('click', () => {
-        // Clear patient info and select segment again
-        state.patientInfo = null;
-        state.clinicalData = {};
-        state.answers = {};
-        state.currentQuestionnaire = null;
-        state.currentQuestionIndex = 0;
-        document.getElementById('patient-form').reset();
-
-        // Return to Segment page by default
-        state.selectedSegment = null;
-        navigateTo('view-segments');
-    });
 
     // Render charts if necessary
     renderCharts();
@@ -3710,8 +3511,8 @@ function renderChartsHtml(q, result) {
         if (preensao && (preensao.esquerdo || preensao.direito)) {
             html += `
             <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-                <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Análise de Preensão Palmar</h4>
-                <div class="glass-panel" style="padding: 1.5rem;">
+                <h4 style="color: #A31621; margin-bottom: 1rem;">Análise de Preensão Palmar</h4>
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem;">
                     <div id="preensao-palmar-text-results"></div>
                     <div style="height: 300px; margin-top: 1.5rem;">
                         <canvas id="preensaoPalmarChart"></canvas>
@@ -3726,8 +3527,8 @@ function renderChartsHtml(q, result) {
         if (pinca && (pinca.esquerdo || pinca.direito)) {
             html += `
         <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-            <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Análise de Pinça Lateral (Chave)</h4>
-            <div class="glass-panel" style="padding: 1.5rem;">
+            <h4 style="color: #A31621; margin-bottom: 1rem;">Análise de Pinça Lateral (Chave)</h4>
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem;">
                 <div id="pinca-lateral-text-results"></div>
                 <div style="height: 300px; margin-top: 1.5rem;">
                     <canvas id="pincaLateralChart"></canvas>
@@ -3742,8 +3543,8 @@ function renderChartsHtml(q, result) {
         if (tripode && (tripode.esquerdo || tripode.direito)) {
             html += `
         <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-            <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Análise de Pinça Trípode (Palmer Pinch)</h4>
-            <div class="glass-panel" style="padding: 1.5rem;">
+            <h4 style="color: #A31621; margin-bottom: 1rem;">Análise de Pinça Trípode (Palmer Pinch)</h4>
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem;">
                 <div id="pinca-tripode-text-results"></div>
                 <div style="height: 300px; margin-top: 1.5rem;">
                     <canvas id="pincaTripodeChart"></canvas>
@@ -3758,8 +3559,8 @@ function renderChartsHtml(q, result) {
         if (polpa && (polpa.esquerdo || polpa.direito)) {
             html += `
             <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-                <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Análise de Pinça Polpa a Polpa (Tip Pinch)</h4>
-                <div class="glass-panel" style="padding: 1.5rem;">
+                <h4 style="color: #A31621; margin-bottom: 1rem;">Análise de Pinça Polpa a Polpa (Tip Pinch)</h4>
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem;">
                     <div id="pinca-polpa-text-results"></div>
                     <div style="height: 300px; margin-top: 1.5rem;">
                         <canvas id="pincaPolpaChart"></canvas>
@@ -3784,8 +3585,8 @@ function renderChartsHtml(q, result) {
             if (data && (data.esquerdo || data.direito)) {
                 html += `
                 <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-                    <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Análise de ${test.title}</h4>
-                    <div class="glass-panel" style="padding: 1.5rem;">
+                    <h4 style="color: #A31621; margin-bottom: 1rem;">Análise de ${test.title}</h4>
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem;">
                         <div id="${test.id}-text-results"></div>
                         <div style="height: 300px; margin-top: 1.5rem;">
                             <canvas id="${test.id}-Chart"></canvas>
@@ -3803,8 +3604,8 @@ function renderChartsHtml(q, result) {
         if (resistFlex !== undefined && resistFlex !== '') {
             html += `
             <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-                <h4 style="color: var(--primary-red); margin-bottom: 1rem;">An&aacute;lise de Resist&ecirc;ncia da Musculatura Flexora Cervical</h4>
-                <div class="glass-panel" style="padding: 1.5rem;">
+                <h4 style="color: #A31621; margin-bottom: 1rem;">An&aacute;lise de Resist&ecirc;ncia da Musculatura Flexora Cervical</h4>
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem;">
                     <div id="neck-flexor-text-results"></div>
                     <div style="height: 300px; margin-top: 1.5rem;">
                         <canvas id="neckFlexorChart"></canvas>
@@ -3821,8 +3622,8 @@ function renderChartsHtml(q, result) {
         if (flexao60 !== undefined && flexao60 !== '') {
             html += `
             <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-                <h4 style="color: var(--primary-red); margin-bottom: 1rem;">An&aacute;lise de Resist&ecirc;ncia dos Flexores do Tronco (Flex&atilde;o a 60&ordm;)</h4>
-                <div class="glass-panel" style="padding: 1.5rem;">
+                <h4 style="color: #A31621; margin-bottom: 1rem;">An&aacute;lise de Resist&ecirc;ncia dos Flexores do Tronco (Flex&atilde;o a 60&ordm;)</h4>
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem;">
                     <div id="trunk-flexor-text-results"></div>
                     <div style="height: 300px; margin-top: 1.5rem;">
                         <canvas id="trunkFlexorChart"></canvas>
@@ -3836,8 +3637,8 @@ function renderChartsHtml(q, result) {
         if (sorensen !== undefined && sorensen !== '') {
             html += `
             <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-                <h4 style="color: var(--primary-red); margin-bottom: 1rem;">An&aacute;lise de Resist&ecirc;ncia dos Extensores do Tronco (Teste de Sorensen)</h4>
-                <div class="glass-panel" style="padding: 1.5rem;">
+                <h4 style="color: #A31621; margin-bottom: 1rem;">An&aacute;lise de Resist&ecirc;ncia dos Extensores do Tronco (Teste de Sorensen)</h4>
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem;">
                     <div id="trunk-extensor-text-results"></div>
                     <div style="height: 300px; margin-top: 1.5rem;">
                         <canvas id="trunkExtensorChart"></canvas>
@@ -3860,8 +3661,8 @@ function renderChartsHtml(q, result) {
             if (val !== undefined && val !== '') {
                 html += `
                 <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-                    <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Equilíbrio: ${test.label}</h4>
-                    <div class="glass-panel" style="padding: 1.5rem;">
+                    <h4 style="color: #A31621; margin-bottom: 1rem;">Equilíbrio: ${test.label}</h4>
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem;">
                         <div id="balance-${test.id}-text"></div>
                         <div style="height: 260px; margin-top: 1.5rem;">
                             <canvas id="balance-${test.id}-chart"></canvas>
@@ -3879,8 +3680,8 @@ function renderChartsHtml(q, result) {
         if (tugVal !== undefined && tugVal !== '') {
             html += `
             <div class="results-details" style="text-align: left; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-                <h4 style="color: var(--primary-red); margin-bottom: 1rem;">Timed Up and Go (TUG)</h4>
-                <div class="glass-panel" style="padding: 1.5rem;">
+                <h4 style="color: #A31621; margin-bottom: 1rem;">Timed Up and Go (TUG)</h4>
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem;">
                     <div id="tug-text-results"></div>
                     <div style="height: 260px; margin-top: 1.5rem;">
                         <canvas id="tugChart"></canvas>
@@ -4384,6 +4185,5 @@ function renderCharts() {
         }
     }
 }
-
 // Run app
 document.addEventListener('DOMContentLoaded', initApp);

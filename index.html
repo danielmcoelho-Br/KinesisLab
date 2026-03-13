@@ -11,11 +11,11 @@
     <link rel="stylesheet" href="css/styles.css">
 
     <!-- Html2Pdf Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
 </head>
 
 <body>
-    <div class="background-elements">
+    <div class="background-elements" data-html2canvas-ignore>
         <div class="glow-orb red-orb"></div>
         <div class="glow-orb grey-orb"></div>
     </div>
@@ -30,13 +30,13 @@
                 <h1>Kinesis<span class="highlight">Lab</span></h1>
             </div>
             <nav class="header-nav">
-                <button id="btn-back" class="nav-btn nav-back-btn hidden" title="Voltar">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                    Voltar
-                </button>
                 <button id="btn-home" class="nav-btn nav-home-btn active" title="Página Inicial">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                     Início
+                </button>
+                <button id="btn-back" class="nav-btn nav-back-btn hidden" title="Voltar">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    Voltar
                 </button>
                 <button id="btn-admin-panel" class="nav-btn hidden panel-admin-btn">Painel Admin</button>
                 <div class="nav-divider"></div>

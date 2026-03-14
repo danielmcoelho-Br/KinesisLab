@@ -9,6 +9,7 @@ export async function saveAssessment(data: {
   segment: string;
   answers: any;
   scoreData: any;
+  userId?: string;
 }) {
   try {
     const assessment = await prisma.assessment.create({
@@ -18,8 +19,10 @@ export async function saveAssessment(data: {
         segment: data.segment,
         questionnaire_answers: data.answers,
         clinical_data: data.scoreData,
+        created_by_id: data.userId
       }
     });
+
     revalidatePath("/dashboard");
     revalidatePath(`/dashboard/patient/${data.patientId}`);
     return { success: true, id: assessment.id };
@@ -33,7 +36,16 @@ export async function getAssessment(id: string) {
   try {
     const assessment = await prisma.assessment.findUnique({
       where: { id },
+      include: {
+        created_by: {
+          select: {
+            name: true,
+            crefito: true
+          }
+        }
+      }
     });
+
     return { success: true, data: assessment };
   } catch (error) {
     console.error("Error fetching assessment:", error);

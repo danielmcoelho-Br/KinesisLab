@@ -197,9 +197,14 @@ export default function PatientHistoryPage() {
                           <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                             <Calendar size={14} /> {new Date(item.created_at).toLocaleDateString('pt-BR')}
                           </span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <User size={14} /> {item.created_by?.name || "N/A"}{item.created_by?.crefito ? ` (CREFITO: ${item.created_by.crefito})` : ""}
+                          </span>
+
                           <span style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary)', padding: '2px 8px', borderRadius: '4px', fontWeight: '600' }}>
                             Score: {item.clinical_data?.percentage || 0}%
                           </span>
+
                         </div>
                       </div>
                     </div>

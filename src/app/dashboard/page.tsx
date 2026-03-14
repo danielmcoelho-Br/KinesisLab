@@ -19,8 +19,13 @@ import {
   MessageCircle,
   FileText,
   CheckCircle2,
-  Clock
+  Clock,
+  Shield,
+  Layout,
+  User
 } from "lucide-react";
+
+
 import { motion, AnimatePresence } from "framer-motion";
 import { getPatients, createPatient, updatePatient, deletePatient } from "./actions";
 import { toast } from "sonner";
@@ -63,7 +68,11 @@ export default function DashboardPage() {
     return { years, months };
   };
 
+  const [user, setUser] = useState<any>(null);
+
   useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) setUser(JSON.parse(savedUser));
     fetchPatients();
   }, []);
 
@@ -89,8 +98,10 @@ export default function DashboardPage() {
       name: newName,
       birth_date: new Date(birthDate),
       age: ageDetails ? ageDetails.years : 0,
-      gender: newGender
+      gender: newGender,
+      created_by_id: user?.id
     });
+
     if (result.success) {
       setShowNewPatientModal(false);
       setNewName("");
@@ -110,7 +121,8 @@ export default function DashboardPage() {
       birth_date: birthDate,
       age: ageDetails ? ageDetails.years : 0,
       gender: newGender
-    });
+    }, user?.id, user?.name);
+
     if (result.success) {
       setEditingPatient(null);
       fetchPatients(search);
@@ -180,7 +192,59 @@ export default function DashboardPage() {
               <Home size={18} />
               <span className="hidden-mobile">Início</span>
             </button>
+
+            {user?.role === 'ADMINISTRADOR' && (
+              <>
+                <div style={{ width: '1px', height: '1.5rem', backgroundColor: 'var(--border)', margin: '0 0.5rem' }} />
+                <button 
+                  onClick={() => router.push('/dashboard/admin/users')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: 'var(--radius-md)', border: 'none', backgroundColor: 'transparent', color: 'var(--text-muted)', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  <Shield size={18} />
+                  <span className="hidden-mobile">Usuários</span>
+                </button>
+                <button 
+                  onClick={() => router.push('/dashboard/admin/assessments')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: 'var(--radius-md)', border: 'none', backgroundColor: 'transparent', color: 'var(--text-muted)', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  <Layout size={18} />
+                  <span className="hidden-mobile">Modelos</span>
+                </button>
+              </>
+            )}
+
             <div style={{ width: '1px', height: '1.5rem', backgroundColor: 'var(--border)', margin: '0 0.5rem' }} />
+
+            {user && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0 1rem' }}>
+                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }} className="hidden-mobile">
+                  <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text)' }}>{user.name}</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{user.role}</span>
+                </div>
+                <div style={{ 
+                  width: '36px', 
+                  height: '36px', 
+                  borderRadius: '10px', 
+                  backgroundColor: 'var(--primary-light)', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  border: '2px solid white',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  {user.avatar_url ? (
+                    <img src={user.avatar_url} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <User size={20} style={{ color: 'var(--primary)' }} />
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div style={{ width: '1px', height: '1.5rem', backgroundColor: 'var(--border)', margin: '0 0.5rem' }} />
+
+
             <button 
               style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: 'var(--radius-md)', border: 'none', backgroundColor: 'transparent', color: 'var(--text-muted)', fontWeight: '600', cursor: 'pointer' }} 
               onClick={() => { toast.info("Até logo!"); window.location.href='/login'; }}
@@ -273,13 +337,16 @@ export default function DashboardPage() {
                   </div>
                   
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button 
-                      onClick={() => openEditModal(patient)}
-                      style={{ padding: '0.6rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', backgroundColor: 'white', color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
-                      title="Editar cadastro"
-                    >
-                      <Edit size={18} />
-                    </button>
+                    {(user?.role === 'ADMINISTRADOR' || patient.created_by_id === user?.id) && (
+                      <button 
+                        onClick={() => openEditModal(patient)}
+                        style={{ padding: '0.6rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', backgroundColor: 'white', color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
+                        title="Editar cadastro"
+                      >
+                        <Edit size={18} />
+                      </button>
+                    )}
+
                     <button 
                       onClick={() => shareWhatsApp(patient)}
                       style={{ padding: '0.6rem', borderRadius: 'var(--radius-md)', border: '1px solid #25D366', backgroundColor: '#25D36610', color: '#25D366', cursor: 'pointer', transition: 'all 0.2s' }}

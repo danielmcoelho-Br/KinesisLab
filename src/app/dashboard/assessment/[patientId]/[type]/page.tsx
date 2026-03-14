@@ -19,6 +19,8 @@ import { saveAssessment, getAssessment, updateAssessment } from "@/app/dashboard
 import { toast } from "sonner";
 import BodySchema from "@/components/BodySchema";
 import PatientInfoBanner from "@/components/PatientInfoBanner";
+import { calculateAssessmentScore, CalculationType } from "@/lib/calculations";
+
 
 function AssessmentContent() {
   const params = useParams();
@@ -37,18 +39,36 @@ function AssessmentContent() {
   const [isEditing, setIsEditing] = useState(!assessmentId);
   const [showLogs, setShowLogs] = useState(false);
   const [changeLogs, setChangeLogs] = useState<any[]>([]);
+  const [user, setUser] = useState<any>(null);
+  const [assessmentOwner, setAssessmentOwner] = useState<any>(null);
+  const [assessmentOwnerId, setAssessmentOwnerId] = useState<string | null>(null);
+  const [assessmentDate, setAssessmentDate] = useState<string>(new Date().toLocaleDateString('pt-BR'));
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) setUser(JSON.parse(savedUser));
+  }, []);
+
 
   useEffect(() => {
     async function load() {
         if (!assessmentId) return;
         const res = await getAssessment(assessmentId);
         if (res.success && res.data) {
-            const loadedAnswers = res.data.questionnaire_answers as Record<string, any>;
+            const data = res.data as any;
+            const loadedAnswers = data.questionnaire_answers as Record<string, any>;
             setAnswers(loadedAnswers);
             setOriginalAnswers(loadedAnswers);
-            setChangeLogs(res.data.change_logs as any[] || []);
+            setChangeLogs(data.change_logs as any[] || []);
+            setAssessmentOwnerId(data.created_by_id);
+             setAssessmentOwner(data.created_by);
+            if (data.created_at) {
+                setAssessmentDate(new Date(data.created_at).toLocaleDateString('pt-BR'));
+            }
             setIsEditing(false);
         }
+
+
     }
     load();
   }, [assessmentId]);
@@ -80,7 +100,11 @@ function AssessmentContent() {
 
   const handleFinish = async () => {
     setSaving(true);
-    const result = questionnaire.calculateScore?.(answers);
+    
+    // Get calculation type from questionnaire structure or use default
+    const calculationType = (questionnaire as any).structure?.calculationType || (type as CalculationType);
+    const result = calculateAssessmentScore(calculationType as CalculationType, answers);
+
     
     if (assessmentId) {
         const logEntries: string[] = [];
@@ -92,12 +116,11 @@ function AssessmentContent() {
                     const oldVal = originalAnswers[field.id];
                     const newVal = answers[field.id];
                     
-                    // Simple comparison (ignoring strict type if possible, or converting to string)
                     if (String(oldVal || "") !== String(newVal || "")) {
                         if (field.type === 'bodyschema') {
-                            logEntries.push(`${timestamp} - Administrador alterou o mapa corporal.`);
+                            logEntries.push(`${timestamp} - ${user?.name || 'Usuário'} alterou o mapa corporal.`);
                         } else {
-                            logEntries.push(`${timestamp} - Administrador alterou o campo '${field.label}' de '${oldVal || 'vazio'}' para '${newVal || 'vazio'}'`);
+                            logEntries.push(`${timestamp} - ${user?.name || 'Usuário'} alterou o campo '${field.label}' de '${oldVal || 'vazio'}' para '${newVal || 'vazio'}'`);
                         }
                     }
                 });
@@ -109,10 +132,11 @@ function AssessmentContent() {
                 if (oldVal !== newVal) {
                     const oldLabel = q.options?.find(o => o.value === oldVal)?.label || 'vazio';
                     const newLabel = q.options?.find(o => o.value === newVal)?.label || 'vazio';
-                    logEntries.push(`${timestamp} - Administrador alterou a questão '${q.text}' de '${oldLabel}' para '${newLabel}'`);
+                    logEntries.push(`${timestamp} - ${user?.name || 'Usuário'} alterou a questão '${q.text}' de '${oldLabel}' para '${newLabel}'`);
                 }
             });
         }
+
         
         if (logEntries.length > 0) {
             const response = await updateAssessment(assessmentId, {
@@ -145,8 +169,10 @@ function AssessmentContent() {
             type,
             segment: questionnaire.segment,
             answers,
-            scoreData: result
+            scoreData: result,
+            userId: user?.id
         });
+
 
         if (response.success) {
             setIsFinished(true);
@@ -302,33 +328,53 @@ function AssessmentContent() {
 
       <header style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <button 
-                onClick={() => router.back()}
-                style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '0.5rem', 
-                    backgroundColor: 'rgba(255,255,255,0.8)', 
-                    border: '1px solid var(--border)', 
-                    padding: '0.5rem 1rem',
-                    borderRadius: '0.75rem',
-                    color: 'var(--text-muted)', 
-                    fontWeight: '600', 
-                    cursor: 'pointer',
-                    boxShadow: 'var(--shadow-sm)'
-                }}
-            >
-                <ArrowLeft size={18} />
-                <span>Sair</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <button 
+                    onClick={() => router.back()}
+                    style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.5rem', 
+                        backgroundColor: 'rgba(255,255,255,0.8)', 
+                        border: '1px solid var(--border)', 
+                        padding: '0.5rem 1rem',
+                        borderRadius: '0.75rem',
+                        color: 'var(--text-muted)', 
+                        fontWeight: '600', 
+                        cursor: 'pointer',
+                        boxShadow: 'var(--shadow-sm)'
+                    }}
+                >
+                    <ArrowLeft size={18} />
+                    <span>Sair</span>
+                </button>
+
+                {(user || assessmentOwner) && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', borderLeft: '1px solid var(--border)', paddingLeft: '1rem', marginLeft: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.1rem' }}>
+                            <span style={{ fontWeight: '600' }}>Avaliador:</span>
+                            <span style={{ color: 'var(--text)', fontWeight: '700' }}>
+                                {(assessmentOwner?.name || user?.name)} 
+                                {((assessmentOwner?.crefito || user?.crefito)) ? ` (CREFITO: ${assessmentOwner?.crefito || user?.crefito})` : ""}
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            <span style={{ fontWeight: '600' }}>Data:</span>
+                            <span style={{ color: 'var(--text)', fontWeight: '700' }}>{assessmentDate}</span>
+                        </div>
+                    </div>
+                )}
+            </div>
+
             <div style={{ textAlign: 'center' }}>
                 <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--secondary)' }}>{questionnaire.title}</h1>
             </div>
             
             <div style={{ width: '80px', display: 'flex', justifyContent: 'flex-end' }}>
-                {assessmentId && !isEditing && (
+                {assessmentId && !isEditing && (user?.role === 'ADMINISTRADOR' || assessmentOwnerId === user?.id) && (
                     <button 
                         onClick={() => setIsEditing(true)}
+
                         style={{ 
                             display: 'flex', 
                             alignItems: 'center', 

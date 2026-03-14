@@ -16,17 +16,22 @@ datasource db {
 
 
 
+
+
 model Patient {
   id             String       @id @default(cuid())
   name           String
   birth_date     DateTime?
   age            Int?
   gender         String?
-
   dominance      String?
   activity_level String?
   created_at     DateTime?    @default(now()) @db.Timestamptz(6)
+  created_by_id  String?
+  change_logs    Json?
+
   assessments    Assessment[]
+  created_by     User?        @relation("PatientCreatedBy", fields: [created_by_id], references: [id])
 
   @@map("patients")
 }
@@ -39,35 +44,52 @@ model Assessment {
   clinical_data         Json?
   questionnaire_answers Json?
   created_at            DateTime? @default(now()) @db.Timestamptz(6)
+  created_by_id         String?
   change_logs           Json?
 
   patient               Patient   @relation(fields: [patient_id], references: [id], onDelete: Cascade)
-
+  created_by            User?        @relation("AssessmentCreatedBy", fields: [created_by_id], references: [id])
 
   @@map("assessments")
 }
 
-
 model User {
-  id         String    @id @default(cuid())
-  email      String    @unique
-  password   String
-  name       String?
-  role       String    @default("user")
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  password              String
+  name                  String
+  role                  String    @default("ASSISTENTE") // ADMINISTRADOR, FISIOTERAPEUTA, ASSISTENTE
+  crefito               String?
+  avatar_url            String?
+
+  birth_date            DateTime?
+  is_active             Boolean   @default(true)
+  force_password_change Boolean   @default(false)
+  created_at            DateTime? @default(now()) @db.Timestamptz(6)
+  change_logs           Json?
+
+  created_patients      Patient[]    @relation("PatientCreatedBy")
+  created_assessments   Assessment[] @relation("AssessmentCreatedBy")
+  templates_created     AssessmentTemplate[] @relation("TemplateCreatedBy")
 
   @@map("users")
 }
 
-model Profile {
-  id         String    @id @default(cuid())
-  user_id    String    @unique
-  name       String?
-  role       String?   @default("user")
-  crefito    String?
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
+model AssessmentTemplate {
+  id            String   @id @default(cuid())
+  title         String
+  description   String?
+  segment       String
+  icon_url      String?
+  structure     Json     // Questionáio (perguntas, seções, etc)
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  created_by_id String?
+  change_logs   Json?
 
-  @@map("profiles")
+  created_by    User?    @relation("TemplateCreatedBy", fields: [created_by_id], references: [id])
+
+  @@map("assessment_templates")
 }
 
 

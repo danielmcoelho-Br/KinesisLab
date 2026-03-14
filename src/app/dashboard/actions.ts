@@ -13,6 +13,9 @@ export async function getPatients(query: string = "") {
         }
       },
       include: {
+        created_by: {
+          select: { name: true }
+        },
         assessments: {
           where: {
             assessment_type: 'oswestry'
@@ -22,6 +25,7 @@ export async function getPatients(query: string = "") {
           }
         }
       },
+
       orderBy: {
         created_at: 'desc'
       },
@@ -47,6 +51,7 @@ export async function createPatient(data: {
   birth_date?: Date;
   age?: number;
   gender?: string;
+  created_by_id?: string;
 }) {
   try {
     const patient = await prisma.patient.create({
@@ -55,6 +60,13 @@ export async function createPatient(data: {
         birth_date: data.birth_date,
         age: data.age,
         gender: data.gender,
+        created_by_id: data.created_by_id,
+        change_logs: [
+          {
+            timestamp: new Date().toISOString(),
+            entry: `Paciente cadastrado`
+          }
+        ]
       }
     });
 
@@ -66,8 +78,16 @@ export async function createPatient(data: {
   }
 }
 
-export async function updatePatient(id: string, data: any) {
+export async function updatePatient(id: string, data: any, userId?: string, userName?: string) {
   try {
+    const current = await prisma.patient.findUnique({ where: { id } });
+    if (!current) throw new Error("Paciente não encontrado");
+
+    const logs = Array.isArray(current.change_logs) ? [...current.change_logs as any[]] : [];
+    const timestamp = new Date().toLocaleString('pt-BR');
+    
+    if (data.name !== current.name) logs.push({ timestamp: new Date().toISOString(), entry: `${timestamp} - ${userName || 'Usuário'} alterou nome de '${current.name}' para '${data.name}'` });
+
     const patient = await prisma.patient.update({
       where: { id },
       data: {
@@ -75,6 +95,7 @@ export async function updatePatient(id: string, data: any) {
         birth_date: data.birth_date ? new Date(data.birth_date) : undefined,
         age: data.age,
         gender: data.gender,
+        change_logs: logs
       }
     });
     revalidatePath("/dashboard");
@@ -84,6 +105,7 @@ export async function updatePatient(id: string, data: any) {
     return { success: false, error: "Falha ao atualizar paciente" };
   }
 }
+
 
 export async function deletePatient(id: string) {
   try {
@@ -106,8 +128,14 @@ export async function getPatientAssessments(patientId: string) {
     
     const assessments = await prisma.assessment.findMany({
       where: { patient_id: patientId },
+      include: {
+        created_by: {
+          select: { name: true }
+        }
+      },
       orderBy: { created_at: 'desc' }
     });
+
     
     return { 
       success: true, 

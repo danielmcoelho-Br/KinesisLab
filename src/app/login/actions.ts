@@ -19,7 +19,7 @@ export async function login(formData: FormData) {
       return { error: "Email ou senha inválidos." };
     }
 
-    return { success: true, user: { id: user.id, name: user.name, role: user.role } };
+    return { success: true, user: { id: user.id, name: user.name, role: user.role, crefito: user.crefito, avatar_url: user.avatar_url } };
   } catch (error) {
     console.error("Login error:", error);
     return { error: "Ocorreu um erro ao tentar entrar. Tente novamente." };

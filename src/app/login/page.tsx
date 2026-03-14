@@ -21,10 +21,11 @@ export default function LoginPage() {
       setError(result.error);
       setLoading(false);
     } else if (result.success) {
-      // In a real app, you would set a cookie/session here.
-      // For this demo/local env, we'll just redirect.
+      // For this demo/local env, we'll save in localStorage
+      localStorage.setItem("user", JSON.stringify(result.user));
       router.push("/dashboard");
     }
+
   }
 
   return (

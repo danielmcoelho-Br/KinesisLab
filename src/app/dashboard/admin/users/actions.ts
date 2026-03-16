@@ -86,3 +86,14 @@ export async function updateUser(id: string, data: any, adminName: string) {
         return { success: false, error: "Falha ao atualizar usuário" };
     }
 }
+
+export async function deleteUser(id: string) {
+    try {
+        await prisma.user.delete({ where: { id } });
+        revalidatePath("/dashboard/admin/users");
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting user:", error);
+        return { success: false, error: "Falha ao remover usuário" };
+    }
+}

@@ -120,7 +120,7 @@ export default function EvolutionPage() {
     if (qInfo?.sections) {
         const numericFields: any[] = [];
         qInfo.sections.forEach(s => {
-            s.fields.forEach(f => {
+            s.fields?.forEach(f => {
                 if (f.type === 'number' || f.type === 'range') {
                     numericFields.push(f);
                 } else if (f.type === 'select' && f.options && f.options.every(o => !isNaN(Number(o)))) {
@@ -143,7 +143,7 @@ export default function EvolutionPage() {
     }
 
     // Body Schema Comparison (last 2)
-    const bodySchemaField = qInfo?.sections?.flatMap(s => s.fields).find(f => f.type === 'bodyschema');
+    const bodySchemaField = qInfo?.sections?.flatMap(s => s.fields || []).find(f => f && f.type === 'bodyschema');
     let lastTwoBodySchemas: any[] = [];
     if (bodySchemaField) {
         lastTwoBodySchemas = list

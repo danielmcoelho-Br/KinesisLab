@@ -54,13 +54,20 @@ export async function createPatient(data: {
   created_by_id?: string;
 }) {
   try {
+    // Defensive date handling
+    let birth_date = data.birth_date;
+    if (birth_date && isNaN(birth_date.getTime())) {
+      console.warn("Invalid birth_date received, setting to null");
+      birth_date = undefined;
+    }
+
     const patient = await prisma.patient.create({
       data: {
         name: data.name,
-        birth_date: data.birth_date,
-        age: data.age,
+        birth_date: birth_date,
+        age: data.age || 0,
         gender: data.gender,
-        created_by_id: data.created_by_id,
+        created_by_id: data.created_by_id || null,
         change_logs: [
           {
             timestamp: new Date().toISOString(),
@@ -72,9 +79,9 @@ export async function createPatient(data: {
 
     revalidatePath("/dashboard");
     return { success: true, data: patient };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating patient:", error);
-    return { success: false, error: "Falha ao criar paciente" };
+    return { success: false, error: `Falha ao criar paciente: ${error.message || "Erro desconhecido"}` };
   }
 }
 
@@ -156,6 +163,23 @@ export async function getPatient(id: string) {
   } catch (error) {
     console.error("Error fetching patient:", error);
     return { success: false, error: "Falha ao buscar paciente" };
+  }
+}
+
+export async function deleteAssessment(id: string) {
+  try {
+    const assessment = await prisma.assessment.delete({
+      where: { id }
+    });
+    
+    // Use path for revalidation if needed
+    // Usually patient profile page or dashboard
+    revalidatePath("/dashboard/patient/[patientId]", "page");
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting assessment:", error);
+    return { success: false, error: "Falha ao excluir avaliação" };
   }
 }
 

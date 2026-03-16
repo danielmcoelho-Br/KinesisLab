@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { login } from "./actions";
 
 export default function LoginPage() {
@@ -34,8 +35,13 @@ export default function LoginPage() {
       
       <main className="login-card">
         <header className="login-header">
-          <div className="logo-container">
-            <div className="logo-circle">K</div>
+          <div className="logo-container" style={{ position: 'relative', width: '120px', height: '100px', margin: '0 auto 1.5rem' }}>
+            <Image 
+                src="/logo-kinesis.jpg" 
+                alt="KinesisLab Logo" 
+                fill
+                style={{ objectFit: 'contain' }}
+            />
           </div>
           <h1>Kinesis<span>Lab</span></h1>
           <p>Gerenciamento de Avaliações Fisioterapêuticas</p>

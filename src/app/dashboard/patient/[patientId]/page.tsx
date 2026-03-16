@@ -11,12 +11,16 @@ import {
   ChevronRight,
   User,
   History,
-  TrendingUp
+  TrendingUp,
+  Trash2
 } from "lucide-react";
 
 import { motion } from "framer-motion";
-import { getPatientAssessments } from "../../actions";
+import { getPatientAssessments, deleteAssessment } from "../../actions";
 import { questionnairesData } from "@/data/questionnaires";
+import Header from "@/components/Header";
+import ConfirmModal from "@/components/ConfirmModal";
+import { toast } from "sonner";
 
 export default function PatientHistoryPage() {
   const params = useParams();
@@ -27,18 +31,44 @@ export default function PatientHistoryPage() {
   const [patient, setPatient] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const result = await getPatientAssessments(patientId);
-      if (result.success && result.data) {
-        setAssessments(result.data.assessments || []);
-        setPatient(result.data.patient);
-      }
-      setLoading(false);
-    };
+  // Deletion State
+  const [assessmentToDelete, setAssessmentToDelete] = useState<any>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
+  const fetchData = async () => {
+    setLoading(true);
+    const result = await getPatientAssessments(patientId);
+    if (result.success && result.data) {
+      setAssessments(result.data.assessments || []);
+      setPatient(result.data.patient);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
     fetchData();
   }, [patientId]);
+
+  const handleDeleteAssessment = (e: React.MouseEvent, assessment: any) => {
+    e.stopPropagation();
+    setAssessmentToDelete(assessment);
+    setIsConfirmModalOpen(true);
+  };
+
+  const confirmDeleteAssessment = async () => {
+    if (!assessmentToDelete) return;
+    
+    const id = assessmentToDelete.id;
+    const result = await deleteAssessment(id);
+    
+    if (result.success) {
+      setAssessments(prev => prev.filter(p => p.id !== id));
+      toast.success("Avaliação excluída com sucesso!");
+    } else {
+      toast.error(result.error);
+    }
+    setAssessmentToDelete(null);
+  };
 
   const typeCounts = assessments.reduce((acc: any, curr: any) => {
     acc[curr.assessment_type] = (acc[curr.assessment_type] || 0) + 1;
@@ -48,28 +78,12 @@ export default function PatientHistoryPage() {
   const hasEvolution = Object.values(typeCounts).some((count: any) => count > 1);
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', padding: '2rem 1.5rem' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)' }}>
       <div className="background-gradient" />
       
-      <header style={{ maxWidth: '1000px', margin: '0 auto', marginBottom: '3rem' }}>
-        <button 
-          onClick={() => router.push("/dashboard")}
-          style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.5rem', 
-            backgroundColor: 'transparent', 
-            border: 'none', 
-            color: 'var(--text-muted)', 
-            fontWeight: '600', 
-            cursor: 'pointer',
-            marginBottom: '2rem'
-          }}
-        >
-          <ArrowLeft size={20} />
-          <span>Voltar ao Dashboard</span>
-        </button>
-        
+      <Header showBackButton />
+
+      <header style={{ maxWidth: '1000px', margin: '0 auto', padding: '2rem 1.5rem', marginBottom: '1rem' }}>
         {patient && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
@@ -129,7 +143,7 @@ export default function PatientHistoryPage() {
       </header>
 
 
-      <main style={{ maxWidth: '1000px', margin: '0 auto' }}>
+      <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 1.5rem 3rem 1.5rem' }}>
         <div style={{ backgroundColor: 'white', padding: '2.5rem', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)' }}>
           <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <History size={24} style={{ color: 'var(--primary)' }} />
@@ -215,6 +229,12 @@ export default function PatientHistoryPage() {
                            {item.clinical_data?.interpretation || "N/A"}
                          </div>
                       </div>
+                      <button 
+                        onClick={(e) => handleDeleteAssessment(e, item)}
+                        style={{ padding: '0.5rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: '#EF4444', cursor: 'pointer', transition: 'all 0.2s' }}
+                      >
+                        <Trash2 size={20} />
+                      </button>
                       <ChevronRight size={20} style={{ color: 'var(--border)' }} />
                     </div>
                   </motion.div>
@@ -224,6 +244,15 @@ export default function PatientHistoryPage() {
           </div>
         </div>
       </main>
+      <ConfirmModal 
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={confirmDeleteAssessment}
+        title="Excluir Avaliação"
+        message="Tem certeza que deseja excluir esta avaliação? Esta ação não pode ser desfeita e os dados serão removidos permanentemente."
+        confirmLabel="Sim, excluir"
+        cancelLabel="Cancelar"
+      />
     </div>
   );
 }

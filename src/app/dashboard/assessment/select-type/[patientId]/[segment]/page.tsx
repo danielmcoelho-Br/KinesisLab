@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { questionnairesData } from "@/data/questionnaires";
 import { segments } from "@/data/segments";
 import PatientInfoBanner from "@/components/PatientInfoBanner";
+import Header from "@/components/Header";
 
 export default function SelectTypePage() {
   const params = useParams();
@@ -21,34 +22,16 @@ export default function SelectTypePage() {
     .map(([qId, q]) => ({ qId, ...q }));
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', padding: '2rem 1.5rem' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)' }}>
       <div className="background-gradient" />
       
-      <header style={{ maxWidth: '900px', margin: '0 auto', marginBottom: '3rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
-            <button 
-                onClick={() => router.back()}
-                style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '0.5rem', 
-                    backgroundColor: 'white', 
-                    border: '1px solid var(--border)', 
-                    padding: '0.5rem 1rem',
-                    borderRadius: '0.75rem',
-                    color: 'var(--text-muted)', 
-                    fontWeight: '600', 
-                    cursor: 'pointer',
-                    boxShadow: 'var(--shadow-sm)'
-                }}
-            >
-                <ArrowLeft size={18} />
-                <span>Voltar</span>
-            </button>
+      <Header showBackButton />
+
+      <header style={{ maxWidth: '900px', margin: '2rem auto', padding: '0 1.5rem', marginBottom: '3rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem' }}>
             <div style={{ textAlign: 'center' }}>
                 <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--secondary)', margin: 0 }}>Protocolos: {segment?.title}</h1>
             </div>
-            <div style={{ width: '80px' }} />
         </div>
 
         <PatientInfoBanner patientId={patientId} />

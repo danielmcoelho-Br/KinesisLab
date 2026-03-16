@@ -19,8 +19,10 @@ import {
     Camera
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getUsers, createUser, updateUser } from "./actions";
+import { getUsers, createUser, updateUser, deleteUser } from "./actions";
 import { toast } from "sonner";
+import Header from "@/components/Header";
+import ConfirmModal from "@/components/ConfirmModal";
 
 export default function UsersAdminPage() {
     const router = useRouter();
@@ -30,6 +32,7 @@ export default function UsersAdminPage() {
     
     const [showModal, setShowModal] = useState(false);
     const [editingUser, setEditingUser] = useState<any>(null);
+    const [userToDelete, setUserToDelete] = useState<any>(null);
     
     // Form state
     const [formData, setFormData] = useState({
@@ -125,40 +128,31 @@ export default function UsersAdminPage() {
         }
     };
 
-    const filteredUsers = users.filter(u => 
-        u.name.toLowerCase().includes(search.toLowerCase()) || 
+    const handleDelete = (u: any) => {
+        setUserToDelete(u);
+    };
+
+    const confirmDelete = async () => {
+        if (!userToDelete) return;
+        const res = await deleteUser(userToDelete.id);
+        if (res.success) {
+            toast.success(`Usuário ${userToDelete.name} removido.`);
+            setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+        } else {
+            toast.error(res.error);
+        }
+        setUserToDelete(null);
+    };
+
+    const filteredUsers = users.filter(u =>
+        u.name.toLowerCase().includes(search.toLowerCase()) ||
         u.email.toLowerCase().includes(search.toLowerCase())
     );
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', padding: '2rem' }}>
-            <header style={{ maxWidth: '1100px', margin: '0 auto', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <button onClick={() => router.push('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                        <ArrowLeft size={20} /> Voltar ao Dashboard
-                    </button>
-                    {user && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }} className="hidden-mobile">
-                                <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{user.name}</span>
-                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Administrador</span>
-                            </div>
-                            <div style={{ width: '32px', height: '32px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                                {user.avatar_url ? <img src={user.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }}>A</div>}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h1 style={{ fontSize: '2rem', fontWeight: 'bold' }}>Gerenciamento de Usuários</h1>
-                    <button className="btn-primary" style={{ width: 'auto' }} onClick={() => handleOpenModal()}>
-                        <UserPlus size={20} style={{ marginRight: '0.5rem' }} /> Novo Usuário
-                    </button>
-                </div>
-            </header>
-
-            <main style={{ maxWidth: '1100px', margin: '0 auto' }}>
+        <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)' }}>
+            <Header showBackButton />
+            <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem' }}>
                 <div style={{ position: 'relative', marginBottom: '2rem' }}>
                     <Search style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input 
@@ -235,7 +229,7 @@ export default function UsersAdminPage() {
                                 <button className="btn-primary" style={{ flex: 1, backgroundColor: 'white', color: 'var(--text)', border: '1px solid var(--border)', fontSize: '0.85rem' }} onClick={() => handleOpenModal(user)}>
                                     <Edit size={16} style={{ marginRight: '0.25rem' }} /> Editar
                                 </button>
-                                <button className="btn-primary" style={{ flex: 1, backgroundColor: 'white', color: '#EF4444', border: '1px solid #FEE2E2', fontSize: '0.85rem' }}>
+                                <button className="btn-primary" style={{ flex: 1, backgroundColor: 'white', color: '#EF4444', border: '1px solid #FEE2E2', fontSize: '0.85rem' }} onClick={() => handleDelete(user)}>
                                     <Trash2 size={16} style={{ marginRight: '0.25rem' }} /> Remover
                                 </button>
                             </div>
@@ -311,6 +305,14 @@ export default function UsersAdminPage() {
                     </div>
                 )}
             </AnimatePresence>
+
+            <ConfirmModal
+                isOpen={!!userToDelete}
+                onClose={() => setUserToDelete(null)}
+                onConfirm={confirmDelete}
+                title="Remover Usuário"
+                message={`Tem certeza que deseja remover o usuário ${userToDelete?.name}? Esta ação não pode ser desfeita.`}
+            />
         </div>
     );
 }

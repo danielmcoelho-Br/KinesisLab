@@ -22,6 +22,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from "./actions";
 import { toast } from "sonner";
+import Header from "@/components/Header";
+import ConfirmModal from "@/components/ConfirmModal";
 
 export default function AssessmentsAdminPage() {
     const router = useRouter();
@@ -31,6 +33,10 @@ export default function AssessmentsAdminPage() {
     
     const [showModal, setShowModal] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<any>(null);
+    
+    // Deletion State
+    const [templateToDelete, setTemplateToDelete] = useState<any>(null);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     
     // Form state
     const [formData, setFormData] = useState({
@@ -120,16 +126,22 @@ export default function AssessmentsAdminPage() {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (confirm("Tem certeza que deseja excluir este modelo?")) {
-            const res = await deleteTemplate(id);
-            if (res.success) {
-                toast.success("Modelo excluído!");
-                fetchTemplates();
-            } else {
-                toast.error(res.error);
-            }
+    const handleDelete = (template: any) => {
+        setTemplateToDelete(template);
+        setIsConfirmModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!templateToDelete) return;
+        
+        const res = await deleteTemplate(templateToDelete.id);
+        if (res.success) {
+            toast.success("Modelo excluído!");
+            fetchTemplates();
+        } else {
+            toast.error(res.error);
         }
+        setTemplateToDelete(null);
     };
 
     const filteredTemplates = templates.filter(t => 
@@ -138,34 +150,15 @@ export default function AssessmentsAdminPage() {
     );
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', padding: '2rem' }}>
-            <header style={{ maxWidth: '1100px', margin: '0 auto', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <button onClick={() => router.push('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                        <ArrowLeft size={20} /> Voltar ao Dashboard
-                    </button>
-                    {user && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }} className="hidden-mobile">
-                                <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{user.name}</span>
-                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Administrador</span>
-                            </div>
-                            <div style={{ width: '32px', height: '32px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                                {user.avatar_url ? <img src={user.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }}>A</div>}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)' }}>
+            <Header showBackButton />
+            <main style={{ maxWidth: '1100px', margin: '2rem auto', padding: '0 1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                     <h1 style={{ fontSize: '2rem', fontWeight: 'bold' }}>Modelos de Avaliação</h1>
                     <button className="btn-primary" style={{ width: 'auto' }} onClick={() => handleOpenModal()}>
                         <Plus size={20} style={{ marginRight: '0.5rem' }} /> Novo Modelo
                     </button>
                 </div>
-            </header>
-
-            <main style={{ maxWidth: '1100px', margin: '0 auto' }}>
                 <div style={{ position: 'relative', marginBottom: '2rem' }}>
                     <Search style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input 
@@ -427,6 +420,16 @@ export default function AssessmentsAdminPage() {
                     </div>
                 )}
             </AnimatePresence>
+
+            <ConfirmModal 
+                isOpen={isConfirmModalOpen}
+                onClose={() => setIsConfirmModalOpen(false)}
+                onConfirm={confirmDelete}
+                title="Excluir Modelo"
+                message={`Tem certeza que deseja excluir o modelo "${templateToDelete?.title}"? Esta ação removerá o modelo permanentemente.`}
+                confirmLabel="Sim, excluir"
+                cancelLabel="Cancelar"
+            />
         </div>
     );
 }

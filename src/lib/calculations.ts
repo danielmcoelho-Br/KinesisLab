@@ -32,6 +32,8 @@ export function calculateAssessmentScore(type: CalculationType, answers: Record<
         case 'oswestry':
         case 'ndi': {
             if (n === 0) return emptyResult();
+            // User requested to consider skipped questions in the calculation.
+            // Proportional scoring: (Sum / (AnsweredQuestions * 5)) * 100
             const maxPossible = n * 5;
             const percentage = Math.round((sum / maxPossible) * 100);
             
@@ -43,11 +45,12 @@ export function calculateAssessmentScore(type: CalculationType, answers: Record<
                 else if (percentage <= 80) interpretation = 'Incapacidade Devastadora';
                 else interpretation = 'Paciente Restrito ao Leito';
             } else {
-                if (percentage <= 8) interpretation = 'Sem Deficiência (0-8%)';
-                else if (percentage <= 28) interpretation = 'Deficiência Leve (10-28%)';
-                else if (percentage <= 48) interpretation = 'Deficiência Moderada (30-48%)';
-                else if (percentage <= 68) interpretation = 'Deficiência Severa (50-68%)';
-                else interpretation = 'Deficiência Completa (70-100%)';
+                // Official NDI cutoffs: 0-4 (0-8%) None, 5-14 (10-28%) Mild, 15-24 (30-48%) Moderate, 25-34 (50-68%) Severe, 35+ (70-100%) Complete
+                if (percentage <= 8) interpretation = 'Sem Deficiência';
+                else if (percentage <= 28) interpretation = 'Deficiência Leve';
+                else if (percentage <= 48) interpretation = 'Deficiência Moderada';
+                else if (percentage <= 68) interpretation = 'Deficiência Severa';
+                else interpretation = 'Deficiência Completa';
             }
 
             return { score: sum, max: maxPossible, percentage, interpretation, unit: '%' };

@@ -26,6 +26,8 @@ import { saveAssessment, getAssessment, updateAssessment } from "@/app/dashboard
 import { getPatient } from "@/app/dashboard/actions";
 import { toast } from "sonner";
 import BodySchema from "@/components/BodySchema";
+import FreeCanvas from "@/components/FreeCanvas";
+import AngleMeasurement from "@/components/AngleMeasurement";
 import Header from "@/components/Header";
 import PatientInfoBanner from "@/components/PatientInfoBanner";
 import { calculateAssessmentScore, CalculationType } from "@/lib/calculations";
@@ -157,44 +159,77 @@ const MuscleEnduranceChart = ({
     );
 
     return (
-        <div style={{ 
-            marginTop: '1.5rem', 
-            marginBottom: '2rem', 
-            padding: '1.5rem', 
-            backgroundColor: 'white', 
-            borderRadius: '1rem', 
-            border: '1px solid var(--border)',
-            boxShadow: isPrint ? 'none' : 'var(--shadow-sm)'
-        }}>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '1.5rem', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div className="chart-container">
+            <h4 className="chart-title">
                 <ImageIcon size={18} /> {chartTitle}
             </h4>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', minHeight: '200px' }}>
-                {norm && (
-                    <Bar 
-                        value={norm.mean} 
-                        label="Normalidade" 
-                        color="#94a3b8" 
-                        subLabel={`${gender === 'Feminino' ? 'Mulheres' : 'Homens'} ${norm.ageRange[0]}-${norm.ageRange[1]}a`} 
-                    />
-                )}
-                
-                {history.slice().reverse().map((h, i) => (
-                    <Bar 
-                        key={h.id} 
-                        value={Number(h.answers?.[fieldId]) || 0} 
-                        label={`Avaliação`} 
-                        subLabel={new Date(h.created_at).toLocaleDateString('pt-BR')}
-                        color="var(--primary-light)" 
-                    />
-                ))}
+            <div className="chart-scroll-wrapper">
+                <div className="chart-bars-container">
+                    {norm && (
+                        <Bar 
+                            value={norm.mean} 
+                            label="Normalidade" 
+                            color="#94a3b8" 
+                            subLabel={`${gender === 'Feminino' ? 'Mulheres' : 'Homens'} ${norm.ageRange[0]}-${norm.ageRange[1]}a`} 
+                        />
+                    )}
+                    
+                    {history.slice().reverse().map((h, i) => (
+                        <Bar 
+                            key={h.id} 
+                            value={Number(h.answers?.[fieldId]) || 0} 
+                            label={`Avaliação`} 
+                            subLabel={new Date(h.created_at).toLocaleDateString('pt-BR')}
+                            color="var(--primary-light)" 
+                        />
+                    ))}
 
-                <Bar 
-                    value={Number(currentValue) || 0} 
-                    label="Teste Atual" 
-                    color="var(--primary)" 
-                />
+                    <Bar 
+                        value={Number(currentValue) || 0} 
+                        label="Teste Atual" 
+                        color="var(--primary)" 
+                    />
+                </div>
             </div>
+            <style jsx>{`
+                .chart-container {
+                    margin-top: 1.5rem;
+                    margin-bottom: 2rem;
+                    padding: 1.5rem;
+                    background-color: white;
+                    border-radius: 1rem;
+                    border: 1px solid var(--border);
+                    box-shadow: ${isPrint ? 'none' : 'var(--shadow-sm)'};
+                }
+                .chart-title {
+                    font-size: 0.9rem;
+                    font-weight: 700;
+                    margin-bottom: 1.5rem;
+                    color: var(--secondary);
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }
+                .chart-scroll-wrapper {
+                    overflow-x: auto;
+                    padding-bottom: 0.5rem;
+                }
+                .chart-bars-container {
+                    display: flex;
+                    gap: 1rem;
+                    align-items: flex-end;
+                    min-height: 200px;
+                    min-width: 300px;
+                }
+                @media (max-width: 600px) {
+                    .chart-container {
+                        padding: 1rem;
+                    }
+                    .chart-bars-container {
+                        min-width: 450px;
+                    }
+                }
+            `}</style>
         </div>
     );
 };
@@ -213,43 +248,115 @@ const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded =
     if (data.length === 1 && data[0].date === 'Hoje' && data[0].score === 0) return null;
 
     return (
-        <div style={{ 
-            marginTop: isEmbedded ? '0.5rem' : '2rem', 
-            padding: isEmbedded ? '1rem' : '1.5rem', 
-            backgroundColor: isEmbedded ? 'var(--bg)' : 'var(--bg-secondary)', 
-            borderRadius: '1rem',
-            border: isEmbedded ? '1px solid var(--border)' : 'none'
-        }}>
-            <h4 style={{ fontSize: isEmbedded ? '0.85rem' : '1rem', fontWeight: '700', marginBottom: '1.5rem', color: 'var(--secondary)' }}>
+        <div className={`history-chart-container ${isEmbedded ? 'embedded' : ''}`}>
+            <h4 className="history-chart-title">
                 Evolução Funcional (% Incapacidade - {type.toUpperCase()})
             </h4>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', height: '200px' }}>
-                {data.map((d, i) => (
-                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ height: '150px', width: '100%', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: '8px', position: 'relative', display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}>
-                            <motion.div 
-                                initial={{ height: 0 }}
-                                animate={{ height: `${d.score}%` }}
-                                style={{ width: '100%', backgroundColor: d.date === 'Hoje' ? 'var(--primary)' : 'var(--primary-light)', borderRadius: '4px 4px 0 0' }}
-                            />
-                            <div style={{ 
-                                position: 'absolute', 
-                                top: d.score > 50 ? '50%' : 'auto',
-                                bottom: d.score > 50 ? 'auto' : '10px',
-                                left: '50%', 
-                                transform: 'translateX(-50%)',
-                                fontSize: '0.8rem', 
-                                fontWeight: '800', 
-                                color: d.score > 50 ? '#fff' : 'var(--text)',
-                                textShadow: d.score > 50 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none'
-                             }}>
-                                {d.score}%
+            <div className="history-chart-scroll">
+                <div className="history-chart-bars">
+                    {data.map((d, i) => (
+                        <div key={i} className="history-chart-bar-item">
+                            <div className="bar-wrapper">
+                                <motion.div 
+                                    initial={{ height: 0 }}
+                                    animate={{ height: `${d.score}%` }}
+                                    className={`bar-fill ${d.date === 'Hoje' ? 'current' : ''}`}
+                                />
+                                <div className={`bar-value ${d.score > 50 ? 'inside' : 'outside'}`}>
+                                    {d.score}%
+                                </div>
                             </div>
+                            <div className="bar-label">{d.date}</div>
                         </div>
-                        <div style={{ fontSize: '0.7rem', fontWeight: '600', textAlign: 'center' }}>{d.date}</div>
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
+            <style jsx>{`
+                .history-chart-container {
+                    margin-top: 2rem;
+                    padding: 1.5rem;
+                    background-color: var(--bg-secondary);
+                    border-radius: 1rem;
+                }
+                .history-chart-container.embedded {
+                    margin-top: 0.5rem;
+                    padding: 1rem;
+                    background-color: var(--bg);
+                    border: 1px solid var(--border);
+                }
+                .history-chart-title {
+                    font-size: 1rem;
+                    font-weight: 700;
+                    margin-bottom: 1.5rem;
+                    color: var(--secondary);
+                }
+                .embedded .history-chart-title {
+                    font-size: 0.85rem;
+                }
+                .history-chart-scroll {
+                    overflow-x: auto;
+                    padding-bottom: 0.5rem;
+                }
+                .history-chart-bars {
+                    display: flex;
+                    gap: 1rem;
+                    align-items: flex-end;
+                    height: 200px;
+                    min-width: 300px;
+                }
+                .history-chart-bar-item {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 0.5rem;
+                }
+                .bar-wrapper {
+                    height: 150px;
+                    width: 100%;
+                    background-color: rgba(0,0,0,0.05);
+                    border-radius: 8px;
+                    position: relative;
+                    display: flex;
+                    align-items: flex-end;
+                    overflow: hidden;
+                }
+                .bar-fill {
+                    width: 100%;
+                    background-color: var(--primary-light);
+                    border-radius: 4px 4px 0 0;
+                }
+                .bar-fill.current {
+                    background-color: var(--primary);
+                }
+                .bar-value {
+                    position: absolute;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    font-size: 0.8rem;
+                    font-weight: 800;
+                    z-index: 1;
+                }
+                .bar-value.inside {
+                    top: 50%;
+                    color: #fff;
+                    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+                }
+                .bar-value.outside {
+                    bottom: 10px;
+                    color: var(--text);
+                }
+                .bar-label {
+                    font-size: 0.7rem;
+                    font-weight: 600;
+                    text-align: center;
+                }
+                @media (max-width: 600px) {
+                    .history-chart-bars {
+                        min-width: 400px;
+                    }
+                }
+            `}</style>
         </div>
     );
 };
@@ -362,12 +469,23 @@ function AssessmentContent() {
 
                 if (type === 'afLombar') fieldId = 'oswestry_score';
                 else if (type === 'afCervical') fieldId = 'ndi_score';
-                else if (type === 'afOmbro') fieldId = 'quickdash_score';
+                else if (type === 'afOmbro' || type === 'afCotovelo' || type === 'afMao') fieldId = 'quickdash_score';
                 else if (type === 'afGeriatria') {
                     // For geriatria, the returnToField is encoded in the returnScore key
                     // We check each possible sub-questionnaire
                     const geriatricScoreKeys = ['man_score', 'ves13_score', 'lbpq_score', 'brief_score'];
                     for (const key of geriatricScoreKeys) {
+                        const subKey = `return_score_${patientId}_${type}_${key}`;
+                        const subScore = localStorage.getItem(subKey);
+                        if (subScore) {
+                            currentAnswers[key] = subScore;
+                            localStorage.removeItem(subKey);
+                        }
+                    }
+                    fieldId = ''; // handled above
+                } else if (type === 'afMmii') {
+                    const mmiiScoreKeys = ['lysholm_score', 'womac_score', 'ikdc_score', 'aofas_score'];
+                    for (const key of mmiiScoreKeys) {
                         const subKey = `return_score_${patientId}_${type}_${key}`;
                         const subScore = localStorage.getItem(subKey);
                         if (subScore) {
@@ -479,6 +597,83 @@ function AssessmentContent() {
                 if (rl && rm) newAnswers['rl_rm_ratio_dir'] = `${Math.round((rl / rm) * 100)}%`;
                 else newAnswers['rl_rm_ratio_dir'] = '';
             }
+        }
+
+        // Table-based calculations for afMmii
+        if (type === 'afMmii') {
+            // Perimetry Deficits
+            const perimetry = ['p_joe', 'p_cox'];
+            perimetry.forEach(pId => {
+                if (fieldId === `${pId}_esq` || fieldId === `${pId}_dir`) {
+                    const esq = Number(newAnswers[`${pId}_esq`]);
+                    const dir = Number(newAnswers[`${pId}_dir`]);
+                    if (esq > 0 && dir > 0) {
+                        const max = Math.max(esq, dir);
+                        const min = Math.min(esq, dir);
+                        const deficit = Math.round(((max - min) / max) * 100);
+                        newAnswers[`${pId}_def`] = `${deficit}%`;
+                    } else {
+                        newAnswers[`${pId}_def`] = '';
+                    }
+                }
+            });
+
+            // Strength Deficits
+            const strengthMovements = ['f_abd_q', 'f_ext_q', 'f_ext_j', 'f_flex_j'];
+            strengthMovements.forEach(sId => {
+                if (fieldId === `${sId}_esq` || fieldId === `${sId}_dir`) {
+                    const esq = Number(newAnswers[`${sId}_esq`]);
+                    const dir = Number(newAnswers[`${sId}_dir`]);
+                    if (esq > 0 && dir > 0) {
+                        const max = Math.max(esq, dir);
+                        const min = Math.min(esq, dir);
+                        const deficit = Math.round(((max - min) / max) * 100);
+                        newAnswers[`${sId}_def`] = `${deficit}%`;
+                    } else {
+                        newAnswers[`${sId}_def`] = '';
+                    }
+                }
+            });
+
+            // I/Q Ratio (Flexion / Extension)
+            if (fieldId === 'f_flex_j_esq' || fieldId === 'f_ext_j_esq') {
+                const flex = Number(newAnswers['f_flex_j_esq']);
+                const ext = Number(newAnswers['f_ext_j_esq']);
+                if (flex && ext) newAnswers['rel_iq_esq'] = `${Math.round((flex / ext) * 100)}%`;
+                else newAnswers['rel_iq_esq'] = '';
+            }
+            if (fieldId === 'f_flex_j_dir' || fieldId === 'f_ext_j_dir') {
+                const flex = Number(newAnswers['f_flex_j_dir']);
+                const ext = Number(newAnswers['f_ext_j_dir']);
+                if (flex && ext) newAnswers['rel_iq_dir'] = `${Math.round((flex / ext) * 100)}%`;
+                else newAnswers['rel_iq_dir'] = '';
+            }
+        }
+
+        // Table-based calculations for afMao and afCotovelo (Grip/Pinch Deficits)
+        if (type === 'afMao' || type === 'afCotovelo') {
+            const tests = [
+                { id: 'preensao', def: 'preensao_def' },
+                { id: 'polpa', def: 'polpa_def' },
+                { id: 'lateral', def: 'lateral_def' },
+                { id: 'tripode', def: 'tripode_def' }
+            ];
+            tests.forEach(test => {
+                const isEsq = fieldId === `${test.id}_esq`;
+                const isDir = fieldId === `${test.id}_dir`;
+                if (isEsq || isDir) {
+                    const esq = Number(isEsq ? value : newAnswers[`${test.id}_esq`]);
+                    const dir = Number(isDir ? value : newAnswers[`${test.id}_dir`]);
+                    if (esq > 0 || dir > 0) {
+                        const max = Math.max(esq, dir);
+                        const min = Math.min(esq, dir);
+                        const deficit = Math.round(((max - min) / max) * 100);
+                        newAnswers[test.def] = `${deficit}%`;
+                    } else {
+                        newAnswers[test.def] = '';
+                    }
+                }
+            });
         }
         
         return newAnswers;
@@ -608,8 +803,8 @@ function AssessmentContent() {
     if (!section.rows || !section.columns) return null;
 
     return (
-        <div style={{ overflowX: 'auto', marginBottom: isPrint ? '1rem' : '2rem' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isPrint ? '0.9rem' : '1rem' }}>
+        <div className="table-responsive-wrapper">
+            <table className={`assessment-table ${isPrint ? 'print' : ''}`}>
                 <thead>
                     <tr style={{ backgroundColor: 'var(--bg-secondary)' }}>
                         {section.columns.map((col, i) => {
@@ -847,6 +1042,47 @@ function AssessmentContent() {
             {renderImageUpload(field.id)}
           </div>
         );
+      case 'paintmap':
+        return (
+            <div key={field.id} className="form-group">
+                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
+                <div style={{ pointerEvents: isEditing ? 'auto' : 'none', opacity: isEditing ? 1 : 0.8 }}>
+                    <BodySchema 
+                        key={field.id}
+                        image={field.image || ""} 
+                        value={answers[field.id]} 
+                        onChange={(val) => handleInputChange(field.id, val)} 
+                        colors={field.colors}
+                    />
+                </div>
+            </div>
+        );
+      case 'angle_measurement':
+        return (
+            <div key={field.id} className="form-group">
+                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
+                <div style={{ pointerEvents: isEditing ? 'auto' : 'none' }}>
+                    <AngleMeasurement 
+                        key={field.id}
+                        value={answers[field.id]} 
+                        onChange={(val) => handleInputChange(field.id, val)} 
+                    />
+                </div>
+            </div>
+        );
+      case 'freecanvas':
+        return (
+            <div key={field.id} className="form-group">
+                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
+                <div style={{ pointerEvents: isEditing ? 'auto' : 'none' }}>
+                    <FreeCanvas 
+                        key={field.id}
+                        value={answers[field.id]} 
+                        onChange={(val) => handleInputChange(field.id, val)} 
+                    />
+                </div>
+            </div>
+        );
       case 'button':
         const isQuestButton = field.id.endsWith('_novo');
         const questType = field.id.split('_')[0];
@@ -943,21 +1179,31 @@ function AssessmentContent() {
     const handleReturn = () => {
         if (returnTo) {
             // For geriatric sub-questionnaires, save to specific field key
-            const geriatricMapping: Record<string, string> = {
-                man: 'man_score',
-                ves13: 'ves13_score',
-                lbpq: 'lbpq_score',
-                brief: 'brief_score',
+            const mmiiMapping: Record<string, string> = {
+                lysholm: 'lysholm_score',
+                womac: 'womac_score',
+                ikdc: 'ikdc_score',
+                aofas: 'aofas_score',
             };
-            const fieldKey = geriatricMapping[type];
-            if (returnTo === 'afGeriatria' && fieldKey) {
+
+            const fieldKey = geriatricMapping[type] || mmiiMapping[type];
+            const isGeriatricTarget = returnTo === 'afGeriatria';
+            const isMmiiTarget = returnTo === 'afMmii';
+
+            if ((isGeriatricTarget || isMmiiTarget) && fieldKey) {
                 // Save with the specific score key
-                const scoreStr = result.unit === 'média' 
-                    ? `${result.interpretation}` 
-                    : `${result.score} pts — ${result.interpretation}`;
+                let scoreStr = "";
+                if (result.unit === 'média') {
+                    scoreStr = `${result.interpretation}`;
+                } else if (result.unit === 'pontos') {
+                    scoreStr = `${result.score} pts — ${result.interpretation}`;
+                } else {
+                    scoreStr = `${result.percentage}% — ${result.interpretation}`;
+                }
+                
                 localStorage.setItem(`return_score_${patientId}_${returnTo}_${fieldKey}`, scoreStr);
-                // Also set the general key without % so the parent code knows to check geriatric-specific keys
-                localStorage.setItem(`return_score_${patientId}_${returnTo}`, 'geriatria');
+                // Also set the general key without % so the parent code knows to check questionnaire-specific keys
+                localStorage.setItem(`return_score_${patientId}_${returnTo}`, isGeriatricTarget ? 'geriatria' : 'mmii');
             } else {
                 localStorage.setItem(`return_score_${patientId}_${returnTo}`, String(result.percentage));
             }
@@ -1122,337 +1368,208 @@ function AssessmentContent() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)' }}>
+    <div className="assessment-page">
       <div className="background-gradient" />
       
       <Header />
 
-      <main className="no-print" style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem 1.5rem' }}>
-        <header style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <button 
-                    onClick={() => router.back()}
-                    style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '0.5rem', 
-                        backgroundColor: 'rgba(255,255,255,0.8)', 
-                        border: '1px solid var(--border)', 
-                        padding: '0.5rem 1rem',
-                        borderRadius: '0.75rem',
-                        color: 'var(--text-muted)', 
-                        fontWeight: '600', 
-                        cursor: 'pointer',
-                        boxShadow: 'var(--shadow-sm)'
-                    }}
-                >
-                    <ArrowLeft size={18} />
-                    <span>Sair</span>
-                </button>
-
-                {(user || assessmentOwner) && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', borderLeft: '1px solid var(--border)', paddingLeft: '1rem', marginLeft: '0.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.1rem' }}>
-                            <span style={{ fontWeight: '600' }}>Avaliador:</span>
-                            <span style={{ color: 'var(--text)', fontWeight: '700' }}>
-                                {(assessmentOwner?.name || user?.name)} 
-                                {((assessmentOwner?.crefito || user?.crefito)) ? ` (CREFITO: ${assessmentOwner?.crefito || user?.crefito})` : ""}
-                            </span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            <span style={{ fontWeight: '600' }}>Data:</span>
-                            <span style={{ color: 'var(--text)', fontWeight: '700' }}>{assessmentDate}</span>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            <div style={{ textAlign: 'center' }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--secondary)', margin: 0 }}>{questionnaire.title}</h1>
-            </div>
-            
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                <button 
-                    onClick={() => window.print()}
-                    className="no-print"
-                    style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '0.5rem', 
-                        backgroundColor: 'white', 
-                        color: 'var(--secondary)',
-                        border: '1px solid var(--border)', 
-                        padding: '0.5rem 1rem',
-                        borderRadius: '0.75rem',
-                        fontWeight: '600', 
-                        cursor: 'pointer',
-                        boxShadow: 'var(--shadow-sm)'
-                    }}
-                >
-                    <Printer size={16} />
-                    <span>Imprimir</span>
-                </button>
-
-                {assessmentId && !isEditing && (user?.role === 'ADMINISTRADOR' || assessmentOwnerId === user?.id) && (
+      <main className="no-print container main-content">
+        <header className="assessment-header">
+            <div className="header-top stack-on-mobile">
+                <div className="header-left">
                     <button 
-                        onClick={() => setIsEditing(true)}
-
-                        style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '0.5rem', 
-                            backgroundColor: 'var(--primary)', 
-                            color: 'white',
-                            border: 'none', 
-                            padding: '0.5rem 1rem',
-                            borderRadius: '0.75rem',
-                            fontWeight: '600', 
-                            cursor: 'pointer',
-                            boxShadow: 'var(--shadow-sm)'
-                        }}
+                        onClick={() => router.back()}
+                        className="btn-exit"
                     >
-                        <Edit2 size={16} />
-                        <span>Editar</span>
+                        <ArrowLeft size={18} />
+                        <span>Sair</span>
                     </button>
-                )}
-            </div>
-        </div>
 
-        <PatientInfoBanner patientId={patientId} />
-      </header>
-
-      <div style={{ maxWidth: '750px', margin: '0 auto', paddingBottom: '5rem' }}>
-        {/* Progress Bar */}
-        <div style={{ width: '100%', height: '8px', backgroundColor: '#e5e7eb', borderRadius: '4px', marginBottom: '3rem', overflow: 'hidden' }}>
-          <motion.div 
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            style={{ height: '100%', backgroundColor: 'var(--primary)' }}
-          />
-        </div>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentIdx}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
-            style={{ 
-              backgroundColor: 'white', 
-              padding: '2.5rem', 
-              borderRadius: '2rem', 
-              boxShadow: 'var(--shadow-xl)',
-              border: '1px solid var(--border)'
-            }}
-          >
-            {isClinical ? (
-              <>
-                <h3 style={{ fontSize: '1.75rem', fontWeight: 'bold', marginBottom: '2.5rem', color: 'var(--primary)' }}>
-                  {(currentItem as Section).title}
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                  {(currentItem as Section).type === 'table' && renderTable(currentItem as Section)}
-                  {(currentItem as Section).fields?.map(field => renderField(field))}
-                </div>
-              </>
-            ) : (
-              <>
-                <h3 style={{ fontSize: '1.75rem', fontWeight: 'bold', marginBottom: '2.5rem', lineHeight: '1.3', color: 'var(--secondary)' }}>
-                  {(currentItem as any).text}
-                </h3>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {(currentItem as any).options?.map((option: any) => (
-                    <button
-                      key={option.value}
-                      onClick={() => handleSelect(option.value)}
-                      disabled={!isEditing}
-                      style={{ 
-                        width: '100%', 
-                        textAlign: 'left', 
-                        padding: '1.5rem', 
-                        borderRadius: '1.25rem', 
-                        border: '2px solid', 
-                        borderColor: answers[currentIdx] === option.value ? 'var(--primary)' : '#f3f4f6',
-                        backgroundColor: answers[currentIdx] === option.value ? 'var(--primary-light)' : 'white',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        cursor: isEditing ? 'pointer' : 'default',
-                        transition: 'all 0.2s',
-                        opacity: !isEditing && answers[currentIdx] !== option.value ? 0.5 : 1
-                      }}
-                    >
-                      <span style={{ fontSize: '1.125rem', fontWeight: '600', color: answers[currentIdx] === option.value ? 'var(--primary)' : 'var(--text)' }}>
-                        {option.label}
-                      </span>
-                      <div style={{ 
-                        width: '28px', 
-                        height: '28px', 
-                        borderRadius: '50%', 
-                        border: '2px solid', 
-                        borderColor: answers[currentIdx] === option.value ? 'var(--primary)' : '#d1d5db',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        {answers[currentIdx] === option.value && (
-                          <div style={{ width: '12px', height: '12px', backgroundColor: 'var(--primary)', borderRadius: '50%' }} />
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                {['ndi', 'oswestry'].includes(type) && (
-                    <FunctionalHistoryChart 
-                        history={patientAssessments.filter(h => h.assessment_type === type && h.id !== assessmentId)}
-                        currentScore={calculateAssessmentScore(type as CalculationType, answers).percentage}
-                        type={type}
-                    />
-                )}
-              </>
-            )}
-
-            <div style={{ marginTop: '4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <button
-                disabled={currentIdx === 0}
-                onClick={() => setCurrentIdx(currentIdx - 1)}
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '0.5rem', 
-                  backgroundColor: 'transparent', 
-                  border: 'none', 
-                  color: 'var(--text-muted)', 
-                  fontWeight: '700', 
-                  fontSize: '1rem',
-                  cursor: 'pointer',
-                  opacity: currentIdx === 0 ? 0.3 : 1
-                }}
-              >
-                <ChevronLeft size={20} />
-                Anterior
-              </button>
-
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                {isEditing && (
-                    <button
-                        disabled={saving}
-                        onClick={handleFinish}
-                        className="btn-primary"
-                        style={{ width: 'auto', padding: '1rem 2.5rem', fontSize: '1.125rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                    >
-                        {saving ? "Salvando..." : (assessmentId ? "Salvar Alterações" : "Finalizar Avaliação")}
-                        {assessmentId && <Save size={20} />}
-                    </button>
-                )}
-                
-                {currentIdx < items.length - 1 && (
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        <button
-                            onClick={() => setCurrentIdx(currentIdx + 1)}
-                            style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '0.5rem', 
-                                backgroundColor: 'var(--primary-light)', 
-                                padding: '0.75rem 1.5rem',
-                                borderRadius: '0.75rem',
-                                color: 'var(--primary)', 
-                                fontWeight: '700', 
-                                fontSize: '1rem',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            Próxima
-                            <ChevronRight size={20} />
-                        </button>
-                    </div>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Audit Log Timeline */}
-        {assessmentId && changeLogs.length > 0 && (
-            <div style={{ marginTop: '3rem' }}>
-                <button 
-                    onClick={() => setShowLogs(!showLogs)}
-                    style={{ 
-                        width: '100%', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between',
-                        padding: '1rem 1.5rem',
-                        backgroundColor: 'white',
-                        border: '1px solid var(--border)',
-                        borderRadius: '1rem',
-                        cursor: 'pointer',
-                        fontWeight: '600',
-                        color: 'var(--secondary)'
-                    }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <HistoryIcon size={20} style={{ color: 'var(--primary)' }} />
-                        <span>Histórico de Alterações ({changeLogs.length})</span>
-                    </div>
-                    {showLogs ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                </button>
-
-                <AnimatePresence>
-                    {showLogs && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            style={{ 
-                                backgroundColor: 'white', 
-                                border: '1px solid var(--border)', 
-                                borderTop: 'none',
-                                borderBottomLeftRadius: '1rem', 
-                                borderBottomRightRadius: '1rem',
-                                padding: '1.5rem',
-                                overflow: 'hidden'
-                            }}
-                        >
-                            <div style={{ position: 'relative', paddingLeft: '2rem' }}>
-                                <div style={{ 
-                                    position: 'absolute', 
-                                    left: '7px', 
-                                top: 0, 
-                                bottom: 0, 
-                                width: '2px', 
-                                backgroundColor: '#e5e7eb' 
-                            }} />
-                            
-                            {changeLogs.map((log, idx) => (
-                                <div key={idx} style={{ position: 'relative', marginBottom: '1.5rem' }}>
-                                    <div style={{ 
-                                        position: 'absolute', 
-                                        left: '-28px', 
-                                        top: '4px', 
-                                        width: '12px', 
-                                        height: '12px', 
-                                        borderRadius: '50%', 
-                                        backgroundColor: 'var(--primary)',
-                                        border: '3px solid white'
-                                    }} />
-                                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text)', fontWeight: '500' }}>
-                                        {log.entry}
-                                    </p>
-                                </div>
-                            ))}
+                    {(user || assessmentOwner) && (
+                        <div className="evaluator-info">
+                            <div className="info-row">
+                                <span className="label">Avaliador:</span>
+                                <span className="value">
+                                    {(assessmentOwner?.name || user?.name)} 
+                                    {((assessmentOwner?.crefito || user?.crefito)) ? ` (CREFITO: ${assessmentOwner?.crefito || user?.crefito})` : ""}
+                                </span>
+                            </div>
+                            <div className="info-row">
+                                <span className="label">Data:</span>
+                                <span className="value">{assessmentDate}</span>
+                            </div>
                         </div>
-                    </motion.div>
-                )}
+                    )}
+                </div>
+
+                <div className="header-center">
+                    <h1 className="page-title">{questionnaire.title}</h1>
+                </div>
+                
+                <div className="header-actions">
+                    <button 
+                        onClick={() => window.print()}
+                        className="btn-action-outline"
+                    >
+                        <Printer size={16} />
+                        <span>Imprimir</span>
+                    </button>
+
+                    {assessmentId && !isEditing && (user?.role === 'ADMINISTRADOR' || assessmentOwnerId === user?.id) && (
+                        <button 
+                            onClick={() => setIsEditing(true)}
+                            className="btn-action-primary"
+                        >
+                            <Edit2 size={16} />
+                            <span>Editar</span>
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            <PatientInfoBanner patientId={patientId} />
+        </header>
+
+        <div className="assessment-form-container">
+            {/* Progress Bar */}
+            <div className="progress-bar-wrapper">
+                <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progress}%` }}
+                    className="progress-bar-fill"
+                />
+            </div>
+
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={currentIdx}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="assessment-card"
+                >
+                    {isClinical ? (
+                        <>
+                            <h3 className="section-title">
+                                {(currentItem as Section).title}
+                            </h3>
+                            <div className="section-fields">
+                                {(currentItem as Section).type === 'table' && renderTable(currentItem as Section)}
+                                {(currentItem as Section).fields?.map(field => renderField(field))}
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <h3 className="functional-title">
+                                {(currentItem as any).text}
+                            </h3>
+
+                            <div className="options-grid">
+                                {(currentItem as any).options?.map((option: any) => (
+                                    <button
+                                        key={option.value}
+                                        onClick={() => handleSelect(option.value)}
+                                        disabled={!isEditing}
+                                        className={`option-button ${answers[currentIdx] === option.value ? 'selected' : ''}`}
+                                        style={{ opacity: !isEditing && answers[currentIdx] !== option.value ? 0.5 : 1 }}
+                                    >
+                                        <span className="option-label">
+                                            {option.label}
+                                        </span>
+                                        <div className="radio-circle">
+                                            {answers[currentIdx] === option.value && (
+                                                <div className="radio-inner" />
+                                            )}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {['ndi', 'oswestry'].includes(type) && (
+                                <FunctionalHistoryChart 
+                                    history={patientAssessments.filter(h => h.assessment_type === type && h.id !== assessmentId)}
+                                    currentScore={calculateAssessmentScore(type as CalculationType, answers).percentage}
+                                    type={type}
+                                />
+                            )}
+                        </>
+                    )}
+
+                    <div className="navigation-footer">
+                        <button
+                            disabled={currentIdx === 0}
+                            onClick={() => setCurrentIdx(currentIdx - 1)}
+                            className="btn-nav-back"
+                        >
+                            <ChevronLeft size={20} />
+                            <span>Anterior</span>
+                        </button>
+
+                        <div className="nav-main-actions">
+                            {isEditing && (
+                                <button
+                                    disabled={saving}
+                                    onClick={handleFinish}
+                                    className="btn-finish"
+                                >
+                                    <span>{saving ? "Salvando..." : (assessmentId ? "Salvar" : "Finalizar")}</span>
+                                    {assessmentId && <Save size={20} />}
+                                </button>
+                            )}
+                            
+                            {currentIdx < items.length - 1 && (
+                                <button
+                                    onClick={() => setCurrentIdx(currentIdx + 1)}
+                                    className="btn-nav-next"
+                                >
+                                    <span>Próxima</span>
+                                    <ChevronRight size={20} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </motion.div>
             </AnimatePresence>
+
+            {/* Audit Log Timeline */}
+            {assessmentId && changeLogs.length > 0 && (
+                <div className="audit-log-section">
+                    <button 
+                        onClick={() => setShowLogs(!showLogs)}
+                        className="log-toggle-btn"
+                    >
+                        <div className="log-toggle-left">
+                            <HistoryIcon size={20} className="icon" />
+                            <span>Histórico de Alterações ({changeLogs.length})</span>
+                        </div>
+                        {showLogs ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    </button>
+
+                    <AnimatePresence>
+                        {showLogs && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="log-content"
+                            >
+                                <div className="timeline">
+                                    <div className="timeline-line" />
+                                    
+                                    {changeLogs.map((log, idx) => (
+                                        <div key={idx} className="timeline-item">
+                                            <div className="timeline-dot" />
+                                            <p className="timeline-text">{log.entry}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            )}
         </div>
-        )}
-      </div>
       </main>
 
       {renderFullPrintView()}
@@ -1465,21 +1582,9 @@ function AssessmentContent() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setSelectedImage(null)}
-                style={{ 
-                    position: 'fixed', 
-                    top: 0, 
-                    left: 0, 
-                    right: 0, 
-                    bottom: 0, 
-                    backgroundColor: 'rgba(0,0,0,0.85)', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    zIndex: 2000,
-                    padding: '2rem'
-                }}
+                className="image-zoom-overlay"
             >
-                <div style={{ position: 'absolute', top: '2rem', right: '2rem', color: 'white', cursor: 'pointer' }}>
+                <div className="zoom-close">
                     <X size={32} />
                 </div>
                 <motion.img 
@@ -1487,12 +1592,392 @@ function AssessmentContent() {
                     animate={{ scale: 1 }}
                     src={selectedImage} 
                     alt="Zoom" 
-                    style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: '0.5rem', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} 
-                    onClick={(e) => e.stopPropagation()}
                 />
             </motion.div>
         )}
       </AnimatePresence>
+
+      <style jsx>{`
+        .assessment-page {
+          min-height: 100vh;
+          background-color: var(--bg);
+        }
+        .main-content {
+          padding: 2rem 1.5rem;
+        }
+        .assessment-header {
+          margin-bottom: 2.5rem;
+        }
+        .header-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1.5rem;
+          margin-bottom: 1.5rem;
+        }
+        .header-left {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+        .btn-exit {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          background-color: rgba(255,255,255,0.8);
+          border: 1px solid var(--border);
+          padding: 0.5rem 1rem;
+          border-radius: 0.75rem;
+          color: var(--text-muted);
+          font-weight: 600;
+          cursor: pointer;
+          box-shadow: var(--shadow-sm);
+          white-space: nowrap;
+        }
+        .evaluator-info {
+          display: flex;
+          flex-direction: column;
+          border-left: 1px solid var(--border);
+          padding-left: 1rem;
+          margin-left: 0.5rem;
+        }
+        .info-row {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          font-size: 0.75rem;
+          color: var(--text-muted);
+        }
+        .info-row .label {
+          font-weight: 600;
+        }
+        .info-row .value {
+          color: var(--text);
+          font-weight: 700;
+        }
+        .page-title {
+          font-size: 1.5rem;
+          font-weight: bold;
+          color: var(--secondary);
+          margin: 0;
+          text-align: center;
+        }
+        .header-actions {
+          display: flex;
+          gap: 0.75rem;
+        }
+        .btn-action-outline, .btn-action-primary {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          border-radius: 0.75rem;
+          font-weight: 600;
+          cursor: pointer;
+          box-shadow: var(--shadow-sm);
+          white-space: nowrap;
+        }
+        .btn-action-outline {
+          background-color: white;
+          color: var(--secondary);
+          border: 1px solid var(--border);
+        }
+        .btn-action-primary {
+          background-color: var(--primary);
+          color: white;
+          border: none;
+        }
+        
+        .assessment-form-container {
+          max-width: 750px;
+          margin: 0 auto;
+          padding-bottom: 5rem;
+        }
+        .progress-bar-wrapper {
+          width: 100%;
+          height: 8px;
+          background-color: #e5e7eb;
+          border-radius: 4px;
+          margin-bottom: 3rem;
+          overflow: hidden;
+        }
+        .progress-bar-fill {
+          height: 100%;
+          background-color: var(--primary);
+        }
+        .assessment-card {
+          background-color: white;
+          padding: 2.5rem;
+          border-radius: 2rem;
+          box-shadow: var(--shadow-xl);
+          border: 1px solid var(--border);
+          position: relative;
+        }
+        .section-title {
+          font-size: 1.75rem;
+          font-weight: bold;
+          margin-bottom: 2.5rem;
+          color: var(--primary);
+        }
+        .section-fields {
+          display: flex;
+          flex-direction: column;
+          gap: 2rem;
+        }
+        .functional-title {
+          font-size: 1.75rem;
+          font-weight: bold;
+          margin-bottom: 2.5rem;
+          line-height: 1.3;
+          color: var(--secondary);
+        }
+        .options-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+        .option-button {
+          width: 100%;
+          text-align: left;
+          padding: 1.5rem;
+          border-radius: 1.25rem;
+          border: 2px solid #f3f4f6;
+          background-color: white;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .option-button.selected {
+          border-color: var(--primary);
+          background-color: var(--primary-light);
+        }
+        .option-label {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: var(--text);
+        }
+        .selected .option-label {
+          color: var(--primary);
+        }
+        .radio-circle {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          border: 2px solid #d1d5db;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .selected .radio-circle {
+          border-color: var(--primary);
+        }
+        .radio-inner {
+          width: 12px;
+          height: 12px;
+          background-color: var(--primary);
+          border-radius: 50%;
+        }
+        
+        .navigation-footer {
+          margin-top: 4rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 1rem;
+        }
+        .btn-nav-back {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          background-color: transparent;
+          border: none;
+          color: var(--text-muted);
+          font-weight: 700;
+          font-size: 1rem;
+          cursor: pointer;
+        }
+        .btn-nav-back:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+        }
+        .nav-main-actions {
+          display: flex;
+          gap: 1rem;
+        }
+        .btn-finish, .btn-nav-next {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.75rem 1.5rem;
+          border-radius: 0.75rem;
+          font-weight: 700;
+          font-size: 1rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-finish {
+          background-color: var(--primary);
+          color: white;
+          border: none;
+        }
+        .btn-nav-next {
+          background-color: var(--primary-light);
+          color: var(--primary);
+          border: none;
+        }
+        
+        .audit-log-section {
+          margin-top: 3rem;
+        }
+        .log-toggle-btn {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1rem 1.5rem;
+          background-color: white;
+          border: 1px solid var(--border);
+          border-radius: 1rem;
+          cursor: pointer;
+          font-weight: 600;
+          color: var(--secondary);
+        }
+        .log-toggle-left {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+        .log-toggle-left .icon {
+          color: var(--primary);
+        }
+        .log-content {
+          background-color: white;
+          border: 1px solid var(--border);
+          border-top: none;
+          border-bottom-left-radius: 1rem;
+          border-bottom-right-radius: 1rem;
+          padding: 1.5rem;
+          overflow: hidden;
+        }
+        .timeline {
+          position: relative;
+          padding-left: 2rem;
+        }
+        .timeline-line {
+          position: absolute;
+          left: 7px;
+          top: 0;
+          bottom: 0;
+          width: 2px;
+          background-color: #e5e7eb;
+        }
+        .timeline-item {
+          position: relative;
+          margin-bottom: 1.5rem;
+        }
+        .timeline-dot {
+          position: absolute;
+          left: -28px;
+          top: 4px;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background-color: var(--primary);
+          border: 3px solid white;
+        }
+        .timeline-text {
+          margin: 0;
+          font-size: 0.9rem;
+          color: var(--text);
+          font-weight: 500;
+        }
+        
+        .image-zoom-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0,0,0,0.85);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 2000;
+          padding: 2rem;
+        }
+        .zoom-close {
+          position: absolute;
+          top: 2rem;
+          right: 2rem;
+          color: white;
+          cursor: pointer;
+        }
+        .image-zoom-overlay img {
+          max-width: 100%;
+          max-height: 100%;
+          border-radius: 0.5rem;
+          box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 768px) {
+          .main-content {
+            padding: 1.5rem 1rem;
+          }
+          .header-top {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .header-center {
+            order: -1;
+            width: 100%;
+          }
+          .page-title {
+            text-align: left;
+            font-size: 1.5rem;
+          }
+          .header-actions {
+            width: 100%;
+          }
+          .header-actions button {
+            flex: 1;
+            justify-content: center;
+          }
+          .evaluator-info {
+            display: none;
+          }
+          .assessment-card {
+            padding: 1.5rem;
+            border-radius: 1.25rem;
+          }
+          .section-title, .functional-title {
+            font-size: 1.25rem;
+            margin-bottom: 1.5rem;
+          }
+          .option-button {
+            padding: 1rem;
+            border-radius: 0.75rem;
+          }
+          .option-label {
+            font-size: 1rem;
+          }
+          .navigation-footer {
+            flex-direction: column-reverse;
+            gap: 1.5rem;
+            margin-top: 2.5rem;
+          }
+          .nav-main-actions {
+            width: 100%;
+            flex-direction: column;
+          }
+          .btn-nav-back, .btn-finish, .btn-nav-next {
+            width: 100%;
+            justify-content: center;
+            padding: 1rem;
+          }
+        }
+      `}</style>
 
       <style jsx global>{`
         @media print {

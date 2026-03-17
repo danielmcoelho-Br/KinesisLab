@@ -12,7 +12,6 @@ export const metadata: Metadata = {
   title: "KinesisLab - Gerenciamento de Avaliações",
   description: "Plataforma avançada para fisioterapia e avaliações biomecânicas.",
   manifest: "/manifest.json",
-  themeColor: "#A31621",
 };
 
 export const viewport: Viewport = {

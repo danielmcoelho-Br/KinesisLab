@@ -35,17 +35,35 @@ export default function LoginPage() {
       
       <main className="login-card">
         <header className="login-header">
-          <div className="logo-container" style={{ position: 'relative', width: '120px', height: '100px', margin: '0 auto 1.5rem' }}>
-            <Image 
-                src="/logo-kinesis.jpg" 
-                alt="KinesisLab Logo" 
-                fill
-                style={{ objectFit: 'contain' }}
-            />
+          <div className="logo-container">
+            <div className="logo-image-wrapper">
+              <Image 
+                  src="/logo-kinesis.jpg" 
+                  alt="KinesisLab Logo" 
+                  fill
+                  style={{ objectFit: 'contain' }}
+              />
+            </div>
           </div>
           <h1>Kinesis<span>Lab</span></h1>
           <p>Gerenciamento de Avaliações Fisioterapêuticas</p>
         </header>
+
+        <style jsx>{`
+          .logo-image-wrapper {
+            position: relative;
+            width: 144px;
+            height: 120px;
+            margin: 0 auto 1.5rem;
+          }
+          @media (max-width: 768px) {
+            .logo-image-wrapper {
+              width: 120px;
+              height: 100px;
+              margin-bottom: 1rem;
+            }
+          }
+        `}</style>
 
         {error && <div className="error-alert">{error}</div>}
 

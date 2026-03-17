@@ -33,112 +33,241 @@ export default function Header({ showBackButton = false }: HeaderProps) {
   };
 
   return (
-    <header style={{ 
-      position: 'sticky', 
-      top: 0, 
-      zIndex: 1000, 
-      backgroundColor: 'rgba(255, 255, 255, 0.85)', 
-      backdropFilter: 'blur(12px)',
-      borderBottom: '1px solid var(--border)',
-      padding: '0.75rem 1.5rem',
-      width: '100%'
-    }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <header className="header-container">
+      <div className="header-inner">
         
-        <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button 
-              onClick={() => router.push('/dashboard')}
-              style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '0.5rem',
-                  padding: '0.6rem 1.25rem',
-                  borderRadius: '12px',
-                  border: '1px solid var(--border)',
-                  backgroundColor: 'white',
-                  color: 'var(--text)',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                  boxShadow: 'var(--shadow-sm)'
-              }}
-          >
-              <ChevronLeft size={18} />
-              <span>Dashboard</span>
-          </button>
+        <div 
+          onClick={() => router.push('/dashboard')}
+          className="logo-section"
+        >
+          <div className="logo-wrapper">
+              <Image 
+                  src="/logo-kinesis.jpg" 
+                  alt="KinesisLab Logo" 
+                  fill
+                  style={{ objectFit: 'contain' }}
+              />
+          </div>
+          <h1 className="logo-text">
+            Kinesis<span style={{ color: 'var(--primary)' }}>Lab</span>
+          </h1>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            {user?.role === 'ADMINISTRADOR' && (
-              <>
-                <button 
-                  onClick={() => router.push('/dashboard/admin/users')}
-                  className="no-print"
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', borderRadius: '12px', border: 'none', backgroundColor: 'transparent', color: 'var(--text-muted)', fontWeight: '600', cursor: 'pointer' }}
-                >
-                  <Shield size={18} />
-                  <span className="hidden-mobile">Usuários</span>
-                </button>
-                <button 
-                  onClick={() => router.push('/dashboard/admin/assessments')}
-                  className="no-print"
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', borderRadius: '12px', border: 'none', backgroundColor: 'transparent', color: 'var(--text-muted)', fontWeight: '600', cursor: 'pointer' }}
-                >
-                  <Layout size={18} />
-                  <span className="hidden-mobile">Modelos</span>
-                </button>
-                <div className="no-print" style={{ width: '1px', height: '1.25rem', backgroundColor: 'var(--border)', margin: '0 0.5rem' }} />
-              </>
-            )}
-
-            {user && (
-              <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingRight: '1rem', borderRight: '1px solid var(--border)', marginRight: '0.5rem' }}>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text)' }}>{user.name}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '500' }}>{user.role}</div>
-                </div>
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: 'bold', fontSize: '1rem' }}>
-                  <User size={20} />
-                </div>
-              </div>
-            )}
-
+        <div className="nav-actions">
+          <div className="no-print desktop-nav">
             <button 
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', borderRadius: '12px', border: 'none', backgroundColor: 'transparent', color: 'var(--text-muted)', fontWeight: '600', cursor: 'pointer' }} 
-              onClick={handleLogout}
-              className="no-print"
+                onClick={() => router.push('/dashboard')}
+                className="btn-dashboard"
             >
-              <LogOut size={18} />
-              <span className="hidden-mobile">Sair</span>
+                <ChevronLeft size={18} />
+                <span>Dashboard</span>
             </button>
-          </nav>
+          </div>
 
-          <div 
-            onClick={() => router.push('/dashboard')}
-            style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', borderLeft: '1px solid var(--border)', paddingLeft: '1.5rem' }}
-          >
-            <h1 style={{ fontSize: '1.4rem', fontWeight: '800', margin: 0, color: 'var(--secondary)', letterSpacing: '-0.02em' }}>
-              Kinesis<span style={{ color: 'var(--primary)' }}>Lab</span>
-            </h1>
-            <div style={{ position: 'relative', width: '112px', height: '92px' }}>
-                <Image 
-                    src="/logo-kinesis.jpg" 
-                    alt="KinesisLab Logo" 
-                    fill
-                    style={{ objectFit: 'contain' }}
-                />
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              {user?.role === 'ADMINISTRADOR' && (
+                <div className="hide-on-mobile" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <button 
+                    onClick={() => router.push('/dashboard/admin/users')}
+                    className="no-print nav-btn"
+                  >
+                    <Shield size={18} />
+                    <span className="hidden-tablet">Usuários</span>
+                  </button>
+                  <button 
+                    onClick={() => router.push('/dashboard/admin/assessments')}
+                    className="no-print nav-btn"
+                  >
+                    <Layout size={18} />
+                    <span className="hidden-tablet">Modelos</span>
+                  </button>
+                  <div className="no-print divider" />
+                </div>
+              )}
+
+              {user && (
+                <div className="no-print user-profile">
+                  <div className="user-info hide-on-mobile">
+                    <div className="user-name">{user.name}</div>
+                    <div className="user-role">{user.role}</div>
+                  </div>
+                  <div className="user-avatar">
+                    <User size={20} />
+                  </div>
+                </div>
+              )}
+
+              <button 
+                className="no-print nav-btn logout-btn" 
+                onClick={handleLogout}
+              >
+                <LogOut size={18} />
+                <span className="hidden-tablet">Sair</span>
+              </button>
+            </nav>
           </div>
         </div>
       </div>
 
       <style jsx>{`
-        @media (max-width: 768px) {
-          .hidden-mobile {
+        .header-container {
+          position: sticky;
+          top: 0;
+          z-index: 1000;
+          background-color: rgba(255, 255, 255, 0.85);
+          backdrop-filter: blur(12px);
+          border-bottom: 1px solid var(--border);
+          padding: 0.75rem 1.5rem;
+          width: 100%;
+        }
+        .header-inner {
+          max-width: 1400px;
+          margin: 0 auto;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .logo-section {
+          display: flex;
+          align-items: center;
+          gap: 1.2rem;
+          cursor: pointer;
+          padding-right: 1.5rem;
+          border-right: 1px solid var(--border);
+        }
+        .logo-wrapper {
+          position: relative;
+          width: 134px;
+          height: 80px;
+        }
+        .logo-text {
+          font-size: 1.68rem;
+          font-weight: 800;
+          margin: 0;
+          color: var(--secondary);
+          letter-spacing: -0.02em;
+        }
+        .nav-actions {
+          display: flex;
+          align-items: center;
+          gap: 1.5rem;
+        }
+        .btn-dashboard {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.6rem 1.25rem;
+          borderRadius: 12px;
+          border: 1px solid var(--border);
+          background-color: white;
+          color: var(--text);
+          font-weight: 700;
+          cursor: pointer;
+          font-size: 0.9rem;
+          box-shadow: var(--shadow-sm);
+        }
+        .nav-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.6rem 0.75rem;
+          border-radius: 12px;
+          border: none;
+          background-color: transparent;
+          color: var(--text-muted);
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .divider {
+          width: 1px;
+          height: 1.25rem;
+          background-color: var(--border);
+          margin: 0 0.5rem;
+        }
+        .user-profile {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding-right: 0.75rem;
+          border-right: 1px solid var(--border);
+          margin-right: 0.25rem;
+        }
+        .user-info {
+          text-align: right;
+        }
+        .user-name {
+          font-size: 0.85rem;
+          font-weight: 700;
+          color: var(--text);
+          white-space: nowrap;
+          max-width: 120px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .user-role {
+          font-size: 0.7rem;
+          color: var(--text-muted);
+          font-weight: 500;
+        }
+        .user-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background-color: var(--primary-light);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--primary);
+          font-weight: bold;
+          font-size: 1rem;
+        }
+
+        @media (max-width: 1024px) {
+          .hidden-tablet {
             display: none;
           }
+          .logo-text {
+            font-size: 1.4rem;
+          }
+          .logo-wrapper {
+            width: 100px;
+            height: 60px;
+          }
         }
+
+        @media (max-width: 768px) {
+          .header-container {
+            padding: 0.5rem 1rem;
+          }
+          .logo-section {
+            gap: 0.5rem;
+            padding-right: 0.75rem;
+            border-right: none;
+          }
+          .logo-text {
+            display: none;
+          }
+          .logo-wrapper {
+            width: 80px;
+            height: 50px;
+          }
+          .nav-actions {
+            gap: 0.5rem;
+          }
+          .desktop-nav {
+            display: none;
+          }
+          .user-profile {
+            border-right: none;
+            padding-right: 0;
+            margin-right: 0;
+          }
+          .hide-on-mobile {
+            display: none !important;
+          }
+        }
+
         @media print {
           .no-print {
             display: none !important;

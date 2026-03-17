@@ -12,7 +12,16 @@ export type CalculationType =
     | 'ves13' 
     | 'lbpq' 
     | 'brief' 
-    | 'lysholm';
+    | 'lysholm'
+    | 'womac'
+    | 'ikdc'
+    | 'aofas'
+    | 'afCotovelo'
+    | 'afMao'
+    | 'afSensibilidade'
+    | 'afAnaliseAngular'
+    | 'afOrientacao'
+    | 'mmii';
 
 export interface CalculationResult {
     score: number | string;
@@ -91,6 +100,106 @@ export function calculateAssessmentScore(type: CalculationType, answers: Record<
             if (n === 0) return emptyResult();
             const interpretation = sum >= 95 ? 'Excelente' : sum >= 84 ? 'Bom' : sum >= 65 ? 'Regular' : 'Ruim';
             return { score: sum, max: 100, percentage: sum, interpretation, unit: ' pontos' };
+        }
+
+        case 'womac': {
+            // WOMAC (0-96) - Higher is worse
+            if (n === 0) return emptyResult();
+            const max = 96;
+            const percentage = Math.round((sum / max) * 100);
+            let interpretation = '';
+            // Scale: 0-20 Excelente, 21-40 Bom, 41-70 Regular, >70 Ruim
+            if (percentage <= 20) interpretation = 'Excelente (Pouco impacto)';
+            else if (percentage <= 40) interpretation = 'Bom (Impacto leve)';
+            else if (percentage <= 70) interpretation = 'Regular';
+            else interpretation = 'Ruim (Impacto severo)';
+
+            return { score: sum, max, percentage, interpretation, unit: ' pts (quanto maior, pior)' };
+        }
+
+        case 'ikdc': {
+            // IKDC Subjective Knee Evaluation (0-87 raw -> scaled to 0-100)
+            if (n === 0) return emptyResult();
+            const maxRaw = 87;
+            const percentage = Math.round((sum / maxRaw) * 100);
+            let interpretation = '';
+            if (percentage >= 90) interpretation = 'Excelente (Função normal)';
+            else if (percentage >= 70) interpretation = 'Bom (Limitação leve)';
+            else if (percentage >= 50) interpretation = 'Regular';
+            else interpretation = 'Ruim (Incapacidade grave)';
+
+            return { score: sum, max: maxRaw, percentage, interpretation, unit: ' pontos' };
+        }
+
+        case 'aofas': {
+            // AOFAS Ankle-Hindfoot Scale (0-100)
+            if (n === 0) return emptyResult();
+            const max = 100;
+            const percentage = Math.round((sum / max) * 100);
+            let interpretation = '';
+            if (percentage >= 90) interpretation = 'Excelente';
+            else if (percentage >= 80) interpretation = 'Bom';
+            else if (percentage >= 70) interpretation = 'Regular';
+            else interpretation = 'Ruim';
+
+            return { score: sum, max, percentage, interpretation, unit: ' pontos' };
+        }
+
+        case 'afCotovelo':
+        case 'afMao':
+        case 'afSensibilidade':
+        case 'afAnaliseAngular':
+        case 'afOrientacao':
+        case 'mmii': {
+            // Clinical assessments return completion status and calculated deficits in details
+            const results: Record<string, any> = {};
+            
+            const interpretationMap: Record<string, string> = {
+                afMao: 'Mão',
+                afCotovelo: 'Cotovelo',
+                mmii: 'MMII',
+                afSensibilidade: 'Sensibilidade',
+                afAnaliseAngular: 'Análise Angular',
+                afOrientacao: 'Orientação'
+            };
+
+            const label = interpretationMap[type] || 'Clínica';
+            
+            // Helper for deficit calculation
+            const calcDeficit = (e: any, d: any) => {
+                const esq = parseFloat(e);
+                const dir = parseFloat(d);
+                if (!isNaN(esq) && !isNaN(dir) && Math.max(esq, dir) > 0) {
+                    return (Math.abs(((esq - dir) / Math.max(esq, dir)) * 100)).toFixed(1) + '%';
+                }
+                return null;
+            };
+
+            // Force/Grip Tests (Hand specific usually)
+            if (type === 'afMao') {
+                const tests = ['preensao', 'polpa', 'lateral', 'tripode'];
+                tests.forEach(t => {
+                    const def = calcDeficit(answers[`${t}_esq`], answers[`${t}_dir`]);
+                    if (def) results[t] = { deficit: def };
+                });
+            }
+
+            // MMII specific force/perimetry
+            if (type === 'mmii') {
+                ['p_joe', 'p_cox', 'f_abd_q', 'f_ext_q', 'f_ext_j', 'f_flex_j'].forEach(t => {
+                    const def = calcDeficit(answers[`${t}_esq`], answers[`${t}_dir`]);
+                    if (def) results[t] = { deficit: def };
+                });
+            }
+
+            return {
+                score: 'Concluído',
+                max: '-',
+                percentage: 100,
+                interpretation: `Avaliação ${label} Finalizada`,
+                unit: '',
+                details: results
+            };
         }
 
         case 'man': {

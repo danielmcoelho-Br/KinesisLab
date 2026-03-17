@@ -73,13 +73,13 @@ body {
 }
 
 .login-header {
-  text-align: center;
+  text-align: left;
   margin-bottom: 2rem;
 }
 
 .logo-container {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   margin-bottom: 1rem;
 }
 
@@ -98,7 +98,7 @@ body {
 }
 
 .login-header h1 {
-  font-size: 1.875rem;
+  font-size: 2.25rem;
   font-weight: 800;
   margin: 0;
   letter-spacing: -0.025em;
@@ -191,4 +191,84 @@ body {
   background: radial-gradient(circle at 0% 0%, var(--primary-light) 0%, transparent 40%),
               radial-gradient(circle at 100% 100%, var(--accent) 0%, transparent 40%);
   background-color: var(--bg);
+}
+
+/* Responsive Utilities */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.flex-responsive {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.stack-on-mobile {
+  display: flex;
+  flex-direction: row;
+}
+
+.grid-responsive {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.text-center-mobile {
+  text-align: inherit;
+}
+
+@media (max-width: 1024px) {
+  .container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .stack-on-mobile {
+    flex-direction: column;
+  }
+  
+  .hide-on-mobile {
+    display: none !important;
+  }
+  
+  .full-width-on-mobile {
+    width: 100% !important;
+  }
+  
+  .text-center-mobile {
+    text-align: center !important;
+  }
+  
+  .login-card {
+    padding: 2rem 1.5rem;
+    margin: 1rem;
+  }
+  
+  .login-header h1 {
+    font-size: 1.75rem;
+  }
+  
+  .logo-container {
+    justify-content: center !important;
+  }
+  
+  .login-header {
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --radius-xl: 0.75rem;
+  }
+  
+  .container {
+    padding: 0 1rem;
+  }
 }

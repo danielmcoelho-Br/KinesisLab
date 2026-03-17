@@ -22,35 +22,29 @@ export default function SelectTypePage() {
     .map(([qId, q]) => ({ qId, ...q }));
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)' }}>
+    <div className="select-type-page">
       <div className="background-gradient" />
       
       <Header showBackButton />
 
-      <header style={{ maxWidth: '900px', margin: '2rem auto', padding: '0 1.5rem', marginBottom: '3rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem' }}>
-            <div style={{ textAlign: 'center' }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--secondary)', margin: 0 }}>Protocolos: {segment?.title}</h1>
-            </div>
+      <header className="container page-header-section">
+        <div className="title-wrapper">
+          <h1 className="badge-title">Protocolos: {segment?.title}</h1>
         </div>
 
         <PatientInfoBanner patientId={patientId} />
 
-        <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-          <h2 style={{ fontSize: '2rem', fontWeight: '800', marginBottom: '0.5rem', color: 'var(--text)' }}>
-            Selecione a Avaliação
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>
-            Escolha o questionário a ser preenchido pelo paciente ou profissional.
-          </p>
+        <div className="hero-text">
+          <h2>Selecione a Avaliação</h2>
+          <p>Escolha o questionário a ser preenchido pelo paciente ou profissional.</p>
         </div>
       </header>
 
-      <main style={{ maxWidth: '900px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <main className="container main-content">
+        <div className="types-list">
           {availableQuestionnaires.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', backgroundColor: 'white', borderRadius: '1rem', border: '1px dashed var(--border)' }}>
-              <p style={{ color: 'var(--text-muted)' }}>Nenhum questionário disponível para este segmento ainda.</p>
+            <div className="empty-state">
+              <p>Nenhum questionário disponível para este segmento ainda.</p>
             </div>
           ) : (
             availableQuestionnaires.map((q, index) => (
@@ -60,52 +54,153 @@ export default function SelectTypePage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
                 onClick={() => router.push(`/dashboard/assessment/${patientId}/${q.qId}`)}
-                style={{ 
-                  backgroundColor: 'white', 
-                  padding: '1.5rem 2rem', 
-                  borderRadius: '1.25rem', 
-                  border: '1px solid var(--border)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  transition: 'all 0.2s ease'
-                }}
-                whileHover={{ 
-                  scale: 1.01,
-                  borderColor: 'var(--primary)',
-                  boxShadow: 'var(--shadow-md)',
-                  backgroundColor: '#fdfdfd'
-                }}
+                className="type-card"
+                whileHover={{ scale: 1.01, borderColor: 'var(--primary)', boxShadow: 'var(--shadow-md)', backgroundColor: '#fdfdfd' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                  <div style={{ 
-                    width: '48px', 
-                    height: '48px', 
-                    backgroundColor: 'var(--primary-light)', 
-                    borderRadius: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--primary)'
-                  }}>
+                <div className="type-info">
+                  <div className="type-icon-wrapper">
                     {q.icon ? (
-                       <div dangerouslySetInnerHTML={{ __html: q.icon }} style={{ width: '24px', height: '24px' }} />
+                       <div dangerouslySetInnerHTML={{ __html: q.icon }} className="icon-svg" />
                     ) : (
                        <ChevronRight size={24} />
                     )}
                   </div>
-                  <div>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: 'var(--text)', margin: 0 }}>{q.title}</h3>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '4px 0 0' }}>{q.description}</p>
+                  <div className="type-text">
+                    <h3>{q.title}</h3>
+                    <p>{q.description}</p>
                   </div>
                 </div>
-                <ChevronRight size={20} style={{ color: 'var(--text-muted)' }} />
+                <ChevronRight size={20} className="chevron" />
               </motion.div>
             ))
           )}
         </div>
       </main>
+
+      <style jsx>{`
+        .select-type-page {
+          min-height: 100vh;
+          background-color: var(--bg);
+        }
+        .page-header-section {
+          padding: 2rem 1.5rem;
+          margin-bottom: 2rem;
+        }
+        .title-wrapper {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 2rem;
+        }
+        .badge-title {
+          font-size: 1.25rem;
+          font-weight: bold;
+          color: var(--secondary);
+          margin: 0;
+          background: white;
+          padding: 0.5rem 1.25rem;
+          border-radius: 100px;
+          border: 1px solid var(--border);
+          box-shadow: var(--shadow-sm);
+        }
+        .hero-text {
+          text-align: center;
+          margin-top: 2rem;
+        }
+        .hero-text h2 {
+          font-size: 2rem;
+          font-weight: 800;
+          margin-bottom: 0.5rem;
+          color: var(--text);
+        }
+        .hero-text p {
+          color: var(--text-muted);
+          font-size: 1.125rem;
+        }
+        .main-content {
+          padding-bottom: 3rem;
+          max-width: 900px !important;
+        }
+        .types-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+        .empty-state {
+          text-align: center;
+          padding: 3rem;
+          background-color: white;
+          border-radius: 1rem;
+          border: 1px dashed var(--border);
+          color: var(--text-muted);
+        }
+        .type-card {
+          background-color: white;
+          padding: 1.5rem 2rem;
+          border-radius: 1.25rem;
+          border: 1px solid var(--border);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          transition: all 0.2s ease;
+        }
+        .type-info {
+          display: flex;
+          align-items: center;
+          gap: 1.5rem;
+        }
+        .type-icon-wrapper {
+          width: 48px;
+          height: 48px;
+          background-color: var(--primary-light);
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--primary);
+          flex-shrink: 0;
+        }
+        .icon-svg {
+          width: 24px;
+          height: 24px;
+        }
+        .type-text h3 {
+          font-size: 1.125rem;
+          font-weight: bold;
+          color: var(--text);
+          margin: 0;
+        }
+        .type-text p {
+          color: var(--text-muted);
+          font-size: 0.875rem;
+          margin: 4px 0 0;
+        }
+        .chevron {
+          color: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+          .page-header-section {
+            padding: 1.5rem 1rem;
+          }
+          .hero-text h2 {
+            font-size: 1.5rem;
+          }
+          .type-card {
+            padding: 1rem;
+          }
+          .type-info {
+            gap: 1rem;
+          }
+          .type-icon-wrapper {
+            width: 40px;
+            height: 40px;
+          }
+          .chevron {
+            display: none;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -13,90 +13,161 @@ export default function SelectSegmentPage() {
   const patientId = params.patientId as string;
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)' }}>
+    <div className="select-segment-page">
       <div className="background-gradient" />
       
       <Header showBackButton />
 
-      <header style={{ maxWidth: '1200px', margin: '2rem auto', padding: '0 1.5rem', marginBottom: '3rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem' }}>
-            <div style={{ textAlign: 'center' }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--secondary)', margin: 0 }}>Nova Avaliação</h1>
-            </div>
+      <header className="container page-header-section">
+        <div className="title-wrapper">
+          <h1 className="badge-title">Nova Avaliação</h1>
         </div>
 
-        <PatientInfoBanner patientId={patientId} />
+        <PatientInfoBanner patientId={params.patientId as string} />
         
-        <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-          <h2 style={{ fontSize: '2rem', fontWeight: '800', marginBottom: '0.5rem', color: 'var(--text)' }}>
-            Onde está o foco da avaliação?
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>
-            Selecione a região do corpo para ver os protocolos recomendados.
-          </p>
+        <div className="hero-text">
+          <h2>Onde está o foco da avaliação?</h2>
+          <p>Selecione a região do corpo para ver os protocolos recomendados.</p>
         </div>
       </header>
 
-      <main style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-          gap: '1.5rem' 
-        }}>
+      <main className="container main-content">
+        <div className="segments-grid">
           {segments.map((segment, index) => (
             <motion.div
               key={segment.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              onClick={() => router.push(`/dashboard/assessment/select-type/${patientId}/${segment.id}`)}
-              style={{ 
-                backgroundColor: 'white', 
-                padding: '2rem', 
-                borderRadius: 'var(--radius-xl)', 
-                border: '1px solid var(--border)',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                gap: '1.25rem'
-              }}
-              whileHover={{ 
-                y: -5, 
-                borderColor: 'var(--primary)', 
-                boxShadow: 'var(--shadow-lg)' 
-              }}
+              onClick={() => router.push(`/dashboard/assessment/select-type/${params.patientId}/${segment.id}`)}
+              className="segment-card"
+              whileHover={{ y: -5, borderColor: 'var(--primary)', boxShadow: 'var(--shadow-lg)' }}
             >
-              <div style={{ 
-                width: '64px', 
-                height: '64px', 
-                backgroundColor: '#f8fafc', 
-                borderRadius: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '12px'
-              }}>
+              <div className="segment-icon-wrapper">
                 <img 
                   src={segment.icon} 
                   alt={segment.title} 
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                 />
               </div>
               
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'var(--text)' }}>
-                  {segment.title}
-                </h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.925rem', lineHeight: '1.5' }}>
-                  {segment.description}
-                </p>
+              <div className="segment-info">
+                <h3>{segment.title}</h3>
+                <p>{segment.description}</p>
               </div>
             </motion.div>
           ))}
         </div>
       </main>
+
+      <style jsx>{`
+        .select-segment-page {
+          min-height: 100vh;
+          background-color: var(--bg);
+        }
+        .page-header-section {
+          padding: 2rem 1.5rem;
+          margin-bottom: 2rem;
+        }
+        .title-wrapper {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 2rem;
+        }
+        .badge-title {
+          font-size: 1.25rem;
+          font-weight: bold;
+          color: var(--secondary);
+          margin: 0;
+          background: white;
+          padding: 0.5rem 1.25rem;
+          border-radius: 100px;
+          border: 1px solid var(--border);
+          box-shadow: var(--shadow-sm);
+        }
+        .hero-text {
+          text-align: center;
+          margin-top: 2rem;
+        }
+        .hero-text h2 {
+          font-size: 2rem;
+          font-weight: 800;
+          margin-bottom: 0.5rem;
+          color: var(--text);
+        }
+        .hero-text p {
+          color: var(--text-muted);
+          font-size: 1.125rem;
+        }
+        .main-content {
+          padding-bottom: 3rem;
+        }
+        .segments-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          gap: 1.5rem;
+        }
+        .segment-card {
+          background-color: white;
+          padding: 2rem;
+          border-radius: var(--radius-xl);
+          border: 1px solid var(--border);
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 1.25rem;
+        }
+        .segment-icon-wrapper {
+          width: 64px;
+          height: 64px;
+          background-color: #f8fafc;
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 12px;
+        }
+        .segment-icon-wrapper img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+        .segment-info h3 {
+          font-size: 1.25rem;
+          font-weight: bold;
+          margin-bottom: 0.5rem;
+          color: var(--text);
+        }
+        .segment-info p {
+          color: var(--text-muted);
+          font-size: 0.925rem;
+          line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+          .page-header-section {
+            padding: 1.5rem 1rem;
+          }
+          .hero-text h2 {
+            font-size: 1.5rem;
+          }
+          .segments-grid {
+            grid-template-columns: 1fr;
+          }
+          .segment-card {
+            padding: 1.5rem;
+            flex-direction: row;
+            align-items: center;
+          }
+          .segment-icon-wrapper {
+            width: 48px;
+            height: 48px;
+            padding: 8px;
+            flex-shrink: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 }

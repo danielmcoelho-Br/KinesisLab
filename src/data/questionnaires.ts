@@ -12,13 +12,14 @@ export type Question = {
 export type SectionField = {
   id: string;
   label: string;
-  type: 'textarea' | 'range' | 'text' | 'number' | 'date' | 'select' | 'checkbox' | 'table' | 'bodyschema' | 'image-upload' | 'button';
+  type: 'textarea' | 'range' | 'text' | 'number' | 'date' | 'select' | 'checkbox' | 'table' | 'bodyschema' | 'image-upload' | 'button' | 'paintmap' | 'angle_measurement' | 'freecanvas';
 
   min?: number;
   max?: number;
   step?: number;
   image?: string;
   options?: string[]; // for simple select
+  colors?: { hex: string, label: string }[]; // for paintmap
 };
 
 export type TableRow = {
@@ -1182,11 +1183,593 @@ export const questionnairesData: Record<string, Questionnaire> = {
     calculateScore: (answers) => {
         const severityIndices = [1, 2, 3, 4];
         const interferenceIndices = [6, 7, 8, 9, 10, 11, 12];
-        const sevValues = severityIndices.filter(i => answers[i] !== undefined).map(i => answers[i]);
-        const intValues = interferenceIndices.filter(i => answers[i] !== undefined).map(i => answers[i]);
+        const sevValues = severityIndices.filter(i => (answers[i] || answers[i] === 0) && typeof answers[i] === 'number').map(i => answers[i]);
+        const intValues = interferenceIndices.filter(i => (answers[i] || answers[i] === 0) && typeof answers[i] === 'number').map(i => answers[i]);
         const sevAvg = sevValues.length ? (sevValues.reduce((a,b) => a+b, 0) / sevValues.length) : 0;
         const intAvg = intValues.length ? (intValues.reduce((a,b) => a+b, 0) / intValues.length) : 0;
         return { score: sevAvg, max: 10, percentage: sevAvg*10, interpretation: `Severidade: ${sevAvg.toFixed(1)}/10 | Interferência: ${intAvg.toFixed(1)}/10`, unit: 'média' };
     }
+  },
+  lysholm: {
+    id: 'lysholm',
+    segment: 'mmii',
+    title: 'Escala de Lysholm',
+    description: 'Avalia a função do joelho em pacientes com lesões ligamentares ou meniscais.',
+    questions: [
+        { text: '1. Claudicação (Mancar)', options: [{ value: 5, label: 'Nenhuma' }, { value: 3, label: 'Leve ou periódica' }, { value: 0, label: 'Grave e constante' }] },
+        { text: '2. Apoio', options: [{ value: 5, label: 'Normal' }, { value: 2, label: 'Bengala ou muleta' }, { value: 0, label: 'Impossível colocar peso' }] },
+        { text: '3. Travamento', options: [{ value: 15, label: 'Nenhum travamento ou sensação de que algo prende' }, { value: 10, label: 'Sensação de que prende, mas sem travamento real' }, { value: 6, label: 'Travamento ocasional' }, { value: 2, label: 'Travamento frequente' }, { value: 0, label: 'Travado no momento' }] },
+        { text: '4. Instabilidade (Falseio)', options: [{ value: 25, label: 'Nunca falseia' }, { value: 20, label: 'Raramente durante atividades esportivas' }, { value: 15, label: 'Frequentemente durante atividades esportivas' }, { value: 10, label: 'Ocasionalmente durante atividades diárias' }, { value: 5, label: 'Frequentemente durante atividades diárias' }, { value: 0, label: 'A cada passo' }] },
+        { text: '5. Dor', options: [{ value: 25, label: 'Nenhuma' }, { value: 20, label: 'Inconstante e leve durante esforço pesado' }, { value: 15, label: 'Significativa durante esforço pesado' }, { value: 10, label: 'Significativa após caminhada > 2km' }, { value: 5, label: 'Significativa após caminhada < 2km' }, { value: 0, label: 'Constante' }] },
+        { text: '6. Inchaço', options: [{ value: 10, label: 'Nenhum' }, { value: 6, label: 'Durante esforço pesado' }, { value: 2, label: 'Após esforço normal' }, { value: 0, label: 'Constante' }] },
+        { text: '7. Subir Escadas', options: [{ value: 10, label: 'Sem problemas' }, { value: 6, label: 'Levemente prejudicado' }, { value: 2, label: 'Um degrau de cada vez' }, { value: 0, label: 'Impossível' }] },
+        { text: '8. Agachar', options: [{ value: 5, label: 'Sem problemas' }, { value: 4, label: 'Levemente prejudicado' }, { value: 2, label: 'Não além de 90 graus' }, { value: 0, label: 'Impossível' }] }
+    ],
+    calculateScore: (answers) => {
+        const values = Object.values(answers).filter(v => typeof v === 'number');
+        const sum = values.reduce((a, b) => a + b, 0);
+        return { score: sum, max: 100, percentage: sum, interpretation: sum >= 95 ? 'Excelente' : sum >= 84 ? 'Bom' : sum >= 65 ? 'Regular' : 'Ruim', unit: 'pontos' };
+    }
+  },
+  womac: {
+    id: 'womac',
+    segment: 'mmii',
+    title: 'Questionário WOMAC',
+    description: 'Avalia dor, rigidez e função física em pacientes com osteoartrite do joelho/quadril.',
+    questions: [
+        { text: 'DOR (Quanta dor você sente ao:)', isInstruction: true },
+        { text: '1. Andar em terreno plano?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '2. Subir ou descer escadas?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '3. À noite, quando deitado(a) na cama?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '4. Sentado(a) ou deitado(a)?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '5. Ficar em pé?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: 'RIGIDEZ ARTICULAR (Quanta rigidez você sente ao:)', isInstruction: true },
+        { text: '6. Mover-se pela primeira vez de manhã (ao acordar)?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '7. Mover-se no decorrer do dia após ficar sentado, deitado ou em repouso?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: 'FUNÇÃO FÍSICA (Qual o grau de dificuldade para:)', isInstruction: true },
+        { text: '8. Descer escadas?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '9. Subir escadas?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '10. Levantar-se da posição sentada?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '11. Ficar em pé?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '12. Curvar-se para pegar um objeto no chão?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '13. Andar num local plano?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '14. Entrar / sair do carro, de um ônibus?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '15. Ir às compras?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '16. Colocar suas meias / meias-calças?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '17. Levantar-se da cama?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '18. Tirar as suas meias / meias-calças?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '19. Deitar na cama?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '20. Entrar / sair do banho?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '21. Sentar-se?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '22. Sentar e levantar do vaso sanitário?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '23. Realizar tarefas domésticas pesadas?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
+        { text: '24. Realizar tarefas domésticas leves?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] }
+    ]
+  },
+  ikdc: {
+    id: 'ikdc',
+    segment: 'mmii',
+    title: 'Questionário IKDC',
+    description: 'Ferramenta para medir sintomas, função e atividades esportivas relacionadas ao joelho.',
+    questions: [
+        { text: '1. Qual é o nível de atividade mais alto que você consegue realizar sem dor significativa no joelho?', options: [{ value: 4, label: 'Atividades muito intensas (saltar, virar subitamente)' }, { value: 3, label: 'Atividades intensas (trabalho físico pesado)' }, { value: 2, label: 'Atividades moderadas (trabalho físico moderado)' }, { value: 1, label: 'Atividades leves (caminhar, tarefas diárias leves)' }, { value: 0, label: 'Incapaz de realizar qualquer uma das atividades acima' }] },
+        { text: '2. Durante as últimas 4 semanas, com que frequência você teve dor?', options: [{ value: 10, label: 'Nunca' }, { value: 9, label: '9' }, { value: 8, label: '8' }, { value: 7, label: '7' }, { value: 6, label: '6' }, { value: 5, label: '5' }, { value: 4, label: '4' }, { value: 3, label: '3' }, { value: 2, label: '2' }, { value: 1, label: '1' }, { value: 0, label: 'Constantemente' }] },
+        { text: '3. Se você teve dor nas últimas 4 semanas, descreva qual foi a dor de PIOR intensidade que você teve:', options: [{ value: 10, label: 'Sem dor' }, { value: 9, label: '9' }, { value: 8, label: '8' }, { value: 7, label: '7' }, { value: 6, label: '6' }, { value: 5, label: '5' }, { value: 4, label: '4' }, { value: 3, label: '3' }, { value: 2, label: '2' }, { value: 1, label: '1' }, { value: 0, label: 'Pior dor imaginável' }] },
+        { text: '4. Quão frequente seu joelho apresentou rigidez (limitou movimento) nas últimas 4 semanas?', options: [{ value: 4, label: 'Nunca' }, { value: 3, label: 'Raramente' }, { value: 2, label: 'Algumas vezes' }, { value: 1, label: 'Frequentemente' }, { value: 0, label: 'Constantemente' }] },
+        { text: '5. Quão frequente seu joelho apresentou inchaço nas últimas 4 semanas?', options: [{ value: 4, label: 'Nunca' }, { value: 3, label: 'Raramente' }, { value: 2, label: 'Algumas vezes' }, { value: 1, label: 'Frequentemente' }, { value: 0, label: 'Constantemente' }] },
+        { text: '6. Qual é o nível mais alto de atividade que você consegue realizar sem inchaço significativo no seu joelho?', options: [{ value: 4, label: 'Atividades muito intensas' }, { value: 3, label: 'Atividades intensas' }, { value: 2, label: 'Atividades moderadas' }, { value: 1, label: 'Atividades leves' }, { value: 0, label: 'Incapaz de realizar até as mais leves' }] },
+        { text: '7. Durante as últimas 4 semanas, o seu joelho travou ou bloqueou?', options: [{ value: 1, label: 'Não' }, { value: 0, label: 'Sim' }] },
+        { text: '8. Qual o nível mais alto que você consegue sem que o joelho trave?', options: [{ value: 4, label: 'Atividades muito intensas' }, { value: 3, label: 'Atividades intensas' }, { value: 2, label: 'Atividades moderadas' }, { value: 1, label: 'Atividades leves' }, { value: 0, label: 'Incapaz de realizar até as mais leves' }] },
+        { text: '9. Qual a frequência que o seu joelho cede (falso apoio)?', options: [{ value: 4, label: 'Nunca' }, { value: 3, label: 'Raramente' }, { value: 2, label: 'Algumas vezes' }, { value: 1, label: 'Frequentemente' }, { value: 0, label: 'Constantemente' }] },
+        { text: '10. Qual o nível mais alto de atividade que consegue realizar sem falso apoio?', options: [{ value: 4, label: 'Atividades muito intensas' }, { value: 3, label: 'Atividades intensas' }, { value: 2, label: 'Atividades moderadas' }, { value: 1, label: 'Atividades leves' }, { value: 0, label: 'Incapaz de realizar até as mais leves' }] },
+        { text: 'DIFICULDADE NAS ATIVIDADES:', isInstruction: true },
+        { text: '11. Subir ladeiras íngremes ou escadas', options: [{ value: 4, label: 'Nenhuma Dificuldade' }, { value: 3, label: 'Dificuldade Leve' }, { value: 2, label: 'Dificuldade Moderada' }, { value: 1, label: 'Dificuldade Extrema' }, { value: 0, label: 'Incapaz de fazer' }] },
+        { text: '12. Descer ladeiras íngremes ou escadas', options: [{ value: 4, label: 'Nenhuma Dificuldade' }, { value: 3, label: 'Dificuldade Leve' }, { value: 2, label: 'Dificuldade Moderada' }, { value: 1, label: 'Dificuldade Extrema' }, { value: 0, label: 'Incapaz de fazer' }] },
+        { text: '13. Ajoelhar-se (ficar de joelhos)', options: [{ value: 4, label: 'Nenhuma Dificuldade' }, { value: 3, label: 'Dificuldade Leve' }, { value: 2, label: 'Dificuldade Moderada' }, { value: 1, label: 'Dificuldade Extrema' }, { value: 0, label: 'Incapaz de fazer' }] },
+        { text: '14. Agachar-se', options: [{ value: 4, label: 'Nenhuma Dificuldade' }, { value: 3, label: 'Dificuldade Leve' }, { value: 2, label: 'Dificuldade Moderada' }, { value: 1, label: 'Dificuldade Extrema' }, { value: 0, label: 'Incapaz de fazer' }] },
+        { text: '15. Sentar-se com os joelhos dobrados por tempo prolongado', options: [{ value: 4, label: 'Nenhuma Dificuldade' }, { value: 3, label: 'Dificuldade Leve' }, { value: 2, label: 'Dificuldade Moderada' }, { value: 1, label: 'Dificuldade Extrema' }, { value: 0, label: 'Incapaz de fazer' }] },
+        { text: '16. Levantar da cadeira', options: [{ value: 4, label: 'Nenhuma Dificuldade' }, { value: 3, label: 'Dificuldade Leve' }, { value: 2, label: 'Dificuldade Moderada' }, { value: 1, label: 'Dificuldade Extrema' }, { value: 0, label: 'Incapaz de fazer' }] },
+        { text: '17. Caminhar para a frente de modo continuado', options: [{ value: 4, label: 'Nenhuma Dificuldade' }, { value: 3, label: 'Dificuldade Leve' }, { value: 2, label: 'Dificuldade Moderada' }, { value: 1, label: 'Dificuldade Extrema' }, { value: 0, label: 'Incapaz de fazer' }] },
+        { text: '18. Classificação da função do seu joelho hoje (0-10)', options: [{ value: 10, label: '10 (Normal)' }, { value: 9, label: '9' }, { value: 8, label: '8' }, { value: 7, label: '7' }, { value: 6, label: '6' }, { value: 5, label: '5' }, { value: 4, label: '4' }, { value: 3, label: '3' }, { value: 2, label: '2' }, { value: 1, label: '1' }, { value: 0, label: '0 (Incapaz)' }] }
+    ]
+  },
+  aofas: {
+    id: 'aofas',
+    segment: 'mmii',
+    title: 'Escala AOFAS (Tornozelo e Retropé)',
+    description: 'Avalia dor, função e alinhamento do tornozelo e retropé.',
+    questions: [
+        { text: 'DOR (40 pontos no máximo)', isInstruction: true },
+        { text: '1. Dor (intensidade)', options: [{ value: 40, label: 'Nenhuma' }, { value: 30, label: 'Leve, ocasional' }, { value: 20, label: 'Moderada, diária' }, { value: 0, label: 'Grave, quase sempre presente' }] },
+        { text: 'FUNÇÃO (50 pontos no máximo)', isInstruction: true },
+        { text: '2. Limitação de atividades e necessidade de suporte', options: [{ value: 10, label: 'Nenhuma limitação, sem suporte' }, { value: 7, label: 'Atividades diárias ok, recreacionais limitadas' }, { value: 4, label: 'Limitação diária e recreacional, uso de bengala' }, { value: 0, label: 'Limitação severa, uso de andador/cadeira' }] },
+        { text: '3. Distância máxima de caminhada', options: [{ value: 5, label: '> 600 metros' }, { value: 4, label: '400 - 600 metros' }, { value: 2, label: '100 - 300 metros' }, { value: 0, label: '< 100 metros' }] },
+        { text: '4. Superfícies de caminhada', options: [{ value: 5, label: 'Nenhuma dificuldade' }, { value: 3, label: 'Dificuldade em terrenos irregulares/degraus' }, { value: 0, label: 'Dificuldade severa' }] },
+        { text: '5. Anormalidade da marcha', options: [{ value: 8, label: 'Normal' }, { value: 4, label: 'Óbvia (manca)' }, { value: 0, label: 'Acentuada' }] },
+        { text: '6. Mobilidade Sagital (flexão + extensão)', options: [{ value: 8, label: 'Normal ou leve restrição (30° ou mais)' }, { value: 4, label: 'Restrição moderada (15° - 29°)' }, { value: 0, label: 'Restrição severa (< 15°)' }] },
+        { text: '7. Mobilidade do Retropé (inversão + eversão)', options: [{ value: 6, label: '75% a 100% do normal' }, { value: 3, label: '25% a 74% do normal' }, { value: 0, label: '< 25% do normal' }] },
+        { text: '8. Estabilidade do tornozelo-retropé', options: [{ value: 8, label: 'Estável' }, { value: 0, label: 'Definitivamente instável' }] },
+        { text: 'ALINHAMENTO (10 pontos no máximo)', isInstruction: true },
+        { text: '9. Alinhamento do tornozelo-retropé', options: [{ value: 10, label: 'Bom, pé plantígrado' }, { value: 5, label: 'Razoável, sintomático' }, { value: 0, label: 'Ruim, deformidade grave' }] }
+    ]
+  },
+  afMmii: {
+    id: 'afMmii',
+    type: 'clinical',
+    segment: 'mmii',
+    title: 'Avaliação Funcional MMII',
+    description: 'Protocolo completo de membros inferiores: MMII, joelho e quadril.',
+    sections: [
+        {
+            id: 'anamnese',
+            title: 'Anamnese',
+            fields: [
+                { id: 'queixa', label: 'Queixa Principal', type: 'textarea' },
+                { id: 'intensidade_dor', label: 'Intensidade da Dor', type: 'range', min: 0, max: 10, step: 1 },
+                { id: 'area_dor', label: 'Área da Dor', type: 'bodyschema', image: '/img/esquema_corpo_inteiro.png' },
+                { id: 'historia', label: 'História Atual e Pregressa', type: 'textarea' },
+                { id: 'exames', label: 'Exames Complementares', type: 'textarea' }
+            ]
+        },
+        {
+            id: 'adm',
+            title: 'Amplitude de Movimento (ADM)',
+            type: 'table',
+            columns: ['Movimento', 'Esquerdo', 'Direito'],
+            rows: [
+                { id: 'flex_quadril', label: 'Flexão de Quadril', fields: ['flex_q_esq', 'flex_q_dir'] },
+                { id: 'ext_quadril', label: 'Extensão de Quadril', fields: ['ext_q_esq', 'ext_q_dir'] },
+                { id: 'abd_quadril', label: 'Abdução de Quadril', fields: ['abd_q_esq', 'abd_q_dir'] },
+                { id: 'ext_joelho', label: 'Extensão de Joelho', fields: ['ext_j_esq', 'ext_j_dir'] },
+                { id: 'flex_joelho', label: 'Flexão de Joelho', fields: ['flex_j_esq', 'flex_j_dir'] }
+            ]
+        },
+        {
+            id: 'perimetria',
+            title: 'Perimetria (cm)',
+            type: 'table',
+            columns: ['Local', 'Esquerdo', 'Direito', '% Déficit'],
+            rows: [
+                { id: 'peri_joelho', label: 'Interlinha Articular (Joelho)', fields: ['p_joe_esq', 'p_joe_dir', 'p_joe_def'] },
+                { id: 'peri_coxa_10', label: 'Coxa (10 cm acima patela)', fields: ['p_cox_esq', 'p_cox_dir', 'p_cox_def'] }
+            ]
+        },
+        {
+            id: 'forca',
+            title: 'Força Muscular (kgF) - Torque',
+            type: 'table',
+            columns: ['Músculo', 'Esquerdo', 'Direito', '% Déficit'],
+            rows: [
+                { id: 'abd_q_forca', label: 'Abdução de Quadril', fields: ['f_abd_q_esq', 'f_abd_q_dir', 'f_abd_q_def'] },
+                { id: 'ext_q_forca', label: 'Extensão de Quadril', fields: ['f_ext_q_esq', 'f_ext_q_dir', 'f_ext_q_def'] },
+                { id: 'ext_j_forca', label: 'Extensão de Joelho', fields: ['f_ext_j_esq', 'f_ext_j_dir', 'f_ext_j_def'] },
+                { id: 'flex_j_forca', label: 'Flexão de Joelho', fields: ['f_flex_j_esq', 'f_flex_j_dir', 'f_flex_j_def'] },
+                { id: 'relacao_iq', label: 'Relação I/Q', fields: ['rel_iq_esq', 'rel_iq_dir', ''] }
+            ]
+        },
+        {
+            id: 'endurance',
+            title: 'Endurance Muscular (segundos)',
+            fields: [
+                { id: 'sorensen', label: 'Teste de Sorensen (Posterior)', type: 'number' },
+                { id: 'flexao_60', label: 'Flexão 60º (Anterior)', type: 'number' }
+            ]
+        },
+        {
+            id: 'ybt',
+            title: 'Y-Balance Test (YBT)',
+            fields: [
+                { id: 'ybt_esq', label: 'Y Apoio Esq. (%)', type: 'number' },
+                { id: 'ybt_dir', label: 'Y Apoio Dir. (%)', type: 'number' }
+            ]
+        },
+        {
+            id: 'integracao',
+            title: 'Questionários Complementares',
+            fields: [
+                { id: 'lysholm_score', label: 'Resultado Lysholm', type: 'text' },
+                { id: 'lysholm_novo', label: 'Abrir Lysholm', type: 'button' },
+                { id: 'womac_score', label: 'Resultado WOMAC', type: 'text' },
+                { id: 'womac_novo', label: 'Abrir WOMAC', type: 'button' },
+                { id: 'ikdc_score', label: 'Resultado IKDC', type: 'text' },
+                { id: 'ikdc_novo', label: 'Abrir IKDC', type: 'button' },
+                { id: 'aofas_score', label: 'Resultado AOFAS', type: 'text' },
+                { id: 'aofas_novo', label: 'Abrir AOFAS', type: 'button' }
+            ]
+        }
+    ]
+  },
+  afCotovelo: {
+    id: 'afCotovelo',
+    type: 'clinical',
+    segment: 'cotovelo',
+    title: 'Avaliação Funcional de Cotovelo',
+    description: 'Protocolo clínico para avaliação de epicondilites e outras disfunções do cotovelo.',
+    sections: [
+        {
+            id: 'anamnese',
+            title: 'Anamnese',
+            fields: [
+                { id: 'queixa', label: 'Queixa Principal', type: 'textarea' },
+                { id: 'intensidade_dor', label: 'Intensidade da Dor (EVA)', type: 'range', min: 0, max: 10, step: 1 },
+                { id: 'area_dor', label: 'Área da Dor', type: 'bodyschema', image: '/img/esquema_corpo_inteiro.png' },
+                { id: 'historia', label: 'História Atual / Mecanismo de Lesão', type: 'textarea' },
+                { id: 'piora', label: 'Atividade de Piora', type: 'textarea' },
+                { id: 'alivio', label: 'Atividade de Alívio', type: 'textarea' },
+                { id: 'doencas', label: 'Doenças Associadas e Medicamentos', type: 'textarea' },
+                { id: 'exames', label: 'Exames Complementares', type: 'textarea' }
+            ]
+        },
+        {
+            id: 'inspecao_palpacao',
+            title: 'Inspeção e Palpação',
+            fields: [
+                { id: 'inspecao', label: 'Inspeção (Deformidades, Edema, Cicatrizes, Trofismo)', type: 'textarea' },
+                { id: 'perimetria_cotovelo_e', label: 'Perimetria Cotovelo Esq. (cm)', type: 'number' },
+                { id: 'perimetria_cotovelo_d', label: 'Perimetria Cotovelo Dir. (cm)', type: 'number' }
+            ]
+        },
+        {
+            id: 'palpacao_articular',
+            title: 'Palpação Articular',
+            type: 'table',
+            columns: ['Estrutura', 'Esquerdo', 'Direito'],
+            rows: [
+                { id: 'epicondilo_lateral', label: 'Epicôndilo Lateral', fields: [{ id: 'palp_epil_esq', type: 'checkbox' }, { id: 'palp_epil_dir', type: 'checkbox' }] },
+                { id: 'epicondilo_medial', label: 'Epicôndilo Medial', fields: [{ id: 'palp_epim_esq', type: 'checkbox' }, { id: 'palp_epim_dir', type: 'checkbox' }] },
+                { id: 'cabeca_radio', label: 'Cabeça do Rádio', fields: [{ id: 'palp_cradio_esq', type: 'checkbox' }, { id: 'palp_cradio_dir', type: 'checkbox' }] },
+                { id: 'olecrano', label: 'Olécrano', fields: [{ id: 'palp_olec_esq', type: 'checkbox' }, { id: 'palp_olec_dir', type: 'checkbox' }] },
+                { id: 'face_anterior_cotovelo', label: 'Face Anterior do Cotovelo', fields: [{ id: 'palp_face_ant_esq', type: 'checkbox' }, { id: 'palp_face_ant_dir', type: 'checkbox' }] },
+                { id: 'tuberoculo_bicipital', label: 'Tubérculo Bicipital', fields: [{ id: 'palp_tub_bic_esq', type: 'checkbox' }, { id: 'palp_tub_bic_dir', type: 'checkbox' }] }
+            ]
+        },
+        {
+            id: 'palpacao_miofascial',
+            title: 'Palpação Miofascial',
+            type: 'table',
+            columns: ['Músculo', 'Esquerdo', 'Direito'],
+            rows: [
+                { id: 'biceps', label: 'Bíceps Braquial', fields: [{ id: 'mio_bic_esq', type: 'checkbox' }, { id: 'mio_bic_dir', type: 'checkbox' }] },
+                { id: 'triceps', label: 'Tríceps Braquial', fields: [{ id: 'mio_tri_esq', type: 'checkbox' }, { id: 'mio_tri_dir', type: 'checkbox' }] },
+                { id: 'extensores_punho', label: 'Extensores do Punho', fields: [{ id: 'mio_ext_p_esq', type: 'checkbox' }, { id: 'mio_ext_p_dir', type: 'checkbox' }] },
+                { id: 'flexores_punho', label: 'Flexores do Punho', fields: [{ id: 'mio_flex_p_esq', type: 'checkbox' }, { id: 'mio_flex_p_dir', type: 'checkbox' }] },
+                { id: 'pronadores', label: 'Pronadores', fields: [{ id: 'mio_pro_esq', type: 'checkbox' }, { id: 'mio_pro_dir', type: 'checkbox' }] },
+                { id: 'supinadores', label: 'Supinadores', fields: [{ id: 'mio_sup_esq', type: 'checkbox' }, { id: 'mio_sup_dir', type: 'checkbox' }] }
+            ]
+        },
+        {
+            id: 'neuro_forca',
+            title: 'Avaliação Neurológica (Força Muscular)',
+            type: 'table',
+            columns: [
+                'Miótono / Músculo', 
+                { label: 'Esquerdo (0-5)', action: { type: 'fill', value: '5' } }, 
+                { label: 'Direito (0-5)', action: { type: 'fill', value: '5' } }
+            ],
+            rows: [
+                { id: 'c5', label: 'Flexor de Cotovelo (C5)', fields: ['c5_esq', 'c5_dir'] },
+                { id: 'c6', label: 'Extensor de Punho (C6)', fields: ['c6_esq', 'c6_dir'] },
+                { id: 'c7', label: 'Extensor de Cotovelo (C7)', fields: ['c7_esq', 'c7_dir'] },
+                { id: 'c8', label: 'Flexores de Dedos (C8)', fields: ['c8_esq', 'c8_dir'] },
+                { id: 't1', label: 'Abdutor do 5º Dedo (T1)', fields: ['t1_esq', 't1_dir'] }
+            ]
+        },
+        {
+            id: 'neuro_reflexos',
+            title: 'Avaliação Neurológica (Reflexos)',
+            type: 'table',
+            columns: ['Reflexo', 'Esquerdo', 'Direito'],
+            rows: [
+                { id: 'bicipital', label: 'Bicipital (C5 e C6)', fields: [{ id: 'bicipital_esq', type: 'select', options: reflexOptions }, { id: 'bicipital_dir', type: 'select', options: reflexOptions }] },
+                { id: 'tricipital', label: 'Tricipital (C7 e T1)', fields: [{ id: 'tricipital_esq', type: 'select', options: reflexOptions }, { id: 'tricipital_dir', type: 'select', options: reflexOptions }] },
+                { id: 'estiloradial', label: 'Estiloradial (C6)', fields: [{ id: 'estiloradial_esq', type: 'select', options: reflexOptions }, { id: 'estiloradial_dir', type: 'select', options: reflexOptions }] }
+            ]
+        },
+        {
+            id: 'adm_cotovelo',
+            title: 'Amplitude de Movimento - Cotovelo (Graus)',
+            type: 'table',
+            columns: ['Movimento', 'Esquerdo (°)', 'Direito (°)', 'Observações'],
+            rows: [
+                { id: 'flexao_cot', label: 'Flexão', fields: ['flexao_cot_esq', 'flexao_cot_dir', 'flexao_cot_obs'] },
+                { id: 'extensao_cot', label: 'Extensão', fields: ['extensao_cot_esq', 'extensao_cot_dir', 'extensao_cot_obs'] },
+                { id: 'pronacao', label: 'Pronação', fields: ['pronacao_esq', 'pronacao_dir', 'pronacao_obs'] },
+                { id: 'supinacao', label: 'Supinação', fields: ['supinacao_esq', 'supinacao_dir', 'supinacao_obs'] }
+            ]
+        },
+        {
+            id: 'testes_especiais',
+            title: 'Testes Especiais',
+            type: 'table',
+            columns: ['Teste', 'Esquerdo', 'Direito'],
+            rows: [
+                { id: 'cozen', label: 'Teste de Cozen (Epicondilite Lateral)', fields: [{ id: 'test_cozen_esq', type: 'checkbox' }, { id: 'test_cozen_dir', type: 'checkbox' }] },
+                { id: 'mill', label: 'Teste de Mill (Epicondilite Lateral)', fields: [{ id: 'test_mill_esq', type: 'checkbox' }, { id: 'test_mill_dir', type: 'checkbox' }] },
+                { id: 'epicondilite_medial', label: "Teste Epicondilite Medial (Golfer's Elbow)", fields: [{ id: 'test_epim_esq', type: 'checkbox' }, { id: 'test_epim_dir', type: 'checkbox' }] },
+                { id: 'valgo_stress', label: 'Teste de Valgo (Ligamento Colateral Medial)', fields: [{ id: 'test_valgo_esq', type: 'checkbox' }, { id: 'test_valgo_dir', type: 'checkbox' }] },
+                { id: 'varo_stress', label: 'Teste de Varo (Ligamento Colateral Lateral)', fields: [{ id: 'test_varo_esq', type: 'checkbox' }, { id: 'test_varo_dir', type: 'checkbox' }] },
+                { id: 'tinel_cotovelo', label: 'Sinal de Tinel (N. Ulnar)', fields: [{ id: 'test_tinelc_esq', type: 'checkbox' }, { id: 'test_tinelc_dir', type: 'checkbox' }] }
+            ]
+        },
+        {
+            id: 'testes_neurais',
+            title: 'Teste Neural',
+            type: 'table',
+            columns: ['Nervo', 'Esquerdo', 'Direito'],
+            rows: [
+                { id: 'mediano', label: 'Mediano (ULNT1)', fields: [{ id: 'neural_med_esq', type: 'checkbox' }, { id: 'neural_med_dir', type: 'checkbox' }] },
+                { id: 'ulnar', label: 'Ulnar (ULNT4)', fields: [{ id: 'neural_uln_esq', type: 'checkbox' }, { id: 'neural_uln_dir', type: 'checkbox' }] },
+                { id: 'radial', label: 'Radial (ULNT2b)', fields: [{ id: 'neural_rad_esq', type: 'checkbox' }, { id: 'neural_rad_dir', type: 'checkbox' }] }
+            ]
+        },
+        {
+            id: 'diagnostico_conclusoes',
+            title: 'Diagnóstico e Conclusões',
+            fields: [
+                { id: 'diagnostico', label: 'Diagnóstico Cinético Funcional', type: 'textarea' },
+                { id: 'conclusao', label: 'Conclusões e Sugestões Terapêuticas', type: 'textarea' }
+            ]
+        },
+        {
+            id: 'quickdash_integracao',
+            title: 'Quick DASH (Braço, Ombro e Mão)',
+            fields: [
+                { id: 'quickdash_novo', label: 'Preencher novo Questionário Quick DASH', type: 'button' },
+                { id: 'quickdash_score', label: 'Resultado/Score Quick DASH Atual', type: 'text' }
+            ]
+        },
+        {
+            id: 'forca_preensao',
+            title: 'Força de Preensão e Pinça (kgF)',
+            type: 'table',
+            columns: ['Teste', 'Esquerdo', 'Direito', '% Déficit'],
+            rows: [
+                { id: 'preensao_palmar', label: 'Preensão Palmar (Dinamômetro)', fields: ['preensao_esq', 'preensao_dir', 'preensao_def'] },
+                { id: 'pinca_polpa', label: 'Pinça Polpa a Polpa', fields: ['polpa_esq', 'polpa_dir', 'polpa_def'] },
+                { id: 'pinca_lateral', label: 'Pinça Lateral (Chave)', fields: ['lateral_esq', 'lateral_dir', 'lateral_def'] },
+                { id: 'pinca_tripode', label: 'Pinça Trípode (3 dedos)', fields: ['tripode_esq', 'tripode_dir', 'tripode_def'] }
+            ]
+        }
+    ],
+    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
+  },
+  afMao: {
+    id: 'afMao',
+    type: 'clinical',
+    segment: 'mao',
+    title: 'Avaliação Funcional de Mão e Punho',
+    description: 'Protocolo clínico para avaliação de túnel do carpo, tendinites e outras disfunções da mão e punho.',
+    sections: [
+        {
+            id: 'anamnese',
+            title: 'Anamnese',
+            fields: [
+                { id: 'queixa', label: 'Queixa Principal', type: 'textarea' },
+                { id: 'intensidade_dor', label: 'Intensidade da Dor (EVA)', type: 'range', min: 0, max: 10, step: 1 },
+                { id: 'area_dor', label: 'Área da Dor', type: 'bodyschema', image: '/img/esquema_corpo_inteiro.png' },
+                { id: 'historia', label: 'História Atual / Mecanismo de Lesão', type: 'textarea' },
+                { id: 'piora', label: 'Atividade de Piora', type: 'textarea' },
+                { id: 'alivio', label: 'Atividade de Alívio', type: 'textarea' },
+                { id: 'doencas', label: 'Doenças Associadas e Medicamentos', type: 'textarea' },
+                { id: 'exames', label: 'Exames Complementares', type: 'textarea' }
+            ]
+        },
+        {
+            id: 'inspecao_palpacao',
+            title: 'Inspeção e Palpação',
+            fields: [
+                { id: 'inspecao', label: 'Inspeção (Deformidades, Edema, Cicatrizes, Trofismo)', type: 'textarea' },
+                { id: 'perimetria_punho_e', label: 'Perimetria Punho Esq. (cm)', type: 'number' },
+                { id: 'perimetria_punho_d', label: 'Perimetria Punho Dir. (cm)', type: 'number' }
+            ]
+        },
+        {
+            id: 'palpacao_articular',
+            title: 'Palpação Articular',
+            type: 'table',
+            columns: ['Estrutura', 'Esquerdo', 'Direito'],
+            rows: [
+                { id: 'estilioide_radial', label: 'Estiloide Radial', fields: [{ id: 'palp_estrad_esq', type: 'checkbox' }, { id: 'palp_estrad_dir', type: 'checkbox' }] },
+                { id: 'estilioide_ulnar', label: 'Estiloide Ulnar', fields: [{ id: 'palp_estuln_esq', type: 'checkbox' }, { id: 'palp_estuln_dir', type: 'checkbox' }] },
+                { id: 'scaphoide', label: 'Escafoide', fields: [{ id: 'palp_esc_esq', type: 'checkbox' }, { id: 'palp_esc_dir', type: 'checkbox' }] },
+                { id: 'tunelcarpiano', label: 'Túnel do Carpo (face palmar)', fields: [{ id: 'palp_tunel_esq', type: 'checkbox' }, { id: 'palp_tunel_dir', type: 'checkbox' }] }
+            ]
+        },
+        {
+            id: 'palpacao_miofascial',
+            title: 'Palpação Miofascial',
+            type: 'table',
+            columns: ['Músculo', 'Esquerdo', 'Direito'],
+            rows: [
+                { id: 'extensores_punho', label: 'Extensores do Punho', fields: [{ id: 'mio_extp_esq', type: 'checkbox' }, { id: 'mio_extp_dir', type: 'checkbox' }] },
+                { id: 'flexores_punho', label: 'Flexores do Punho', fields: [{ id: 'mio_flexp_esq', type: 'checkbox' }, { id: 'mio_flexp_dir', type: 'checkbox' }] },
+                { id: 'tenar', label: 'Musculatura Tênar', fields: [{ id: 'mio_tenar_esq', type: 'checkbox' }, { id: 'mio_tenar_dir', type: 'checkbox' }] },
+                { id: 'hipotenar', label: 'Musculatura Hipotênar', fields: [{ id: 'mio_hipo_esq', type: 'checkbox' }, { id: 'mio_hipo_dir', type: 'checkbox' }] }
+            ]
+        },
+        {
+            id: 'neuro_forca',
+            title: 'Avaliação Neurológica (Força Muscular)',
+            type: 'table',
+            columns: [
+                'Miótono / Músculo', 
+                { label: 'Esquerdo (0-5)', action: { type: 'fill', value: '5' } }, 
+                { label: 'Direito (0-5)', action: { type: 'fill', value: '5' } }
+            ],
+            rows: [
+                { id: 'c5', label: 'Flexor de Cotovelo (C5)', fields: ['c5_esq', 'c5_dir'] },
+                { id: 'c6', label: 'Extensor de Punho (C6)', fields: ['c6_esq', 'c6_dir'] },
+                { id: 'c7', label: 'Extensor de Cotovelo (C7)', fields: ['c7_esq', 'c7_dir'] },
+                { id: 'c8', label: 'Flexores de Dedos (C8)', fields: ['c8_esq', 'c8_dir'] },
+                { id: 't1', label: 'Abdutor do 5º Dedo (T1)', fields: ['t1_esq', 't1_dir'] }
+            ]
+        },
+        {
+            id: 'adm_punho',
+            title: 'Amplitude de Movimento - Punho (Graus)',
+            type: 'table',
+            columns: ['Movimento', 'Esquerdo (°)', 'Direito (°)', 'Observações'],
+            rows: [
+                { id: 'flexao_pun', label: 'Flexão', fields: ['flexao_pun_esq', 'flexao_pun_dir', 'flexao_pun_obs'] },
+                { id: 'extensao_pun', label: 'Extensão', fields: ['extensao_pun_esq', 'extensao_pun_dir', 'extensao_pun_obs'] },
+                { id: 'desv_radial', label: 'Desvio Radial', fields: ['desv_radial_esq', 'desv_radial_dir', 'desv_radial_obs'] },
+                { id: 'desv_ulnar', label: 'Desvio Ulnar', fields: ['desv_ulnar_esq', 'desv_ulnar_dir', 'desv_ulnar_obs'] }
+            ]
+        },
+        {
+            id: 'adm_mao',
+            title: 'Amplitude de Movimento - Mão e Dedos (Graus)',
+            type: 'table',
+            columns: ['Articulação / Movimento', 'Esquerdo (°)', 'Direito (°)', 'Observações'],
+            rows: [
+                { id: 'flex_mcf', label: 'Flexão MCF (dedos)', fields: ['flex_mcf_esq', 'flex_mcf_dir', 'flex_mcf_obs'] },
+                { id: 'ext_mcf', label: 'Extensão MCF (dedos)', fields: ['ext_mcf_esq', 'ext_mcf_dir', 'ext_mcf_obs'] },
+                { id: 'flex_ifp', label: 'Flexão IFP', fields: ['flex_ifp_esq', 'flex_ifp_dir', 'flex_ifp_obs'] },
+                { id: 'flex_ifd', label: 'Flexão IFD', fields: ['flex_ifd_esq', 'flex_ifd_dir', 'flex_ifd_obs'] },
+                { id: 'oposicao_polegar', label: 'Oposição do Polegar', fields: ['oposicao_polegar_esq', 'oposicao_polegar_dir', 'oposicao_polegar_obs'] }
+            ]
+        },
+        {
+            id: 'testes_especiais',
+            title: 'Testes Especiais',
+            type: 'table',
+            columns: ['Teste', 'Esquerdo', 'Direito'],
+            rows: [
+                { id: 'phalen', label: 'Teste de Phalen (Túnel do Carpo)', fields: [{ id: 'test_phalen_esq', type: 'checkbox' }, { id: 'test_phalen_dir', type: 'checkbox' }] },
+                { id: 'phalen_inv', label: 'Teste de Phalen Invertido', fields: [{ id: 'test_phaleni_esq', type: 'checkbox' }, { id: 'test_phaleni_dir', type: 'checkbox' }] },
+                { id: 'tinel_carpo', label: 'Sinal de Tinel (Túnel do Carpo)', fields: [{ id: 'test_tinelm_esq', type: 'checkbox' }, { id: 'test_tinelm_dir', type: 'checkbox' }] },
+                { id: 'finkelstein', label: 'Teste de Finkelstein (De Quervain)', fields: [{ id: 'test_fink_esq', type: 'checkbox' }, { id: 'test_fink_dir', type: 'checkbox' }] },
+                { id: 'allen', label: 'Teste de Allen (Vascularização)', fields: [{ id: 'test_allen_esq', type: 'checkbox' }, { id: 'test_allen_dir', type: 'checkbox' }] },
+                { id: 'watson', label: 'Teste de Watson (Instabilidade Escafoide)', fields: [{ id: 'test_watson_esq', type: 'checkbox' }, { id: 'test_watson_dir', type: 'checkbox' }] }
+            ]
+        },
+        {
+            id: 'forca_preensao',
+            title: 'Força de Preensão e Pinça (kgF)',
+            type: 'table',
+            columns: ['Teste', 'Esquerdo', 'Direito', '% Déficit'],
+            rows: [
+                { id: 'preensao_palmar', label: 'Preensão Palmar (Dinamômetro)', fields: ['preensao_esq', 'preensao_dir', 'preensao_def'] },
+                { id: 'pinca_polpa', label: 'Pinça Polpa a Polpa', fields: ['polpa_esq', 'polpa_dir', 'polpa_def'] },
+                { id: 'pinca_lateral', label: 'Pinça Lateral (Chave)', fields: ['lateral_esq', 'lateral_dir', 'lateral_def'] },
+                { id: 'pinca_tripode', label: 'Pinça Trípode (3 dedos)', fields: ['tripode_esq', 'tripode_dir', 'tripode_def'] }
+            ]
+        },
+        {
+            id: 'diagnostico_conclusoes',
+            title: 'Diagnóstico e Conclusões',
+            fields: [
+                { id: 'diagnostico', label: 'Diagnóstico Cinético Funcional', type: 'textarea' },
+                { id: 'conclusao', label: 'Conclusões e Sugestões Terapêuticas', type: 'textarea' }
+            ]
+        },
+        {
+            id: 'quickdash_integracao',
+            title: 'Quick DASH (Braço, Ombro e Mão)',
+            fields: [
+                { id: 'quickdash_novo', label: 'Preencher novo Questionário Quick DASH', type: 'button' },
+                { id: 'quickdash_score', label: 'Resultado/Score Quick DASH Atual', type: 'text' }
+            ]
+        }
+    ],
+    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
+  },
+  afSensibilidade: {
+    id: 'afSensibilidade',
+    type: 'clinical',
+    segment: 'diversas',
+    title: 'Teste de Sensibilidade',
+    description: 'Mapeamento dermatômico e avaliação de sensibilidade com monofilamentos.',
+    sections: [
+        {
+            id: 'dadosClinicos',
+            title: 'Informações Clínicas',
+            fields: [
+                { id: 'diagnostico', label: 'Diagnóstico Clínico', type: 'textarea' },
+                { id: 'historia', label: 'História da Doença', type: 'textarea' },
+                { id: 'observacoes', label: 'Observações Gerais', type: 'textarea' }
+            ]
+        },
+        {
+            id: 'testeSensibilidade',
+            title: 'Mapa de Sensibilidade',
+            fields: [
+                {
+                    id: 'mapa_sensibilidade',
+                    label: 'Marque no mapa o nível de sensibilidade encontrado',
+                    type: 'paintmap',
+                    image: '/img/mapa_sensibilidade.png',
+                    colors: [
+                        { hex: '#00FF00', label: 'Normal' },
+                        { hex: '#0000FF', label: 'Diminuída' },
+                        { hex: '#8A2BE2', label: 'Protetora diminuída' },
+                        { hex: '#8B0000', label: 'Perda protetora' },
+                        { hex: '#FFA500', label: 'Laranja (Perda protetora pé)' },
+                        { hex: '#FF00FF', label: 'Apenas pressão profunda' },
+                        { hex: '#000000', label: 'Nenhuma resposta' }
+                    ]
+                }
+            ]
+        }
+    ],
+    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
+  },
+  afAnaliseAngular: {
+    id: 'afAnaliseAngular',
+    type: 'clinical',
+    segment: 'diversas',
+    title: 'Análise Angular (Estúdio)',
+    description: 'Faça o upload de uma foto e trace ângulos articulares ou posturais.',
+    sections: [
+        {
+            id: 'dadosClinicos',
+            title: 'Informações da Avaliação',
+            fields: [
+                { id: 'diagnostico', label: 'Descrição da Postura/Movimento', type: 'textarea' },
+                { id: 'observacoes', label: 'Observações Adicionais', type: 'textarea' }
+            ]
+        },
+        {
+            id: 'analiseAngular',
+            title: 'Estúdio de Análise',
+            fields: [
+                {
+                    id: 'canvas_angular',
+                    label: 'Clique abaixo para carregar a foto e marcar os 3 pontos do ângulo.',
+                    type: 'angle_measurement'
+                }
+            ]
+        }
+    ],
+    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Análise Concluída', unit: '%' })
+  },
+  afOrientacao: {
+    id: 'afOrientacao',
+    type: 'clinical',
+    segment: 'diversas',
+    title: 'Orientação para o Paciente',
+    description: 'Desenhe esquemas, orientações e diagramas personalizados para o paciente.',
+    sections: [
+        {
+            id: 'desenho',
+            title: 'Desenho Livre / Esquemas',
+            fields: [
+                {
+                    id: 'canvas_orientacao',
+                    label: 'Use o canvas abaixo para desenhar orientações',
+                    type: 'freecanvas'
+                }
+            ]
+        },
+        {
+            id: 'observacoes_orientacao',
+            title: 'Observações',
+            fields: [
+                { id: 'obs_texto', label: 'Notas complementares e orientações textuais', type: 'textarea' }
+            ]
+        }
+    ],
+    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Orientação Registrada', unit: '%' })
   }
 };
+

@@ -7,6 +7,7 @@ interface BodySchemaProps {
   image: string;
   value?: string;
   onChange: (value: string) => void;
+  colors?: { hex: string, label: string }[];
 }
 
 const COLORS = [
@@ -16,11 +17,13 @@ const COLORS = [
   { id: "green", color: "#00ff00", label: "Parestesia" },
 ];
 
-export default function BodySchema({ image, value, onChange }: BodySchemaProps) {
+export default function BodySchema({ image, value, onChange, colors: customColors }: BodySchemaProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [activeColor, setActiveColor] = useState(COLORS[0].color);
+
+  const colors = customColors || COLORS;
+  const [activeColor, setActiveColor] = useState(colors[0].hex || colors[0].color);
   const [isEraser, setIsEraser] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
 
@@ -244,26 +247,31 @@ export default function BodySchema({ image, value, onChange }: BodySchemaProps) 
         <div className="flex flex-col gap-4 p-6 bg-white border border-border rounded-2xl shadow-md min-w-[240px]">
             <h4 style={{ fontSize: "0.85rem", fontWeight: "800", color: "var(--secondary)", marginBottom: "0.5rem", textTransform: 'uppercase', letterSpacing: '0.05em' }}>Legenda de Cores</h4>
             <div className="flex flex-col gap-2">
-                {COLORS.map((item) => (
-                    <button
-                        key={item.id}
-                        onClick={() => {
-                            setActiveColor(item.color);
-                            setIsEraser(false);
-                        }}
-                        className="flex items-center gap-3 p-3 rounded-xl transition-all"
-                        style={{ 
-                            backgroundColor: (!isEraser && activeColor === item.color) ? "var(--primary-light)" : "transparent",
-                            border: (!isEraser && activeColor === item.color) ? `2.5px solid var(--primary)` : "2.5px solid transparent",
-                            width: "100%",
-                            textAlign: "left",
-                            cursor: "pointer"
-                        }}
-                    >
-                        <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: item.color, border: "2px solid white", boxShadow: "0 0 0 1px rgba(0,0,0,0.1)" }} />
-                        <span style={{ fontSize: "0.95rem", fontWeight: (!isEraser && activeColor === item.color) ? "700" : "500", color: (!isEraser && activeColor === item.color) ? "var(--primary)" : "var(--text)" }}>{item.label}</span>
-                    </button>
-                ))}
+                {colors.map((item: any, idx: number) => {
+                    const hex = item.hex || item.color;
+                    const label = item.label;
+
+                    return (
+                        <button
+                            key={idx}
+                            onClick={() => {
+                                setActiveColor(hex);
+                                setIsEraser(false);
+                            }}
+                            className="flex items-center gap-3 p-3 rounded-xl transition-all"
+                            style={{ 
+                                backgroundColor: (!isEraser && activeColor === hex) ? "var(--primary-light)" : "transparent",
+                                border: (!isEraser && activeColor === hex) ? `2.5px solid var(--primary)` : "2.5px solid transparent",
+                                width: "100%",
+                                textAlign: "left",
+                                cursor: "pointer"
+                            }}
+                        >
+                            <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: hex, border: "2px solid white", boxShadow: "0 0 0 1px rgba(0,0,0,0.1)" }} />
+                            <span style={{ fontSize: "0.95rem", fontWeight: (!isEraser && activeColor === hex) ? "700" : "500", color: (!isEraser && activeColor === hex) ? "var(--primary)" : "var(--text)" }}>{label}</span>
+                        </button>
+                    );
+                })}
             </div>
         </div>
       </div>

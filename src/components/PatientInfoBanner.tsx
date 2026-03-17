@@ -28,48 +28,99 @@ export default function PatientInfoBanner({ patientId }: PatientInfoBannerProps)
     <motion.div 
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      style={{ 
-        backgroundColor: 'white', 
-        padding: '1rem 1.5rem', 
-        borderRadius: '1rem', 
-        boxShadow: 'var(--shadow-sm)',
-        border: '1px solid var(--border)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '2.5rem',
-        marginBottom: '2rem'
-      }}
+      className="banner-container stack-on-mobile"
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <div style={{ backgroundColor: 'var(--primary-light)', padding: '0.5rem', borderRadius: '0.5rem' }}>
-          <User size={18} style={{ color: 'var(--primary)' }} />
+      <div className="banner-item">
+        <div className="icon-wrapper primary">
+          <User size={18} />
         </div>
         <div>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Paciente</p>
-          <p style={{ fontWeight: '700', margin: 0 }}>{patient.name}</p>
+          <p className="item-label">Paciente</p>
+          <p className="item-value">{patient.name}</p>
         </div>
       </div>
       
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <div style={{ backgroundColor: 'var(--secondary-light)', padding: '0.5rem', borderRadius: '0.5rem' }}>
-          <Calendar size={18} style={{ color: 'var(--secondary)' }} />
+      <div className="banner-item">
+        <div className="icon-wrapper secondary">
+          <Calendar size={18} />
         </div>
         <div>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Idade</p>
-          <p style={{ fontWeight: '700', margin: 0 }}>{patient.age} anos</p>
+          <p className="item-label">Idade</p>
+          <p className="item-value">{patient.age} anos</p>
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <div style={{ backgroundColor: '#fef3f2', padding: '0.5rem', borderRadius: '0.5rem' }}>
-          <Info size={18} style={{ color: '#b42318' }} />
+      <div className="banner-item">
+        <div className="icon-wrapper accent">
+          <Info size={18} />
         </div>
         <div>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sexo</p>
-          <p style={{ fontWeight: '700', margin: 0 }}>{patient.gender}</p>
+          <p className="item-label">Sexo</p>
+          <p className="item-value">{patient.gender}</p>
         </div>
       </div>
+
+      <style jsx>{`
+        .banner-container {
+          background-color: white;
+          padding: 1rem 1.5rem;
+          border-radius: 1rem;
+          box-shadow: var(--shadow-sm);
+          border: 1px solid var(--border);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 2.5rem;
+          margin-bottom: 2rem;
+        }
+        .banner-item {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+        .icon-wrapper {
+          padding: 0.5rem;
+          border-radius: 0.5rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .icon-wrapper.primary {
+          background-color: var(--primary-light);
+          color: var(--primary);
+        }
+        .icon-wrapper.secondary {
+          background-color: rgba(44, 62, 80, 0.05); /* --secondary-light fallback */
+          color: var(--secondary);
+        }
+        .icon-wrapper.accent {
+          background-color: #fef3f2;
+          color: #b42318;
+        }
+        .item-label {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          margin: 0;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .item-value {
+          fontWeight: 700;
+          margin: 0;
+          white-space: nowrap;
+        }
+
+        @media (max-width: 768px) {
+          .banner-container {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: flex-start;
+          }
+          .banner-item {
+            width: 100%;
+          }
+        }
+      `}</style>
     </motion.div>
   );
 }

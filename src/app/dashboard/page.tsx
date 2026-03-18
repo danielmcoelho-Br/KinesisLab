@@ -60,10 +60,28 @@ export default function DashboardPage() {
   const [birthDate, setBirthDate] = useState("");
   const [newGender, setNewGender] = useState("Masculino");
 
-  const calculateAgeDetails = (dateString: string) => {
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, "");
+    if (val.length > 8) val = val.slice(0, 8);
+    if (val.length >= 5) {
+      val = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4)}`;
+    } else if (val.length >= 3) {
+      val = `${val.slice(0, 2)}/${val.slice(2)}`;
+    }
+    setBirthDate(val);
+  };
+
+  const parseFormattedDate = (dateString: string) => {
     if (!dateString) return null;
+    const parts = dateString.split('/');
+    if (parts.length !== 3) return null;
+    return new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00:00Z`);
+  };
+
+  const calculateAgeDetails = (dateString: string) => {
+    const birthDate = parseFormattedDate(dateString);
+    if (!birthDate) return null;
     const today = new Date();
-    const birthDate = new Date(dateString);
     let years = today.getFullYear() - birthDate.getFullYear();
     let months = today.getMonth() - birthDate.getMonth();
     
@@ -112,7 +130,7 @@ export default function DashboardPage() {
     const ageDetails = calculateAgeDetails(birthDate);
     const result = await createPatient({
       name: newName,
-      birth_date: new Date(birthDate),
+      birth_date: parseFormattedDate(birthDate) || new Date(),
       age: ageDetails ? ageDetails.years : 0,
       gender: newGender,
       created_by_id: user?.id
@@ -134,7 +152,7 @@ export default function DashboardPage() {
     const ageDetails = calculateAgeDetails(birthDate);
     const result = await updatePatient(editingPatient.id, {
       name: newName,
-      birth_date: birthDate,
+      birth_date: parseFormattedDate(birthDate) || new Date(),
       age: ageDetails ? ageDetails.years : 0,
       gender: newGender
     }, user?.id, user?.name);
@@ -172,7 +190,17 @@ export default function DashboardPage() {
   const openEditModal = (patient: any) => {
     setEditingPatient(patient);
     setNewName(patient.name);
-    setBirthDate(patient.birth_date ? new Date(patient.birth_date).toISOString().split('T')[0] : "");
+    
+    let formattedDate = "";
+    if (patient.birth_date) {
+        const d = new Date(patient.birth_date);
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const year = d.getUTCFullYear();
+        formattedDate = `${day}/${month}/${year}`;
+    }
+    setBirthDate(formattedDate);
+    
     setNewGender(patient.gender || "Masculino");
     setShowNewPatientModal(true);
   };
@@ -317,7 +345,7 @@ export default function DashboardPage() {
                       <FileText size={18} />
                     </button>
 
-                    {(user?.role === 'ADMINISTRADOR') && (
+                    {(user?.role === 'ADMINISTRADOR' || patient.created_by_id === user?.id) && (
                       <button 
                         onClick={() => handleDeletePatient(patient)}
                         className="btn-action delete-btn"
@@ -337,19 +365,19 @@ export default function DashboardPage() {
       {/* WhatsApp Selection Modal */}
       <AnimatePresence>
         {showShareModal && (
-          <div className="modal-overlay">
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="modal-backdrop"
+              style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
               onClick={() => setShowShareModal(false)}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="modal-content"
+              style={{ position: 'relative', backgroundColor: '#ffffff', zIndex: 10, padding: '2rem', borderRadius: '1.5rem', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}
             >
               <div className="modal-header">
                 <h3>Compartilhar Questionário</h3>
@@ -385,19 +413,19 @@ export default function DashboardPage() {
       {/* Patient Modal (Add/Edit) */}
       <AnimatePresence>
         {showNewPatientModal && (
-          <div className="modal-overlay">
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="modal-backdrop"
+              style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
               onClick={() => { setShowNewPatientModal(false); setEditingPatient(null); }}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="modal-content large-modal"
+              style={{ position: 'relative', backgroundColor: '#ffffff', zIndex: 10, padding: '2rem', borderRadius: '1.5rem', width: '100%', maxWidth: '700px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', overflowY: 'auto', maxHeight: '90vh' }}
             >
               <button 
                 className="close-btn absolute"
@@ -410,7 +438,7 @@ export default function DashboardPage() {
                 <h3>{editingPatient ? 'Editar Paciente' : 'Novo Cadastro'}</h3>
                 {editingPatient && (
                   <button 
-                    onClick={() => handleDeletePatient(editingPatient.id)}
+                    onClick={() => handleDeletePatient(editingPatient)}
                     className="delete-inline-btn"
                   >
                     <Trash2 size={16} /> <span className="hide-on-mobile">Excluir</span>
@@ -435,10 +463,12 @@ export default function DashboardPage() {
                   <div className="form-group">
                     <label className="form-label">Data de Nascimento</label>
                     <input
-                      type="date"
+                      type="text"
                       className="form-input"
                       value={birthDate}
-                      onChange={(e) => setBirthDate(e.target.value)}
+                      onChange={handleDateChange}
+                      placeholder="DD/MM/AAAA"
+                      maxLength={10}
                       required
                     />
                     {birthDate && (
@@ -651,26 +681,32 @@ export default function DashboardPage() {
         .modal-overlay {
           position: fixed;
           inset: 0;
-          zIndex: 1000;
+          z-index: 9999 !important;
           display: flex;
           align-items: center;
           justify-content: center;
           padding: 1rem;
         }
-        .modal-backdrop {
-          position: absolute;
+        :global(.modal-backdrop) {
+          position: fixed;
           inset: 0;
-          background-color: rgba(0, 0, 0, 0.4);
-          backdrop-filter: blur(4px);
+          background-color: rgba(0, 0, 0, 0.75) !important;
+          backdrop-filter: blur(8px) !important;
+          -webkit-backdrop-filter: blur(8px) !important;
+          z-index: -1;
         }
-        .modal-content {
+        :global(.modal-content) {
           position: relative;
-          background-color: white;
+          background-color: #ffffff !important;
+          z-index: 10000 !important;
           padding: 2rem;
           border-radius: var(--radius-xl);
           width: 100%;
           max-width: 500px;
-          box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+          box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5) !important;
+        }
+        :global(.large-modal) {
+          max-width: 700px !important;
         }
         .modal-header {
           display: flex;
@@ -707,11 +743,13 @@ export default function DashboardPage() {
           align-items: center;
           justify-content: space-between;
           padding: 1rem;
-          background-color: white;
-          border-radius: var(--radius-lg);
           border: 1px solid var(--border);
+          border-radius: 0.75rem;
+          margin-bottom: 0.5rem;
+          background: white;
           cursor: pointer;
           transition: all 0.2s;
+          width: 100%;
           text-align: left;
         }
         .modal-list-item:hover {

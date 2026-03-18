@@ -803,7 +803,7 @@ function AssessmentContent() {
     if (!section.rows || !section.columns) return null;
 
     return (
-        <div className="table-responsive-wrapper">
+        <div className="table-responsive-wrapper" style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch' }}>
             <table className={`assessment-table ${isPrint ? 'print' : ''}`}>
                 <thead>
                     <tr style={{ backgroundColor: 'var(--bg-secondary)' }}>
@@ -1103,16 +1103,7 @@ function AssessmentContent() {
                     {field.label}
                 </button>
 
-                {isQuestButton && (
-                    <div style={{ marginTop: '0.5rem' }}>
-                        <FunctionalHistoryChart 
-                            history={patientAssessments.filter(h => h.assessment_type === questType && h.id !== assessmentId)} 
-                            currentScore={0} 
-                            type={questType}
-                            isEmbedded={true}
-                        />
-                    </div>
-                )}
+                {/* Removed chart during questionnaire filling as requested */}
             </div>
         );
       default:
@@ -1242,12 +1233,20 @@ function AssessmentContent() {
           <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>O resultado foi calculado com base nas informações fornecidas.</p>
           
           <div style={{ backgroundColor: 'var(--primary-light)', padding: '2rem', borderRadius: '1rem', marginBottom: '2rem' }}>
-            <div style={{ fontSize: '3.5rem', fontWeight: '900', color: 'var(--primary)', marginBottom: '0.5rem' }}>
-              {result.percentage}{result.unit}
-            </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
-              {result.interpretation}
-            </div>
+            {!isClinical ? (
+              <>
+                <div style={{ fontSize: '3.5rem', fontWeight: '900', color: 'var(--primary)', marginBottom: '0.5rem' }}>
+                  {result.percentage}{result.unit}
+                </div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
+                  {result.interpretation}
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>
+                Avaliação Concluída!
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1266,6 +1265,13 @@ function AssessmentContent() {
             >
                 {returnTo ? 'Ir para Histórico do Paciente' : 'Voltar ao Histórico'}
             </button>
+            <button
+                className="btn-action-outline no-print-element"
+                onClick={() => window.print()}
+                style={{ width: '100%', padding: '1rem', marginTop: '0.5rem', display: 'flex', justifyContent: 'center', gap: '8px', alignItems: 'center', border: '2px solid var(--border)', borderRadius: '0.75rem', fontWeight: 'bold' }}
+            >
+                <Printer size={20} /> Imprimir Avaliação
+            </button>
           </div>
         </motion.div>
       </div>
@@ -1274,7 +1280,7 @@ function AssessmentContent() {
 
   const renderFullPrintView = () => {
     return (
-      <div className="print-all-content" style={{ display: 'none' }}>
+      <div className="print-all-content">
         <div style={{ textAlign: 'center', marginBottom: '2rem', borderBottom: '2px solid #333', paddingBottom: '1rem' }}>
             <h1 style={{ fontSize: '2rem', color: '#000', marginBottom: '0.5rem' }}>{questionnaire.title}</h1>
             <p style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>Paciente: {patientName || patientId}</p>
@@ -1493,13 +1499,7 @@ function AssessmentContent() {
                                 ))}
                             </div>
 
-                            {['ndi', 'oswestry'].includes(type) && (
-                                <FunctionalHistoryChart 
-                                    history={patientAssessments.filter(h => h.assessment_type === type && h.id !== assessmentId)}
-                                    currentScore={calculateAssessmentScore(type as CalculationType, answers).percentage}
-                                    type={type}
-                                />
-                            )}
+                            {/* Removed chart during questionnaire filling as requested */}
                         </>
                     )}
 
@@ -1514,6 +1514,16 @@ function AssessmentContent() {
                         </button>
 
                         <div className="nav-main-actions">
+                            {currentIdx < items.length - 1 && (
+                                <button
+                                    onClick={() => setCurrentIdx(currentIdx + 1)}
+                                    className="btn-nav-next"
+                                >
+                                    <span>Próxima</span>
+                                    <ChevronRight size={20} />
+                                </button>
+                            )}
+
                             {isEditing && (
                                 <button
                                     disabled={saving}
@@ -1522,16 +1532,6 @@ function AssessmentContent() {
                                 >
                                     <span>{saving ? "Salvando..." : (assessmentId ? "Salvar" : "Finalizar")}</span>
                                     {assessmentId && <Save size={20} />}
-                                </button>
-                            )}
-                            
-                            {currentIdx < items.length - 1 && (
-                                <button
-                                    onClick={() => setCurrentIdx(currentIdx + 1)}
-                                    className="btn-nav-next"
-                                >
-                                    <span>Próxima</span>
-                                    <ChevronRight size={20} />
                                 </button>
                             )}
                         </div>
@@ -1928,6 +1928,18 @@ function AssessmentContent() {
           box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
         }
 
+        .chart-container {
+            margin-top: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .table-responsive-wrapper {
+            overflow-x: auto;
+            width: 100%;
+            -webkit-overflow-scrolling: touch;
+        }
+        .print-all-content {
+            display: none;
+        }
         @media (max-width: 768px) {
           .main-content {
             padding: 1.5rem 1rem;

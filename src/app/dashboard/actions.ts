@@ -121,9 +121,9 @@ export async function deletePatient(id: string) {
     });
     revalidatePath("/dashboard");
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error deleting patient:", error);
-    return { success: false, error: "Falha ao excluir paciente" };
+    return { success: false, error: `Falha ao excluir: ${error?.message || error}` };
   }
 }
 

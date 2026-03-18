@@ -145,6 +145,7 @@ export default function PatientHistoryPage() {
             ) : (
               assessments.map((item, index) => {
                 const qInfo = questionnairesData[item.assessment_type];
+                const isClinical = !!qInfo?.sections;
                 return (
                   <motion.div
                     key={item.id}
@@ -169,9 +170,11 @@ export default function PatientHistoryPage() {
                             <User size={14} /> {item.created_by?.name || "N/A"}
                           </span>
 
-                          <span className="score-badge">
-                            Score: {item.clinical_data?.percentage || 0}%
-                          </span>
+                          {!isClinical && (
+                            <span className="score-badge">
+                              Score: {item.clinical_data?.percentage || 0}%
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

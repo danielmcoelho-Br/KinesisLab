@@ -48,7 +48,7 @@ export default function SelectTypePage() {
             </div>
           ) : (
             availableQuestionnaires.map((q, index) => (
-              <motion.div
+              <motion.button
                 key={q.qId}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -70,8 +70,7 @@ export default function SelectTypePage() {
                     <p>{q.description}</p>
                   </div>
                 </div>
-                <ChevronRight size={20} className="chevron" />
-              </motion.div>
+              </motion.button>
             ))
           )}
         </div>
@@ -134,6 +133,8 @@ export default function SelectTypePage() {
           color: var(--text-muted);
         }
         .type-card {
+          width: 100%;
+          text-align: left;
           background-color: white;
           padding: 1.5rem 2rem;
           border-radius: 1.25rem;
@@ -143,6 +144,8 @@ export default function SelectTypePage() {
           align-items: center;
           justify-content: space-between;
           transition: all 0.2s ease;
+          appearance: none;
+          font-family: inherit;
         }
         .type-info {
           display: flex;
@@ -150,8 +153,8 @@ export default function SelectTypePage() {
           gap: 1.5rem;
         }
         .type-icon-wrapper {
-          width: 48px;
-          height: 48px;
+          width: 80px;
+          height: 80px;
           background-color: var(--primary-light);
           border-radius: 12px;
           display: flex;
@@ -161,8 +164,8 @@ export default function SelectTypePage() {
           flex-shrink: 0;
         }
         .icon-svg {
-          width: 24px;
-          height: 24px;
+          width: 48px;
+          height: 48px;
         }
         .type-text h3 {
           font-size: 1.125rem;
@@ -193,8 +196,8 @@ export default function SelectTypePage() {
             gap: 1rem;
           }
           .type-icon-wrapper {
-            width: 40px;
-            height: 40px;
+            width: 56px;
+            height: 56px;
           }
           .chevron {
             display: none;

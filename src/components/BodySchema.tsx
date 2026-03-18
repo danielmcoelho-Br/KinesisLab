@@ -11,10 +11,10 @@ interface BodySchemaProps {
 }
 
 const COLORS = [
-  { id: "red", color: "#ff0000", label: "Dor" },
-  { id: "blue", color: "#0000ff", label: "Formigamento" },
-  { id: "yellow", color: "#ffff00", label: "Queimação" },
-  { id: "green", color: "#00ff00", label: "Parestesia" },
+  { id: "red", hex: "#ff0000", label: "Dor" },
+  { id: "blue", hex: "#0000ff", label: "Formigamento" },
+  { id: "yellow", hex: "#ffff00", label: "Queimação" },
+  { id: "green", hex: "#00ff00", label: "Parestesia" },
 ];
 
 export default function BodySchema({ image, value, onChange, colors: customColors }: BodySchemaProps) {
@@ -23,7 +23,7 @@ export default function BodySchema({ image, value, onChange, colors: customColor
   const [isDrawing, setIsDrawing] = useState(false);
 
   const colors = customColors || COLORS;
-  const [activeColor, setActiveColor] = useState(colors[0].hex || colors[0].color);
+  const [activeColor, setActiveColor] = useState(colors[0].hex);
   const [isEraser, setIsEraser] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
 
@@ -248,7 +248,7 @@ export default function BodySchema({ image, value, onChange, colors: customColor
             <h4 style={{ fontSize: "0.85rem", fontWeight: "800", color: "var(--secondary)", marginBottom: "0.5rem", textTransform: 'uppercase', letterSpacing: '0.05em' }}>Legenda de Cores</h4>
             <div className="flex flex-col gap-2">
                 {colors.map((item: any, idx: number) => {
-                    const hex = item.hex || item.color;
+                    const hex = item.hex;
                     const label = item.label;
 
                     return (

@@ -1186,6 +1186,13 @@ function AssessmentContent() {
                 aofas: 'aofas_score',
             };
 
+            const geriatricMapping: Record<string, string> = {
+                man: 'man_score',
+                ves13: 'ves13_score',
+                lbpq: 'lbpq_score',
+                brief: 'brief_score',
+            };
+
             const fieldKey = geriatricMapping[type] || mmiiMapping[type];
             const isGeriatricTarget = returnTo === 'afGeriatria';
             const isMmiiTarget = returnTo === 'afMmii';

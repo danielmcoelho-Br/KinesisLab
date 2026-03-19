@@ -183,7 +183,7 @@ export default function BodySchema({ image, value, onChange, colors: customColor
   return (
     <div className="flex flex-col items-center gap-6 w-full">
       {/* Top Part: Canvas and Color Legend */}
-      <div className="flex flex-col lg:flex-row gap-8 items-start justify-center w-full max-w-5xl">
+      <div className="flex flex-row flex-wrap gap-8 items-start justify-center w-full max-w-5xl">
         
         {/* Canvas Area */}
         <div className="flex flex-col gap-4 items-center flex-1">
@@ -244,7 +244,7 @@ export default function BodySchema({ image, value, onChange, colors: customColor
         </div>
 
         {/* Color Legend - Right side on Desktop */}
-        <div className="flex flex-col gap-4 p-6 bg-white border border-border rounded-2xl shadow-md min-w-[240px]">
+        <div className="flex flex-col gap-4 p-6 bg-white border border-border rounded-2xl shadow-sm min-w-[280px]">
             <h4 style={{ fontSize: "0.85rem", fontWeight: "800", color: "var(--secondary)", marginBottom: "0.5rem", textTransform: 'uppercase', letterSpacing: '0.05em' }}>Legenda de Cores</h4>
             <div className="flex flex-col gap-2">
                 {colors.map((item: any, idx: number) => {
@@ -277,55 +277,55 @@ export default function BodySchema({ image, value, onChange, colors: customColor
       </div>
 
       {/* Tools Section - Bottom */}
-      <div className="flex flex-wrap justify-center gap-4 w-full max-w-4xl py-6 border-t border-border">
+      <div className="flex flex-wrap justify-center gap-4 w-full max-w-4xl py-6 border-t border-border mt-4">
             <button
                 type="button"
                 onClick={() => setIsEraser(!isEraser)}
-                className="flex items-center gap-2.5 px-8 py-3.5 rounded-xl transition-all"
+                className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl transition-all"
                 style={{ 
-                    backgroundColor: isEraser ? "#374151" : "white",
-                    color: isEraser ? "white" : "#374151",
-                    border: "2.5px solid #374151",
+                    backgroundColor: isEraser ? "var(--primary-light)" : "white",
+                    color: isEraser ? "var(--primary)" : "var(--text-muted)",
+                    border: isEraser ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
                     cursor: "pointer",
-                    fontWeight: "700",
-                    fontSize: "1rem"
+                    fontWeight: "600",
+                    fontSize: "0.95rem"
                 }}
             >
-                <Eraser size={20} /> Borracha
+                <Eraser size={18} /> Borracha
             </button>
 
             <button
                 type="button"
                 onClick={undo}
                 disabled={history.length <= 1}
-                className="flex items-center gap-2.5 px-8 py-3.5 rounded-xl transition-all"
+                className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl transition-all"
                 style={{ 
                     backgroundColor: "white",
-                    border: "2.5px solid #E5E7EB",
+                    border: "1.5px solid var(--border)",
                     cursor: history.length <= 1 ? "not-allowed" : "pointer",
                     opacity: history.length <= 1 ? 0.5 : 1,
                     fontWeight: "600",
-                    color: "var(--text)",
-                    fontSize: "1rem"
+                    color: "var(--text-muted)",
+                    fontSize: "0.95rem"
                 }}
             >
-                <Undo2 size={20} color="var(--text-muted)" /> Desfazer
+                <Undo2 size={18} /> Desfazer
             </button>
 
             <button
                 type="button"
                 onClick={clear}
-                className="flex items-center gap-2.5 px-8 py-3.5 rounded-xl transition-all hover:bg-red-50"
+                className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl transition-all hover:bg-red-50"
                 style={{ 
                     backgroundColor: "white",
-                    border: "2.5px solid #B91C1C",
+                    border: "1.5px solid #fca5a5",
                     cursor: "pointer",
-                    color: "#B91C1C",
-                    fontWeight: "700",
-                    fontSize: "1rem"
+                    color: "#ef4444",
+                    fontWeight: "600",
+                    fontSize: "0.95rem"
                 }}
             >
-                <RotateCcw size={20} color="#B91C1C" /> Apagar Tudo
+                <RotateCcw size={18} /> Apagar Tudo
             </button>
       </div>
     </div>

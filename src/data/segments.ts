@@ -39,18 +39,18 @@ export const segments = [
     id: "mao",
     title: "Mão e Punho",
     description: "Protocolos para lesões de punho, túnel do carpo e dedos.",
-    icon: "/icons/icon_mao.png"
-  },
-  {
-    id: "diversas",
-    title: "Avaliações Diversas",
-    description: "Testes isolados, análise fotográfica e orientações.",
-    icon: "/icons/icon_diversas.png"
+    icon: "/icons/icon_cotovelo.png"
   },
   {
     id: "cotovelo",
     title: "Cotovelo",
     description: "Avaliação de epicondilites e outras disfunções do cotovelo.",
-    icon: "/icons/icon_cotovelo.png"
+    icon: "/icons/cotovelo.png"
+  },
+  {
+    id: "diversas",
+    title: "Formulários Diversos",
+    description: "Testes isolados, análise fotográfica e orientações.",
+    icon: "/icons/diversos.png"
   }
 ];

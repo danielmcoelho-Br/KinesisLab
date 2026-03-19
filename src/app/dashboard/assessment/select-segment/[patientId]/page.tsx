@@ -41,7 +41,7 @@ export default function SelectSegmentPage() {
               transition={{ delay: index * 0.05 }}
               onClick={() => router.push(`/dashboard/assessment/select-type/${params.patientId}/${segment.id}`)}
               className="segment-card"
-              whileHover={{ y: -5, borderColor: 'var(--primary)', boxShadow: 'var(--shadow-lg)' }}
+              whileHover={{ borderColor: 'var(--primary)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
             >
               <div className="segment-icon-wrapper">
                 <img 
@@ -108,9 +108,9 @@ export default function SelectSegmentPage() {
         }
         .segment-card {
           background-color: white;
-          padding: 2rem;
-          border-radius: var(--radius-xl);
-          border: 1px solid var(--border);
+          padding: 1.25rem;
+          border-radius: var(--radius-lg);
+          border: 1px solid #e2e8f0;
           cursor: pointer;
           transition: all 0.3s ease;
           display: flex;
@@ -119,19 +119,21 @@ export default function SelectSegmentPage() {
           gap: 1.25rem;
         }
         .segment-icon-wrapper {
-          width: 64px;
-          height: 64px;
-          background-color: #f8fafc;
+          width: 128px;
+          height: 128px;
+          background-color: transparent;
           border-radius: 16px;
           display: flex;
           align-items: center;
           justify-content: center;
           padding: 12px;
+          mix-blend-mode: multiply;
         }
         .segment-icon-wrapper img {
           width: 100%;
           height: 100%;
           object-fit: contain;
+          mix-blend-mode: multiply;
         }
         .segment-info h3 {
           font-size: 1.25rem;

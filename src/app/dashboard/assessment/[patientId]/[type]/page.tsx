@@ -14,6 +14,7 @@ import {
     ChevronUp,
     Camera,
     Upload,
+    UploadCloud,
     Trash2,
     Image as ImageIcon,
     Printer,
@@ -85,7 +86,9 @@ const MuscleEnduranceChart = ({
     history?: any[], 
     isPrint?: boolean 
 }) => {
-    if (!currentValue && history.length === 0) return null;
+    const validHistory = history.filter(h => Number(h.answers?.[fieldId]) > 0);
+
+    if (!currentValue && validHistory.length === 0) return null;
 
     let type = 'neck_flexor';
     let chartTitle = 'Comparativo de Resistência (Flexores Cervicais)';
@@ -110,7 +113,7 @@ const MuscleEnduranceChart = ({
     const maxValue = Math.max(
         currentValue || 0,
         norm?.mean || 0,
-        ...history.map(h => Number(h.answers?.[fieldId]) || 0)
+        ...validHistory.map(h => Number(h.answers?.[fieldId]) || 0)
     ) * 1.2 || 60;
 
     const Bar = ({ value, label, color, subLabel }: { value: number, label: string, color: string, subLabel?: string }) => (
@@ -174,7 +177,7 @@ const MuscleEnduranceChart = ({
                         />
                     )}
                     
-                    {history.slice().reverse().map((h, i) => (
+                    {validHistory.slice().reverse().map((h, i) => (
                         <Bar 
                             key={h.id} 
                             value={Number(h.answers?.[fieldId]) || 0} 
@@ -234,18 +237,18 @@ const MuscleEnduranceChart = ({
     );
 };
 
-const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded = false }: { history: any[], currentScore: number, type: string, isEmbedded?: boolean }) => {
+const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded = false, isPrint = false }: { history: any[], currentScore: number, type: string, isEmbedded?: boolean, isPrint?: boolean }) => {
     if (history.length === 0 && !currentScore) return null;
 
-    const data = [...history.slice().reverse().map(h => ({
+    const data = [...history.filter(h => h.assessment_type === type && h.scoreData?.percentage > 0).slice().reverse().map(h => ({
         date: new Date(h.created_at).toLocaleDateString('pt-BR'),
         score: h.scoreData?.percentage || 0
     })), {
         date: 'Hoje',
         score: currentScore
-    }].filter(d => d.date === 'Hoje' ? d.score > 0 : true);
+    }].filter(d => d.score > 0);
 
-    if (data.length === 1 && data[0].date === 'Hoje' && data[0].score === 0) return null;
+    if (data.length === 0) return null;
 
     return (
         <div className={`history-chart-container ${isEmbedded ? 'embedded' : ''}`}>
@@ -258,7 +261,7 @@ const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded =
                         <div key={i} className="history-chart-bar-item">
                             <div className="bar-wrapper">
                                 <motion.div 
-                                    initial={{ height: 0 }}
+                                    initial={{ height: isPrint ? `${d.score}%` : 0 }}
                                     animate={{ height: `${d.score}%` }}
                                     className={`bar-fill ${d.date === 'Hoje' ? 'current' : ''}`}
                                 />
@@ -283,6 +286,10 @@ const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded =
                     padding: 1rem;
                     background-color: var(--bg);
                     border: 1px solid var(--border);
+                    transform-origin: top left;
+                    transform: scale(0.9);
+                    width: 111%;
+                    max-width: 600px;
                 }
                 .history-chart-title {
                     font-size: 1rem;
@@ -1103,7 +1110,19 @@ function AssessmentContent() {
                     {field.label}
                 </button>
 
-                {/* Removed chart during questionnaire filling as requested */}
+                {answers[field.id.replace('_novo', '_score')] && field.id.endsWith('_novo') && (
+                    <div style={{ marginTop: '1.5rem', padding: '1.5rem', backgroundColor: 'white', borderRadius: '1rem', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+                        <div style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--primary)', marginBottom: '1.5rem', textAlign: 'center' }}>
+                            Score Atual: {answers[field.id.replace('_novo', '_score')]}
+                        </div>
+                        <FunctionalHistoryChart 
+                            type={field.id.replace('_novo', '')}
+                            currentScore={Number(String(answers[field.id.replace('_novo', '_score')]).split('%')[0].trim()) || 0}
+                            history={patientAssessments}
+                            isEmbedded={true}
+                        />
+                    </div>
+                )}
             </div>
         );
       default:
@@ -1151,9 +1170,13 @@ function AssessmentContent() {
                 </div>
             ) : (
                 isEditing && (
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: isTable ? '0.4rem' : '0.6rem 1rem', backgroundColor: 'var(--bg-secondary)', border: '1.5px dashed var(--border)', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)' }}>
-                            {isTable ? <Camera size={16} /> : <><Camera size={18} /> <span>Foto / Galeria</span></>}
+                    <div style={{ display: 'flex', gap: '0.5rem', flexDirection: isTable ? 'column' : 'row' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: isTable ? '0.4rem' : '0.6rem 1rem', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)' }}>
+                            <Camera size={isTable ? 16 : 18} /> {!isTable && <span>Tirar Foto</span>}
+                            <input type="file" accept="image/*" capture="environment" onChange={handleFileChange} style={{ display: 'none' }} />
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: isTable ? '0.4rem' : '0.6rem 1rem', backgroundColor: 'white', border: '1.5px dashed var(--border)', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)' }}>
+                            <UploadCloud size={isTable ? 16 : 18} /> {!isTable && <span>Galeria</span>}
                             <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
                         </label>
                     </div>
@@ -1210,75 +1233,47 @@ function AssessmentContent() {
     };
 
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', backgroundColor: 'var(--bg)' }}>
-        <div className="background-gradient" />
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          style={{ 
-            maxWidth: '560px', 
-            width: '100%', 
-            backgroundColor: 'white', 
-            padding: '3rem', 
-            textAlign: 'center', 
-            borderRadius: '1.5rem',
-            boxShadow: 'var(--shadow-lg)',
-            border: '1px solid var(--border)'
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-            <CheckCircle size={80} style={{ color: 'var(--primary)' }} />
-          </div>
-          <h2 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Avaliação Finalizada!</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>O resultado foi calculado com base nas informações fornecidas.</p>
-          
-          <div style={{ backgroundColor: 'var(--primary-light)', padding: '2rem', borderRadius: '1rem', marginBottom: '2rem' }}>
-            {!isClinical ? (
-              <>
-                <div style={{ fontSize: '3.5rem', fontWeight: '900', color: 'var(--primary)', marginBottom: '0.5rem' }}>
-                  {result.percentage}{result.unit}
-                </div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
-                  {result.interpretation}
-                </div>
-              </>
-            ) : (
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>
-                Avaliação Concluída!
-              </div>
-            )}
-          </div>
+      <div style={{ minHeight: '100vh', padding: '2rem', backgroundColor: 'white' }}>
+        <div className="no-print" style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+            <div style={{ backgroundColor: 'var(--primary-light)', padding: '1.5rem', borderRadius: '1rem', textAlign: 'center', maxWidth: '600px', width: '100%' }}>
+                <CheckCircle size={48} style={{ color: 'var(--primary)', margin: '0 auto 1rem auto' }} />
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '0.5rem' }}>Avaliação Concluída!</h2>
+                <p style={{ color: 'var(--text)' }}>Abaixo estão os dados registrados prontos para conferência ou impressão.</p>
+            </div>
+        </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {renderFullPrintView()}
+
+        <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
+            <button
+                className="btn-action-outline"
+                onClick={() => window.print()}
+                style={{ padding: '1rem 2rem', display: 'flex', alignItems: 'center', gap: '8px', border: '2px solid var(--border)', borderRadius: '0.75rem', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', backgroundColor: 'white' }}
+            >
+                <Printer size={20} /> Imprimir Avaliação
+            </button>
             {returnTo && (
                 <button 
                     className="btn-primary"
                     onClick={handleReturn}
-                    style={{ backgroundColor: 'var(--secondary)' }}
+                    style={{ padding: '1rem 2rem', fontSize: '1.1rem', borderRadius: '0.75rem', cursor: 'pointer' }}
                 >
-                    Retornar à Avaliação
+                    Retornar ao Fluxo
                 </button>
             )}
             <button 
                 className="btn-primary"
                 onClick={() => router.push(`/dashboard/patient/${patientId}`)}
+                style={{ padding: '1rem 2rem', fontSize: '1.1rem', borderRadius: '0.75rem', cursor: 'pointer', backgroundColor: 'var(--secondary)' }}
             >
-                {returnTo ? 'Ir para Histórico do Paciente' : 'Voltar ao Histórico'}
+                Voltar ao Histórico
             </button>
-            <button
-                className="btn-action-outline no-print-element"
-                onClick={() => window.print()}
-                style={{ width: '100%', padding: '1rem', marginTop: '0.5rem', display: 'flex', justifyContent: 'center', gap: '8px', alignItems: 'center', border: '2px solid var(--border)', borderRadius: '0.75rem', fontWeight: 'bold' }}
-            >
-                <Printer size={20} /> Imprimir Avaliação
-            </button>
-          </div>
-        </motion.div>
+        </div>
       </div>
     );
   }
 
-  const renderFullPrintView = () => {
+  function renderFullPrintView() {
     return (
       <div className="print-all-content">
         <div style={{ textAlign: 'center', marginBottom: '2rem', borderBottom: '2px solid #333', paddingBottom: '1rem' }}>
@@ -1336,7 +1331,9 @@ function AssessmentContent() {
                             const isEndurance = ['resist_flexora', 'resist_extensora', 'flexao_60', 'sorensen'].includes(field.id);
                             if (!answers[field.id] && field.type !== 'bodyschema' && !isEndurance) return null;
                             if (isEndurance) return null; // Already rendered above
-                            if (field.type === 'button') return null; // Don't print buttons
+                            if (field.type === 'button') {
+                                return null;
+                            }
                             
                             return (
                                 <div key={field.id} style={{ marginBottom: '0.5rem' }}>
@@ -1376,6 +1373,37 @@ function AssessmentContent() {
                 </div>
             </div>
         )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', marginTop: '2rem' }}>
+            {['ndi', 'oswestry', 'quickdash', 'man', 'ves13', 'lbpq', 'brief', 'lysholm', 'womac', 'ikdc', 'aofas'].map(questType => {
+                const scoreKey = `${questType}_score`;
+                const scoreValue = answers[scoreKey] || answers[`${questType}_score_previo`];
+                if (!scoreValue) return null;
+                
+                const numScore = Number(String(scoreValue).split('%')[0].trim()) || 0;
+                const labels: Record<string, string> = {
+                    ndi: "Neck Disability Index (NDI)", oswestry: "Índice de Oswestry (ODI)", quickdash: "QuickDASH",
+                    man: "Mini Avaliação Nutricional (MAN)", ves13: "Vulnerabilidade (VES-13)",
+                    lbpq: "Questionário de Dor Lombar (LBPQ)", brief: "Inventário Breve de Dor (BPI-SF)",
+                    lysholm: "Questionário de Lysholm", womac: "WOMAC", ikdc: "IKDC", aofas: "AOFAS"
+                };
+
+                return (
+                    <div key={`print-functional-chart-${questType}`} className="print-chart-container" style={{ width: '100%', maxWidth: '600px', pageBreakInside: 'avoid', margin: '0 auto' }}>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#8B0000', marginBottom: '0.5rem', textAlign: 'center' }}>
+                            Evolução: {labels[questType]}
+                        </div>
+                        <FunctionalHistoryChart 
+                            type={questType}
+                            currentScore={numScore}
+                            history={patientAssessments}
+                            isEmbedded={true}
+                            isPrint={true}
+                        />
+                    </div>
+                );
+            })}
+        </div>
       </div>
     );
   };
@@ -1579,7 +1607,9 @@ function AssessmentContent() {
         </div>
       </main>
 
-      {renderFullPrintView()}
+      <div className="print-restricted-wrapper">
+         {renderFullPrintView()}
+      </div>
 
       {/* Image Zoom Modal */}
       <AnimatePresence>
@@ -1605,6 +1635,14 @@ function AssessmentContent() {
       </AnimatePresence>
 
       <style jsx>{`
+        .print-restricted-wrapper {
+          display: none;
+        }
+        @media print {
+          .print-restricted-wrapper {
+            display: block;
+          }
+        }
         .assessment-page {
           min-height: 100vh;
           background-color: var(--bg);

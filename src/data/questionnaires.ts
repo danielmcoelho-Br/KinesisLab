@@ -294,7 +294,11 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'neuro_reflexos',
             title: 'Avaliação Neurológica (Reflexos)',
             type: 'table',
-            columns: ['Reflexo', 'Esquerdo', 'Direito'],
+            columns: [
+                'Reflexo', 
+                { label: 'Esquerdo', action: { type: 'fill', value: 'Normal' } }, 
+                { label: 'Direito', action: { type: 'fill', value: 'Normal' } }
+            ],
             rows: [
                 { id: 'bicipital', label: 'Bicipital (C5 e C6)', fields: [
                     { id: 'bicipital_esq', type: 'select', options: reflexOptions }, 

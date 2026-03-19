@@ -19,7 +19,14 @@ export default function SelectTypePage() {
   // Filter questionnaires by segment
   const availableQuestionnaires = Object.entries(questionnairesData)
     .filter(([_, q]) => q.segment === segmentId)
-    .map(([qId, q]) => ({ qId, ...q }));
+    .map(([qId, q]) => ({ qId, ...q }))
+    .sort((a, b) => {
+      const aIsClinical = a.type === 'clinical' || a.id?.startsWith('af') || a.qId?.startsWith('af');
+      const bIsClinical = b.type === 'clinical' || b.id?.startsWith('af') || b.qId?.startsWith('af');
+      if (aIsClinical && !bIsClinical) return -1;
+      if (!aIsClinical && bIsClinical) return 1;
+      return 0;
+    });
 
   return (
     <div className="select-type-page">
@@ -55,7 +62,7 @@ export default function SelectTypePage() {
                 transition={{ delay: index * 0.1 }}
                 onClick={() => router.push(`/dashboard/assessment/${patientId}/${q.qId}`)}
                 className="type-card"
-                whileHover={{ scale: 1.01, borderColor: 'var(--primary)', boxShadow: 'var(--shadow-md)', backgroundColor: '#fdfdfd' }}
+                whileHover={{ borderColor: 'var(--primary)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
               >
                 <div className="type-info">
                   <div className="type-icon-wrapper">
@@ -136,8 +143,9 @@ export default function SelectTypePage() {
           width: 100%;
           text-align: left;
           background-color: white;
-          padding: 1.5rem 2rem;
-          border-radius: 1.25rem;
+          padding: 1.5rem;
+          border-radius: 1rem;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
           border: 1px solid var(--border);
           cursor: pointer;
           display: flex;
@@ -155,17 +163,19 @@ export default function SelectTypePage() {
         .type-icon-wrapper {
           width: 80px;
           height: 80px;
-          background-color: var(--primary-light);
+          background-color: transparent;
           border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
           color: var(--primary);
           flex-shrink: 0;
+          mix-blend-mode: multiply;
         }
         .icon-svg {
           width: 48px;
           height: 48px;
+          mix-blend-mode: multiply;
         }
         .type-text h3 {
           font-size: 1.125rem;

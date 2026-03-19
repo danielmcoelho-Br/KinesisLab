@@ -51,6 +51,8 @@ export async function createPatient(data: {
   birth_date?: Date;
   age?: number;
   gender?: string;
+  dominance?: string;
+  activity_level?: string;
   created_by_id?: string;
 }) {
   try {
@@ -67,6 +69,8 @@ export async function createPatient(data: {
         birth_date: birth_date,
         age: data.age || 0,
         gender: data.gender,
+        dominance: data.dominance,
+        activity_level: data.activity_level,
         created_by_id: data.created_by_id || null,
         change_logs: [
           {
@@ -102,6 +106,8 @@ export async function updatePatient(id: string, data: any, userId?: string, user
         birth_date: data.birth_date ? new Date(data.birth_date) : undefined,
         age: data.age,
         gender: data.gender,
+        dominance: data.dominance,
+        activity_level: data.activity_level,
         change_logs: logs
       }
     });

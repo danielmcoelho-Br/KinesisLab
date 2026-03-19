@@ -38,7 +38,7 @@ export default function ConfirmModal({
         <div style={{ 
           position: 'fixed', 
           inset: 0, 
-          zIndex: 5000, 
+          zIndex: 10005, 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center', 

@@ -38,7 +38,7 @@ export default function UsersAdminPage() {
     const [formData, setFormData] = useState({
         name: "",
         email: "",
-        role: "ASSISTENTE",
+        role: "Secretaria",
         birth_date: "",
         password: "",
         crefito: "",
@@ -80,7 +80,7 @@ export default function UsersAdminPage() {
             setFormData({
                 name: "",
                 email: "",
-                role: "ASSISTENTE",
+                role: "Secretaria",
                 birth_date: "",
                 password: "",
                 crefito: "",
@@ -153,16 +153,21 @@ export default function UsersAdminPage() {
         <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)' }}>
             <Header showBackButton />
             <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem' }}>
-                <div style={{ position: 'relative', marginBottom: '2rem' }}>
-                    <Search style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input 
-                        type="text" 
-                        placeholder="Buscar por nome ou email..." 
-                        className="form-input" 
-                        style={{ paddingLeft: '3rem' }}
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+                    <div style={{ position: 'relative', flex: 1 }}>
+                        <Search style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                        <input 
+                            type="text" 
+                            placeholder="Buscar por nome ou email..." 
+                            className="form-input" 
+                            style={{ paddingLeft: '3rem' }}
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                    <button className="btn-primary" onClick={() => handleOpenModal()} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
+                        <UserPlus size={18} /> Novo Usuário
+                    </button>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
@@ -207,8 +212,8 @@ export default function UsersAdminPage() {
                                     borderRadius: '0.5rem', 
                                     fontSize: '0.7rem', 
                                     fontWeight: 'bold',
-                                    backgroundColor: user.role === 'ADMINISTRADOR' ? '#FEE2E2' : user.role === 'FISIOTERAPEUTA' ? '#DBEAFE' : '#F3F4F6',
-                                    color: user.role === 'ADMINISTRADOR' ? '#991B1B' : user.role === 'FISIOTERAPEUTA' ? '#1E40AF' : '#374151'
+                                    backgroundColor: user.role === 'Administrador' ? '#FEE2E2' : user.role === 'Usuario' ? '#DBEAFE' : '#F3F4F6',
+                                    color: user.role === 'Administrador' ? '#991B1B' : user.role === 'Usuario' ? '#1E40AF' : '#374151'
                                 }}>
                                     {user.role}
                                 </div>
@@ -260,9 +265,9 @@ export default function UsersAdminPage() {
                                     <div className="form-group">
                                         <label className="form-label">Função</label>
                                         <select className="form-input" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                                            <option value="ADMINISTRADOR">Administrador</option>
-                                            <option value="FISIOTERAPEUTA">Fisioterapeuta</option>
-                                            <option value="ASSISTENTE">Assistente</option>
+                                            <option value="Administrador">Administrador</option>
+                                            <option value="Usuario">Usuario</option>
+                                            <option value="Secretaria">Secretaria</option>
                                         </select>
                                     </div>
                                     <div className="form-group">

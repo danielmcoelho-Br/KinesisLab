@@ -15,14 +15,16 @@ export async function getUsers() {
     }
 }
 
+import bcrypt from "bcryptjs";
+
 export async function createUser(data: any) {
     try {
-        // In a real app, hash the password
+        const hashedPassword = await bcrypt.hash(data.password, 10);
         const user = await prisma.user.create({
             data: {
                 name: data.name,
                 email: data.email,
-                password: data.password,
+                password: hashedPassword,
                 role: data.role,
                 crefito: data.crefito,
                 avatar_url: data.avatar_url,
@@ -63,6 +65,11 @@ export async function updateUser(id: string, data: any, adminName: string) {
 
         newLogs.forEach(entry => logs.push({ timestamp: new Date().toISOString(), entry }));
 
+        let updatedPassword = current.password;
+        if (data.password) {
+            updatedPassword = await bcrypt.hash(data.password, 10);
+        }
+
         const updated = await prisma.user.update({
             where: { id },
             data: {
@@ -74,7 +81,7 @@ export async function updateUser(id: string, data: any, adminName: string) {
                 birth_date: data.birth_date ? new Date(data.birth_date) : null,
                 is_active: data.is_active,
                 force_password_change: data.force_password_change,
-                password: data.password || current.password,
+                password: updatedPassword,
                 change_logs: logs
             }
         });

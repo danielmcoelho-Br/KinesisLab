@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { 
   Home, 
@@ -19,6 +19,7 @@ interface HeaderProps {
 
 export default function Header({ showBackButton = false }: HeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -54,19 +55,29 @@ export default function Header({ showBackButton = false }: HeaderProps) {
         </div>
 
         <div className="nav-actions">
-          <div className="no-print desktop-nav">
-            <button 
-                onClick={() => router.push('/dashboard')}
-                className="btn-dashboard"
-            >
-                <ChevronLeft size={18} />
-                <span>Dashboard</span>
-            </button>
-          </div>
-
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              {user?.role === 'ADMINISTRADOR' && (
+              
+              {pathname !== '/dashboard' && (
+                <div className="hide-on-mobile" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginRight: '0.5rem' }}>
+                  <button 
+                    onClick={() => router.push('/dashboard')}
+                    className="no-print nav-btn"
+                  >
+                    <Home size={18} />
+                    <span className="hidden-tablet">Início</span>
+                  </button>
+                  <button 
+                    onClick={() => router.back()}
+                    className="no-print nav-btn"
+                  >
+                    <ChevronLeft size={18} />
+                    <span className="hidden-tablet">Voltar</span>
+                  </button>
+                  <div className="no-print divider" />
+                </div>
+              )}
+              {(user?.role === 'Administrador' || user?.role === 'ADMINISTRADOR') && (
                 <div className="hide-on-mobile" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                   <button 
                     onClick={() => router.push('/dashboard/admin/users')}
@@ -88,11 +99,11 @@ export default function Header({ showBackButton = false }: HeaderProps) {
 
               {user && (
                 <div className="no-print user-profile">
-                  <div className="user-info hide-on-mobile">
+                  <div className="user-info hide-on-mobile" style={{ cursor: 'pointer' }} onClick={() => router.push('/dashboard/profile')}>
                     <div className="user-name">{user.name}</div>
                     <div className="user-role">{user.role}</div>
                   </div>
-                  <div className="user-avatar">
+                  <div className="user-avatar" style={{ cursor: 'pointer', transition: 'transform 0.2s ease' }} onClick={() => router.push('/dashboard/profile')} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
                     <User size={20} />
                   </div>
                 </div>

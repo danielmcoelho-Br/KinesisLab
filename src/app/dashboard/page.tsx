@@ -59,6 +59,8 @@ export default function DashboardPage() {
   const [newName, setNewName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [newGender, setNewGender] = useState("Masculino");
+  const [newDominance, setNewDominance] = useState("Destro");
+  const [newActivityLevel, setNewActivityLevel] = useState("Ativo");
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.replace(/\D/g, "");
@@ -133,6 +135,8 @@ export default function DashboardPage() {
       birth_date: parseFormattedDate(birthDate) || new Date(),
       age: ageDetails ? ageDetails.years : 0,
       gender: newGender,
+      dominance: newDominance,
+      activity_level: newActivityLevel,
       created_by_id: user?.id
     });
 
@@ -154,7 +158,9 @@ export default function DashboardPage() {
       name: newName,
       birth_date: parseFormattedDate(birthDate) || new Date(),
       age: ageDetails ? ageDetails.years : 0,
-      gender: newGender
+      gender: newGender,
+      dominance: newDominance,
+      activity_level: newActivityLevel
     }, user?.id, user?.name);
 
     if (result.success) {
@@ -202,6 +208,8 @@ export default function DashboardPage() {
     setBirthDate(formattedDate);
     
     setNewGender(patient.gender || "Masculino");
+    setNewDominance(patient.dominance || "Destro");
+    setNewActivityLevel(patient.activity_level || "Ativo");
     setShowNewPatientModal(true);
   };
 
@@ -257,6 +265,8 @@ export default function DashboardPage() {
                 setNewName("");
                 setBirthDate("");
                 setNewGender("Masculino");
+                setNewDominance("Destro");
+                setNewActivityLevel("Ativo");
                 setShowNewPatientModal(true);
               }}
             >
@@ -297,9 +307,16 @@ export default function DashboardPage() {
                   transition={{ delay: index * 0.05 }}
                   className="patient-item-wrapper"
                   whileHover={{ borderColor: 'var(--primary)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                  style={{ alignItems: 'center' }}
                 >
-                  <div className="patient-info" onClick={() => router.push(`/dashboard/patient/${patient.id}`)}>
-                    <div className="patient-header">
+                  <div className="patient-info" onClick={() => {
+                      if (user?.role === 'Secretaria') {
+                        toast.info("Acesso restrito a uso clínico.");
+                      } else {
+                        router.push(`/dashboard/patient/${patient.id}`);
+                      }
+                  }}>
+                    <div className="patient-header" style={{ width: '100%', flexWrap: 'nowrap' }}>
                       <h4 className="patient-name">{patient.name}</h4>
                       <div className="patient-status">
                         {patient.hasOswestry ? (
@@ -312,48 +329,40 @@ export default function DashboardPage() {
                           </span>
                         )}
                       </div>
+
+                      <div className="patient-actions" style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleOpenShareModal(patient); }}
+                          className="btn-action share-btn"
+                          title="Compartilhar"
+                        >
+                          <MessageCircle size={18} />
+                        </button>
+
+                        {(user?.role === 'ADMINISTRADOR' || patient.created_by_id === user?.id) && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); openEditModal(patient); }}
+                            className="btn-action edit-btn"
+                            title="Editar"
+                          >
+                            <Edit size={18} />
+                          </button>
+                        )}
+
+                        {user?.role !== 'Secretaria' && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/assessment/select-segment/${patient.id}`); }}
+                            className="btn-action new-btn"
+                            title="Nova Avaliação"
+                          >
+                            <FileText size={18} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <p className="patient-meta">
+                    <p className="patient-meta" style={{ marginTop: '0.25rem' }}>
                       {patient.age} anos | {patient.gender} | Cadastrado em {new Date(patient.created_at).toLocaleDateString()}
                     </p>
-                  </div>
-                  
-                  <div className="patient-actions">
-                    <button 
-                      onClick={() => handleOpenShareModal(patient)}
-                      className="btn-action share-btn"
-                      title="Compartilhar"
-                    >
-                      <MessageCircle size={18} />
-                    </button>
-
-                    {(user?.role === 'ADMINISTRADOR' || patient.created_by_id === user?.id) && (
-                      <button 
-                        onClick={() => openEditModal(patient)}
-                        className="btn-action edit-btn"
-                        title="Editar"
-                      >
-                        <Edit size={18} />
-                      </button>
-                    )}
-
-                    <button 
-                      onClick={() => router.push(`/dashboard/assessment/select-segment/${patient.id}`)}
-                      className="btn-action new-btn"
-                      title="Nova Avaliação"
-                    >
-                      <FileText size={18} />
-                    </button>
-
-                    {(user?.role === 'ADMINISTRADOR' || patient.created_by_id === user?.id) && (
-                      <button 
-                        onClick={() => handleDeletePatient(patient)}
-                        className="btn-action delete-btn"
-                        title="Excluir"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    )}
                   </div>
                 </motion.div>
               ))
@@ -498,6 +507,32 @@ export default function DashboardPage() {
                         <Venus size={24} />
                       </button>
                     </div>
+                  </div>
+                </div>
+
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Dominância</label>
+                    <select 
+                      className="form-input" 
+                      value={newDominance} 
+                      onChange={(e) => setNewDominance(e.target.value)}
+                    >
+                      <option value="Destro">Destro</option>
+                      <option value="Canhoto">Canhoto</option>
+                      <option value="Ambidestro">Ambidestro</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Nível de Atividade</label>
+                    <select 
+                      className="form-input" 
+                      value={newActivityLevel} 
+                      onChange={(e) => setNewActivityLevel(e.target.value)}
+                    >
+                      <option value="Ativo">Ativo / Pratica Exercícios</option>
+                      <option value="Sedentário">Sedentário</option>
+                    </select>
                   </div>
                 </div>
 

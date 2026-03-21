@@ -808,7 +808,7 @@ const FormField = memo(({
     switch (field.type) {
       case 'textarea':
         return (
-          <div key={field.id} className="form-group">
+          <div key={field.id} className="form-group" style={{ gridColumn: '1 / -1' }}>
             <label className="form-label">{field.label}</label>
             <textarea 
               {...commonProps}
@@ -921,7 +921,7 @@ const FormField = memo(({
         );
       case 'bodyschema':
         return (
-            <div key={field.id} className="form-group">
+            <div key={field.id} className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
                 <div style={{ pointerEvents: isEditing ? 'auto' : 'none', opacity: isEditing ? 1 : 0.8 }}>
                     <BodySchema 
@@ -947,7 +947,7 @@ const FormField = memo(({
         );
       case 'paintmap':
         return (
-            <div key={field.id} className="form-group">
+            <div key={field.id} className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
                 <div style={{ pointerEvents: isEditing ? 'auto' : 'none', opacity: isEditing ? 1 : 0.8 }}>
                     <BodySchema 
@@ -962,7 +962,7 @@ const FormField = memo(({
         );
       case 'angle_measurement':
         return (
-            <div key={field.id} className="form-group">
+            <div key={field.id} className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
                 <div style={{ pointerEvents: isEditing ? 'auto' : 'none' }}>
                     <AngleMeasurement 
@@ -975,7 +975,7 @@ const FormField = memo(({
         );
       case 'freecanvas':
         return (
-            <div key={field.id} className="form-group">
+            <div key={field.id} className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
                 <div style={{ pointerEvents: isEditing ? 'auto' : 'none' }}>
                     <FreeCanvas 

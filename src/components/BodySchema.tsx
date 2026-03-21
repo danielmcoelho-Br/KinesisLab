@@ -209,7 +209,7 @@ export default function BodySchema({ image, value, onChange, colors: customColor
   return (
     <div className="flex flex-col items-center gap-6 w-full">
       {/* Top Part: Canvas and Color Legend */}
-      <div className="flex flex-row flex-wrap gap-8 items-start justify-center w-full max-w-5xl">
+      <div className="flex flex-col xl:flex-row gap-8 items-start justify-center w-full max-w-[1400px]">
         
         {/* Canvas Area */}
         <div className="flex flex-col gap-4 items-center flex-1">
@@ -217,7 +217,7 @@ export default function BodySchema({ image, value, onChange, colors: customColor
                 style={{ 
                 position: "relative", 
                 width: "100%",
-                maxWidth: "500px",  
+                maxWidth: "1000px",  
                 backgroundColor: "white", // Restored white background for visibility of transparent maps
                 borderRadius: "1rem",
                 overflow: "hidden",

@@ -1738,18 +1738,12 @@ export const questionnairesData: Record<string, Questionnaire> = {
     description: 'Mapeamento dermatômico e avaliação de sensibilidade com monofilamentos.',
     sections: [
         {
-            id: 'dadosClinicos',
-            title: 'Informações Clínicas',
+            id: 'testeSensibilidade',
+            title: 'Avaliação Clínica e Mapa de Sensibilidade',
             fields: [
                 { id: 'diagnostico', label: 'Diagnóstico Clínico', type: 'textarea' },
                 { id: 'historia', label: 'História da Doença', type: 'textarea' },
-                { id: 'observacoes', label: 'Observações Gerais', type: 'textarea' }
-            ]
-        },
-        {
-            id: 'testeSensibilidade',
-            title: 'Mapa de Sensibilidade',
-            fields: [
+                { id: 'observacoes', label: 'Observações Gerais', type: 'textarea' },
                 {
                     id: 'mapa_sensibilidade',
                     label: 'Marque no mapa o nível de sensibilidade encontrado',

@@ -1073,7 +1073,7 @@ const FormSection = memo(({
                     answers={answers} 
                     isEditing={isEditing} 
                     handleInputChange={handleInputChange} 
-                    renderImageUpload={renderImageUpload}
+                    onImageClick={onImageClick}
                     isPrint={isPrint}
                 />
             ) : section.type === 'multi-table' ? (
@@ -1123,7 +1123,7 @@ const FormSection = memo(({
                             value={answers[field.id]}
                             isEditing={isEditing}
                             handleInputChange={handleInputChange}
-                            renderImageUpload={renderImageUpload}
+                            onImageClick={onImageClick}
                             patientGender={patientGender}
                             patientAge={patientAge}
                             patientAssessments={patientAssessments}
@@ -1688,8 +1688,7 @@ function AssessmentContent() {
                 patientAge={patientAge}
                 patientAssessments={patientAssessments}
                 assessmentId={assessmentId}
-                index={idx}
-                questionnaire={questionnaire}
+                patientId={patientId}
                 type={type}
                 router={router}
             />
@@ -1840,10 +1839,8 @@ function AssessmentContent() {
                             patientAge={patientAge}
                             patientAssessments={patientAssessments}
                             assessmentId={assessmentId}
-                            isClinical={true}
-                            index={currentIdx}
+                            patientId={patientId}
                             isPrint={false}
-                            questionnaire={questionnaire}
                             type={type}
                             router={router}
                         />
@@ -1858,10 +1855,8 @@ function AssessmentContent() {
                             patientAge={patientAge}
                             patientAssessments={patientAssessments}
                             assessmentId={assessmentId}
-                            isClinical={false}
-                            index={currentIdx}
+                            patientId={patientId}
                             isPrint={false}
-                            questionnaire={questionnaire}
                             type={type}
                             router={router}
                         />

@@ -956,6 +956,7 @@ const FormField = memo(({
                         value={value} 
                         onChange={(val) => handleInputChange(field.id, val)} 
                         colors={field.colors}
+                        mode="stamp"
                     />
                 </div>
             </div>

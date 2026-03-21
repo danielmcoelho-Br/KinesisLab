@@ -8,6 +8,7 @@ interface BodySchemaProps {
   value?: string;
   onChange: (value: string) => void;
   colors?: { hex: string, label: string }[];
+  mode?: "draw" | "stamp";
 }
 
 const COLORS = [
@@ -17,7 +18,7 @@ const COLORS = [
   { id: "green", hex: "#00ff00", label: "Parestesia" },
 ];
 
-export default function BodySchema({ image, value, onChange, colors: customColors }: BodySchemaProps) {
+export default function BodySchema({ image, value, onChange, colors: customColors, mode = "draw" }: BodySchemaProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -89,7 +90,7 @@ export default function BodySchema({ image, value, onChange, colors: customColor
         ctx.globalCompositeOperation = "source-over";
         ctx.strokeStyle = activeColor;
         ctx.globalAlpha = 1.0; // Solid colors as requested
-        ctx.lineWidth = 15;
+        ctx.lineWidth = mode === "stamp" ? 28 : 15;
     }
 
     const { offsetX, offsetY } = getCoordinates(e);
@@ -103,6 +104,8 @@ export default function BodySchema({ image, value, onChange, colors: customColor
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing) return;
+    if (mode === "stamp" && !isEraser) return; // Prevent continuous dragging in stamp mode
+
     const ctx = contextRef.current;
     if (!ctx) return;
 
@@ -209,10 +212,10 @@ export default function BodySchema({ image, value, onChange, colors: customColor
   return (
     <div className="flex flex-col items-center gap-6 w-full">
       {/* Top Part: Canvas and Color Legend */}
-      <div className="flex flex-col xl:flex-row gap-8 items-start justify-center w-full max-w-[1400px]">
+      <div className="flex flex-row flex-nowrap gap-4 md:gap-8 items-start justify-center w-full max-w-[1400px]">
         
         {/* Canvas Area */}
-        <div className="flex flex-col gap-4 items-center flex-1">
+        <div className="flex flex-col gap-4 items-center flex-1 min-w-0">
             <div 
                 style={{ 
                 position: "relative", 

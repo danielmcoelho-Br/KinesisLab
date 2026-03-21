@@ -12,7 +12,8 @@ import {
   User,
   History,
   TrendingUp,
-  Trash2
+  Trash2,
+  Printer
 } from "lucide-react";
 
 import { motion } from "framer-motion";
@@ -146,22 +147,63 @@ export default function PatientHistoryPage() {
               assessments.map((item, index) => {
                 const qInfo = questionnairesData[item.assessment_type];
                 const isClinical = !!qInfo?.sections;
+                const score = !isClinical ? item.clinical_data?.percentage : null;
+                const interpretation = !isClinical ? item.clinical_data?.interpretation : null;
                 return (
                   <motion.div
                     key={item.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    onClick={() => router.push(`/dashboard/assessment/${patientId}/${item.assessment_type}?id=${item.id}`)}
                     className="assessment-item-wrapper"
-                    whileHover={{ borderColor: 'var(--primary)', x: 5, boxShadow: 'var(--shadow-md)' }}
                   >
-                    <div className="assessment-info">
+                    {/* Left: icon + info */}
+                    <div 
+                      className="assessment-info"
+                      onClick={() => router.push(`/dashboard/assessment/${patientId}/${item.assessment_type}?id=${item.id}`)}
+                      style={{ cursor: 'pointer' }}
+                    >
                       <div className="assessment-icon">
                         <Activity size={24} />
                       </div>
-                      <div className="assessment-text">
-                        <h4>{qInfo?.title || item.assessment_type}</h4>
+                      <div className="assessment-text" style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <h4 style={{ color: 'var(--primary)', margin: 0 }}>{qInfo?.title || item.assessment_type}</h4>
+                          <div className="assessment-actions">
+                            <button
+                              className="btn-action-outline print-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/dashboard/assessment/${patientId}/${item.assessment_type}?id=${item.id}&autoPrint=true`);
+                              }}
+                              title="Imprimir"
+                              style={{ padding: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem' }}
+                            >
+                              <Printer size={16} />
+                            </button>
+                            
+                            <button
+                              className="btn-action-outline edit-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/dashboard/assessment/${patientId}/${item.assessment_type}?id=${item.id}`);
+                              }}
+                              title="Editar"
+                              style={{ padding: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem' }}
+                            >
+                              <ClipboardList size={16} />
+                            </button>
+
+                            <button 
+                              className="btn-action-outline delete-btn"
+                              onClick={(e) => handleDeleteAssessment(e, item)}
+                              title="Excluir"
+                              style={{ padding: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#EF4444', borderColor: '#fca5a5' }}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
                         <div className="assessment-meta">
                           <span>
                             <Calendar size={14} /> {new Date(item.created_at).toLocaleDateString('pt-BR')}
@@ -169,27 +211,18 @@ export default function PatientHistoryPage() {
                           <span className="hide-on-mobile">
                             <User size={14} /> {item.created_by?.name || "N/A"}
                           </span>
-
-                          {!isClinical && (
+                          {score !== null && score !== undefined && (
                             <span className="score-badge">
-                              Score: {item.clinical_data?.percentage || 0}%
+                              Score: {score}%
+                            </span>
+                          )}
+                          {interpretation && interpretation !== 'N/A' && interpretation !== 'Nenhuma resposta' && (
+                            <span style={{ fontWeight: '600', color: 'var(--text)' }}>
+                              {interpretation}
                             </span>
                           )}
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="assessment-actions">
-                      <div className="interpretation hide-on-mobile">
-                        {item.clinical_data?.interpretation || "N/A"}
-                      </div>
-                      <button 
-                        onClick={(e) => handleDeleteAssessment(e, item)}
-                        className="delete-btn"
-                      >
-                        <Trash2 size={20} />
-                      </button>
-                      <ChevronRight size={20} className="chevron hide-on-mobile" />
                     </div>
                   </motion.div>
                 );
@@ -304,12 +337,16 @@ export default function PatientHistoryPage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 1.5rem;
+          padding: 1.25rem 1.5rem;
           background-color: white;
           border-radius: var(--radius-lg);
           border: 1px solid var(--border);
           transition: all 0.2s;
-          cursor: pointer;
+          gap: 1rem;
+        }
+        .assessment-item-wrapper:hover {
+          border-color: var(--primary);
+          box-shadow: var(--shadow-md);
         }
         .assessment-info {
           display: flex;
@@ -356,23 +393,29 @@ export default function PatientHistoryPage() {
         .assessment-actions {
           display: flex;
           align-items: center;
-          gap: 1rem;
+          gap: 0.5rem;
+          flex-shrink: 0;
+          margin-left: auto;
         }
-        .interpretation {
-          font-weight: bold;
-          color: var(--text);
-          text-align: right;
-        }
-        .delete-btn {
-          padding: 0.5rem;
-          border-radius: 8px;
-          border: none;
-          background: transparent;
-          color: #EF4444;
+        .action-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+          border-radius: 0.5rem;
+          border: 1px solid var(--border);
+          background: white;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.15s;
+          flex-shrink: 0;
         }
-        .chevron { color: var(--border); }
+        .print-btn { color: var(--secondary); }
+        .print-btn:hover { background: var(--bg-secondary); }
+        .edit-btn { color: var(--primary); }
+        .edit-btn:hover { background: var(--primary-light); border-color: var(--primary); }
+        .delete-btn { color: #EF4444; border-color: #fca5a5; }
+        .delete-btn:hover { background: #fef2f2; }
 
         @media (max-width: 768px) {
           .patient-header-section {

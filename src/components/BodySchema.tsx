@@ -177,7 +177,30 @@ export default function BodySchema({ image, value, onChange, colors: customColor
   const save = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    onChange(canvas.toDataURL());
+
+    // Create an offscreen canvas to merge the background image + drawing
+    const offscreen = document.createElement('canvas');
+    offscreen.width = CANVAS_WIDTH;
+    offscreen.height = CANVAS_HEIGHT;
+    const offCtx = offscreen.getContext('2d');
+    if (!offCtx) {
+        onChange(canvas.toDataURL());
+        return;
+    }
+
+    const bgImg = new Image();
+    bgImg.onload = () => {
+        // Draw base image filling exactly the canvas dimensions
+        offCtx.drawImage(bgImg, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        // Draw the user strokes on top
+        offCtx.drawImage(canvas, 0, 0);
+        onChange(offscreen.toDataURL());
+    };
+    bgImg.onerror = () => {
+        // Fallback: just save the strokes
+        onChange(canvas.toDataURL());
+    };
+    bgImg.src = image;
   };
 
   return (

@@ -38,7 +38,7 @@ export default function LoginPage() {
           <div className="logo-container">
             <div className="logo-image-wrapper">
               <Image 
-                  src="/logo-kinesis.jpg" 
+                  src="/logo-kinesis.png" 
                   alt="KinesisLab Logo" 
                   fill
                   style={{ objectFit: 'contain' }}
@@ -52,14 +52,14 @@ export default function LoginPage() {
         <style jsx>{`
           .logo-image-wrapper {
             position: relative;
-            width: 144px;
-            height: 120px;
+            width: 288px;
+            height: 240px;
             margin: 0 auto 1.5rem;
           }
           @media (max-width: 768px) {
             .logo-image-wrapper {
-              width: 120px;
-              height: 100px;
+              width: 240px;
+              height: 200px;
               margin-bottom: 1rem;
             }
           }

@@ -163,9 +163,9 @@ export default function SelectSegmentPage() {
             align-items: center;
           }
           .segment-icon-wrapper {
-            width: 48px;
-            height: 48px;
-            padding: 8px;
+            width: 80px;
+            height: 80px;
+            padding: 4px;
             flex-shrink: 0;
           }
         }

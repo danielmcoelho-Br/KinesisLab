@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, memo, useCallback, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { 
     ChevronLeft, 
@@ -71,6 +71,70 @@ const NORMATIVE_DATA: Record<string, any> = {
     }
 };
 
+const Bar = ({ value, maxValue, label, color, subLabel, unit = 's', isPrint = false }: { value: number, maxValue: number, label: string, color: string, subLabel?: string, unit?: string, isPrint?: boolean }) => {
+    let barColor = color;
+    if (isPrint) {
+        if (color === 'var(--primary)' || color.toLowerCase() === '#8b0000') barColor = '#8B0000';
+        else if (color === 'var(--primary-light)' || color.toLowerCase() === '#fee2e2') barColor = '#fee2e2';
+        else if (color === 'var(--secondary)') barColor = '#1e293b';
+        else if (color === 'var(--secondary-light)') barColor = '#f1f5f9';
+    }
+    
+    return (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ 
+                height: '150px', 
+                width: '100%', 
+                backgroundColor: 'var(--bg-secondary)', 
+                borderRadius: '8px', 
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'flex-end',
+                overflow: 'hidden'
+            }}>
+                {isPrint ? (
+                    <div style={{ 
+                        height: `${(value / (maxValue || 1)) * 100}%`,
+                        width: '100%', 
+                        backgroundColor: barColor,
+                        borderRadius: '4px 4px 0 0'
+                    }} />
+                ) : (
+                    <motion.div 
+                        initial={{ height: 0 }}
+                        animate={{ height: `${(value / (maxValue || 1)) * 100}%` }}
+                        style={{ 
+                            width: '100%', 
+                            backgroundColor: barColor,
+                            borderRadius: '4px 4px 0 0'
+                        }}
+                    />
+                )}
+                <div style={{ 
+                    position: 'absolute', 
+                    top: value / (maxValue || 1) > 0.5 ? '50%' : 'auto',
+                    bottom: value / (maxValue || 1) > 0.5 ? 'auto' : '10px',
+                    left: '50%', 
+                    transform: 'translateX(-50%)',
+                    fontSize: '0.8rem',
+                    fontWeight: '800',
+                    color: value / (maxValue || 1) > 0.5 ? '#fff' : 'var(--text)',
+                    textShadow: value / (maxValue || 1) > 0.5 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none',
+                    zIndex: 1,
+                    textAlign: 'center',
+                    width: '100%'
+                }}>
+                    {value}{unit}
+                </div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text)', lineHeight: 1.2 }}>{label}</div>
+                {subLabel && <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{subLabel}</div>}
+            </div>
+        </div>
+    );
+};
+
 const MuscleEnduranceChart = ({ 
     currentValue, 
     gender, 
@@ -116,50 +180,6 @@ const MuscleEnduranceChart = ({
         ...validHistory.map(h => Number(h.answers?.[fieldId]) || 0)
     ) * 1.2 || 60;
 
-    const Bar = ({ value, label, color, subLabel }: { value: number, label: string, color: string, subLabel?: string }) => (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ 
-                height: '150px', 
-                width: '100%', 
-                backgroundColor: 'var(--bg-secondary)', 
-                borderRadius: '8px', 
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'flex-end',
-                overflow: 'hidden'
-            }}>
-                <motion.div 
-                    initial={{ height: 0 }}
-                    animate={{ height: `${(value / maxValue) * 100}%` }}
-                    style={{ 
-                        width: '100%', 
-                        backgroundColor: color,
-                        borderRadius: '4px 4px 0 0'
-                    }}
-                />
-                <div style={{ 
-                    position: 'absolute', 
-                    top: value / maxValue > 0.5 ? '50%' : 'auto',
-                    bottom: value / maxValue > 0.5 ? 'auto' : '10px',
-                    left: '50%', 
-                    transform: 'translateX(-50%)',
-                    fontSize: '0.9rem',
-                    fontWeight: '800',
-                    color: value / maxValue > 0.5 ? '#fff' : 'var(--text)',
-                    textShadow: value / maxValue > 0.5 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none',
-                    zIndex: 1,
-                    textAlign: 'center',
-                    width: '100%'
-                }}>
-                    {value}s
-                </div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text)' }}>{label}</div>
-                {subLabel && <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{subLabel}</div>}
-            </div>
-        </div>
-    );
 
     return (
         <div className="chart-container">
@@ -171,26 +191,55 @@ const MuscleEnduranceChart = ({
                     {norm && (
                         <Bar 
                             value={norm.mean} 
+                            maxValue={maxValue}
                             label="Normalidade" 
                             color="#94a3b8" 
+                            isPrint={isPrint}
                             subLabel={`${gender === 'Feminino' ? 'Mulheres' : 'Homens'} ${norm.ageRange[0]}-${norm.ageRange[1]}a`} 
                         />
                     )}
                     
-                    {validHistory.slice().reverse().map((h, i) => (
-                        <Bar 
-                            key={h.id} 
-                            value={Number(h.answers?.[fieldId]) || 0} 
-                            label={`Avaliação`} 
-                            subLabel={new Date(h.created_at).toLocaleDateString('pt-BR')}
-                            color="var(--primary-light)" 
-                        />
-                    ))}
+                    {(() => {
+                        const historyData = validHistory.map(h => ({
+                            id: h.id,
+                            value: Number(h.answers?.[fieldId]) || 0,
+                            date: new Date(h.created_at).toLocaleDateString('pt-BR'),
+                            timestamp: new Date(h.created_at).getTime()
+                        })).sort((a, b) => a.timestamp - b.timestamp);
+
+                        // Count occurrences per date to add suffixes
+                        const dateCounts = new Map();
+                        historyData.forEach(item => {
+                            dateCounts.set(item.date, (dateCounts.get(item.date) || 0) + 1);
+                        });
+
+                        const currentCounts = new Map();
+                        return historyData.map((d: any) => {
+                            const count = (currentCounts.get(d.date) || 0) + 1;
+                            currentCounts.set(d.date, count);
+                            const hasMultiple = dateCounts.get(d.date) > 1;
+                            const displayDate = hasMultiple ? `${d.date} (${count})` : d.date;
+
+                            return (
+                                <Bar 
+                                    key={d.id} 
+                                    value={d.value} 
+                                    maxValue={maxValue}
+                                    label={`Avaliação`} 
+                                    subLabel={displayDate}
+                                    color={isPrint ? "#fee2e2" : "var(--primary-light)"} 
+                                    isPrint={isPrint}
+                                />
+                            );
+                        });
+                    })()}
 
                     <Bar 
                         value={Number(currentValue) || 0} 
+                        maxValue={maxValue}
                         label="Teste Atual" 
-                        color="var(--primary)" 
+                        color={isPrint ? "#8B0000" : "var(--primary)"} 
+                        isPrint={isPrint}
                     />
                 </div>
             </div>
@@ -237,18 +286,64 @@ const MuscleEnduranceChart = ({
     );
 };
 
-const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded = false, isPrint = false }: { history: any[], currentScore: number, type: string, isEmbedded?: boolean, isPrint?: boolean }) => {
+const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded = false, isPrint = false, assessmentId }: { history: any[], currentScore: number, type: string, isEmbedded?: boolean, isPrint?: boolean, assessmentId?: string | null }) => {
     if (history.length === 0 && !currentScore) return null;
 
-    const data = [...history.filter(h => h.assessment_type === type && h.scoreData?.percentage > 0).slice().reverse().map(h => ({
-        date: new Date(h.created_at).toLocaleDateString('pt-BR'),
-        score: h.scoreData?.percentage || 0
-    })), {
-        date: 'Hoje',
-        score: currentScore
-    }].filter(d => d.score > 0);
+    // Filter history for the specific type, which has score, and is NOT the current assessment being viewed (to avoid duplication)
+    const validHistory = history.filter(h => h.assessment_type === type && h.scoreData?.percentage > 0 && h.id !== assessmentId);
 
-    if (data.length === 0) return null;
+    const todayStr = new Date().toLocaleDateString('pt-BR');
+    const rawData = [...validHistory.slice().map(h => ({
+        id: h.id,
+        date: new Date(h.created_at).toLocaleDateString('pt-BR'),
+        score: h.scoreData?.percentage || 0,
+        timestamp: new Date(h.created_at).getTime()
+    })).sort((a, b) => a.timestamp - b.timestamp)];
+
+    // Add current if it has a score and it's not already in history (by ID or same score today)
+    const isAlreadyInHistory = rawData.some(h => 
+        h.id === assessmentId || 
+        (h.date === todayStr && Math.abs(h.score - currentScore) < 0.1)
+    );
+    
+    if (currentScore > 0 && !isAlreadyInHistory) {
+        rawData.push({
+            id: 'current',
+            date: 'Hoje',
+            score: currentScore,
+            timestamp: Date.now()
+        });
+    }
+
+    // Add numbering suffix if multiple evaluations exist for the same date
+    const dateCounts = new Map();
+    rawData.forEach(item => {
+        const dKey = item.date === 'Hoje' ? todayStr : item.date;
+        dateCounts.set(dKey, (dateCounts.get(dKey) || 0) + 1);
+    });
+
+    const currentCounts = new Map();
+    const processedData = rawData.map(item => {
+        const dKey = item.date === 'Hoje' ? todayStr : item.date;
+        const count = (currentCounts.get(dKey) || 0) + 1;
+        currentCounts.set(dKey, count);
+        const hasMultiple = dateCounts.get(dKey) > 1;
+        
+        // Remove "Hoje" - show the actual date
+        let displayLabel = item.date === 'Hoje' ? todayStr : item.date;
+        if (hasMultiple) {
+            displayLabel = `${displayLabel} (${count})`;
+        }
+
+        return {
+            ...item,
+            displayDate: displayLabel
+        };
+    });
+
+    if (processedData.length === 0) return null;
+
+    const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
 
     return (
         <div className={`history-chart-container ${isEmbedded ? 'embedded' : ''}`}>
@@ -256,22 +351,22 @@ const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded =
                 Evolução Funcional (% Incapacidade - {type.toUpperCase()})
             </h4>
             <div className="history-chart-scroll">
-                <div className="history-chart-bars">
-                    {data.map((d, i) => (
-                        <div key={i} className="history-chart-bar-item">
-                            <div className="bar-wrapper">
-                                <motion.div 
-                                    initial={{ height: isPrint ? `${d.score}%` : 0 }}
-                                    animate={{ height: `${d.score}%` }}
-                                    className={`bar-fill ${d.date === 'Hoje' ? 'current' : ''}`}
-                                />
-                                <div className={`bar-value ${d.score > 50 ? 'inside' : 'outside'}`}>
-                                    {d.score}%
-                                </div>
-                            </div>
-                            <div className="bar-label">{d.date}</div>
-                        </div>
-                    ))}
+                <div className="history-chart-bars" style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', minHeight: '180px' }}>
+                    {processedData.map((d, i) => {
+                        const isCurrent = d.id === 'current' || d.id === assessmentId;
+                        return (
+                            <Bar 
+                                key={i}
+                                value={d.score}
+                                maxValue={100}
+                                label="Incap."
+                                subLabel={d.displayDate}
+                                color={isCurrent ? 'var(--primary)' : 'var(--primary-light)'}
+                                unit="%"
+                                isPrint={isPrint}
+                            />
+                        );
+                    })}
                 </div>
             </div>
             <style jsx>{`
@@ -369,6 +464,682 @@ const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded =
 };
 
 
+const ImageUpload = memo(({ 
+    value, 
+    isEditing, 
+    onChange, 
+    onImageClick,
+    isTable = false 
+}: { 
+    value: any, 
+    isEditing: boolean, 
+    onChange: (val: any) => void,
+    onImageClick: (img: string) => void,
+    isTable?: boolean 
+}) => {
+    const images: string[] = Array.isArray(value) ? value : (value ? [value] : []);
+    
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: isTable ? 'center' : 'flex-start' }}>
+            {images.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: isTable ? 'center' : 'flex-start' }}>
+                    {images.map((img, idx) => (
+                        <div 
+                            key={idx}
+                            style={{ position: 'relative', width: isTable ? '60px' : '120px', height: isTable ? '60px' : '90px', cursor: 'zoom-in' }}
+                            onClick={() => onImageClick(img)}
+                        >
+                            <img 
+                                src={img} 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} 
+                                alt="Upload" 
+                            />
+                            {isEditing && (
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const newImages = [...images];
+                                        newImages.splice(idx, 1);
+                                        onChange(newImages);
+                                    }}
+                                    style={{ position: 'absolute', top: '-6px', right: '-6px', backgroundColor: 'var(--primary)', color: 'white', border: 'none', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
+                                >
+                                    <X size={12} />
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+            
+            {isEditing && (
+                <div style={{ position: 'relative' }}>
+                    <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                                const newImage = reader.result as string;
+                                onChange([...images, newImage]);
+                            };
+                            reader.readAsDataURL(file);
+                        }}
+                        style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                    />
+                    <button type="button" className="btn-action-outline" style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}>
+                        <Upload size={14} /> Upload
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+});
+
+const DataTableCell = memo(({ 
+    fieldId, 
+    fieldType, 
+    fieldOptions,
+    value, 
+    isEditing, 
+    handleInputChange, 
+    onImageClick,
+    isPrint,
+    reflexOptions
+}: { 
+    fieldId: string, 
+    fieldType: string, 
+    fieldOptions: any[],
+    value: any, 
+    isEditing: boolean, 
+    handleInputChange: (id: string, val: any) => void,
+    onImageClick: (img: string) => void,
+    isPrint: boolean,
+    reflexOptions: string[]
+}) => {
+    if (fieldType === 'checkbox') {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                {isPrint ? (
+                    value ? (
+                        <span style={{ color: 'var(--primary)', fontWeight: '900', fontSize: '1.2rem' }}>✓</span>
+                    ) : (
+                        <span style={{ color: '#ccc' }}>-</span>
+                    )
+                ) : (
+                    <input 
+                        type="checkbox" 
+                        checked={!!value}
+                        onChange={(e) => handleInputChange(fieldId, e.target.checked)}
+                        disabled={!isEditing}
+                        style={{ width: '18px', height: '18px', cursor: isEditing ? 'pointer' : 'not-allowed' }}
+                    />
+                )}
+            </div>
+        );
+    }
+
+    if (fieldType === 'select') {
+        return isPrint ? (
+            <div style={{ textAlign: 'center' }}>
+                <span style={{ fontWeight: '600' }}>{value || "-"}</span>
+            </div>
+        ) : (
+            <select
+                value={value || ""}
+                onChange={(e) => handleInputChange(fieldId, e.target.value)}
+                disabled={!isEditing}
+                style={{ 
+                    width: '100%', 
+                    padding: '0.4rem', 
+                    borderRadius: '0.4rem', 
+                    border: '1px solid var(--border)',
+                    backgroundColor: isEditing ? 'white' : 'transparent',
+                    fontSize: '0.85rem',
+                    textAlign: 'center'
+                }}
+            >
+                <option value="">-</option>
+                {(fieldOptions.length > 0 ? fieldOptions : reflexOptions).map((opt: any) => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+        );
+    }
+
+    if (fieldType === 'image-upload') {
+        return (
+            <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                {isPrint ? (
+                    (() => {
+                        const imgs = Array.isArray(value) ? value : (value ? [value] : []);
+                        return imgs.length > 0 ? imgs.map((img: string, i: number) => (
+                            <img key={i} src={img} style={{ height: '60px', borderRadius: '4px' }} alt="Upload" />
+                        )) : <span style={{ color: '#ccc' }}>-</span>;
+                    })()
+                ) : (
+                    <ImageUpload 
+                        value={value}
+                        isEditing={isEditing}
+                        onChange={(val: any) => handleInputChange(fieldId, val)}
+                        onImageClick={onImageClick}
+                        isTable={true}
+                    />
+                )}
+            </div>
+        );
+    }
+
+    return isPrint ? (
+        <div style={{ textAlign: 'center' }}>
+            <span style={{ fontWeight: '600' }}>{value || "-"}</span>
+        </div>
+    ) : (
+        <input 
+            type={fieldType === 'number' ? 'number' : 'text'}
+            value={value || ""}
+            onChange={(e) => handleInputChange(fieldId, e.target.value)}
+            disabled={!isEditing}
+            placeholder="-"
+            style={{ 
+                width: '100%', 
+                padding: '0.4rem', 
+                borderRadius: '0.4rem', 
+                border: isEditing ? '1px solid var(--border)' : '1px solid transparent',
+                backgroundColor: isEditing ? 'white' : 'transparent',
+                fontSize: '0.85rem',
+                textAlign: 'center'
+            }}
+        />
+    );
+});
+
+
+const DataTable = memo(({ 
+    section, 
+    answers, 
+    isEditing, 
+    handleInputChange, 
+    onImageClick,
+    isPrint 
+}: { 
+    section: any, 
+    answers: Record<string, any>, 
+    isEditing: boolean, 
+    handleInputChange: (id: string, val: any) => void,
+    onImageClick: (img: string) => void,
+    isPrint: boolean
+}) => {
+    const reflexOptions = ['Normal', 'Aumentado', 'Diminuído', 'Abolido'];
+    
+    return (
+        <div className="table-wrapper" style={{ overflowX: 'auto', marginBottom: '2rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--border)', borderRadius: '0.5rem', overflow: 'hidden' }}>
+                <thead>
+                    <tr style={{ backgroundColor: 'var(--secondary)', color: 'white' }}>
+                        {section.columns?.map((col: any, idx: number) => {
+                            const label = typeof col === 'string' ? col : col.label;
+                            const action = typeof col === 'string' ? null : col.action;
+                            
+                            if (isPrint && (label === 'Imagem' || label?.includes('Intensidade') || label?.includes('Observações'))) {
+                                const hasAnyData = section.rows?.some((r: any) => {
+                                    const f = r.fields[idx - 1];
+                                    const fid = typeof f === 'string' ? f : f?.id;
+                                    const val = answers[fid];
+                                    return val && val !== "" && val !== "0" && val !== false && (!Array.isArray(val) || val.length > 0);
+                                });
+                                if (!hasAnyData) return null;
+                            }
+
+                            return (
+                                <th key={idx} style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.85rem' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                                        <span>{label}</span>
+                                        {isEditing && action?.type === 'fill' && (
+                                            <button 
+                                                type="button"
+                                                onClick={() => {
+                                                    section.rows?.forEach((r: any) => {
+                                                        const f = r.fields[idx - 1];
+                                                        const fid = typeof f === 'string' ? f : f.id;
+                                                        handleInputChange(fid, action.value);
+                                                    });
+                                                }}
+                                                style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: 'pointer' }}
+                                            >
+                                                Preencher {action.value}
+                                            </button>
+                                        )}
+                                    </div>
+                                </th>
+                            );
+                        })}
+                    </tr>
+                </thead>
+                <tbody>
+                    {section.rows?.map((row: any, rIdx: number) => {
+                        const hasRowData = row.fields.some((f: any) => {
+                            const val = answers[typeof f === 'string' ? f : f.id];
+                            return val && val !== "" && val !== "0" && val !== false;
+                        });
+                        if (isPrint && !hasRowData) return null;
+
+                        return (
+                            <tr key={row.id} style={{ borderBottom: '1px solid var(--border)', backgroundColor: rIdx % 2 === 0 ? 'white' : 'var(--bg-secondary)', transition: 'background-color 0.2s' }}>
+                                <td style={{ padding: '0.75rem 1rem', fontWeight: '600', fontSize: '0.85rem', color: 'var(--secondary)', width: '35%' }}>
+                                    {row.label}
+                                </td>
+                                {row.fields.map((field: any, fIdx: number) => {
+                                    const fieldId = typeof field === 'string' ? field : field.id;
+                                    const fieldType = typeof field === 'string' ? 'text' : field.type;
+                                    const fieldOptions = typeof field === 'string' ? [] : (field.options || []);
+                                    
+                                    if (isPrint) {
+                                        const col = section.columns![fIdx + 1];
+                                        const colLabel = typeof col === 'string' ? col : col.label;
+                                        if (colLabel === 'Imagem' || colLabel?.includes('Intensidade') || colLabel?.includes('Observações')) {
+                                            const hasAnyData = section.rows?.some((r: any) => {
+                                                const f = r.fields[fIdx];
+                                                const fid = typeof f === 'string' ? f : f.id;
+                                                const val = answers[fid];
+                                                return val && val !== "" && val !== "0" && val !== false && (!Array.isArray(val) || val.length > 0);
+                                            });
+                                            if (!hasAnyData) return null;
+                                        }
+                                    }
+
+                                    return (
+                                        <td key={fIdx} style={{ padding: '0.5rem 1rem' }}>
+                                            <DataTableCell 
+                                                fieldId={fieldId}
+                                                fieldType={fieldType}
+                                                fieldOptions={fieldOptions}
+                                                value={answers[fieldId]}
+                                                isEditing={isEditing}
+                                                handleInputChange={handleInputChange}
+                                                onImageClick={onImageClick}
+                                                isPrint={isPrint}
+                                                reflexOptions={reflexOptions}
+                                            />
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+});
+
+const FormField = memo(({ 
+    field, 
+    value, 
+    isEditing, 
+    handleInputChange, 
+    onImageClick, 
+    patientGender, 
+    patientAge, 
+    patientAssessments, 
+    patientId, 
+    type, 
+    assessmentId,
+    router
+}: { 
+    field: SectionField, 
+    value: any, 
+    isEditing: boolean, 
+    handleInputChange: (id: string, val: any) => void,
+    onImageClick: (img: string) => void,
+    patientGender: string,
+    patientAge: number,
+    patientAssessments: any[],
+    patientId: string,
+    type: string,
+    assessmentId: string | null,
+    router: any
+}) => {
+    const commonProps = {
+        disabled: !isEditing,
+        className: `form-input ${!isEditing ? 'opacity-70 cursor-not-allowed' : ''}`
+    };
+
+    switch (field.type) {
+      case 'textarea':
+        return (
+          <div key={field.id} className="form-group">
+            <label className="form-label">{field.label}</label>
+            <textarea 
+              {...commonProps}
+              rows={3} 
+              value={value || ""} 
+              onChange={(e) => handleInputChange(field.id, e.target.value)}
+              placeholder="Descreva aqui..."
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)', fontSize: '0.85rem' }}
+            />
+          </div>
+        );
+      case 'range':
+        return (
+          <div key={field.id} className="form-group">
+            <div style={{ position: 'relative', width: '100%', height: '40px', marginBottom: '1rem' }}>
+                <span style={{ 
+                    position: 'absolute', 
+                    left: `${(Number(value) || 0) * 10}%`, 
+                    transform: 'translateX(-50%)',
+                    top: '0',
+                    fontWeight: 'bold', 
+                    fontSize: '1.25rem', 
+                    color: 'var(--primary)',
+                    transition: 'left 0.2s ease-out'
+                }}>{value || 0}</span>
+            </div>
+            <input 
+              type="range" 
+              min={field.min} 
+              max={field.max} 
+              step={field.step} 
+              value={value || 0} 
+              onChange={(e) => handleInputChange(field.id, e.target.value)}
+              disabled={!isEditing}
+              style={{ width: '100%', cursor: isEditing ? 'pointer' : 'not-allowed', accentColor: 'var(--primary)' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                <span>{field.min}</span>
+                <span>{field.max}</span>
+            </div>
+          </div>
+        );
+      case 'text':
+        if (field.id.endsWith('_score') && value && field.id !== 'sorensen') {
+            return null; 
+        }
+        if (field.id.endsWith('_data_previo')) return null;
+
+        if (field.id.endsWith('_score_previo')) {
+            return (
+                <div key={field.id} className="form-group" style={{ backgroundColor: 'var(--bg-secondary)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem', border: '1px solid var(--border)' }}>
+                    <div style={{ fontWeight: '700', color: 'var(--text)', fontSize: '0.95rem' }}>
+                        Histórico Prévio Identificado: <span style={{ color: 'var(--primary)' }}>{value}</span>
+                    </div>
+                </div>
+            );
+        }
+        return (
+          <div key={field.id} className="form-group">
+            <label className="form-label">{field.label}</label>
+            <input 
+              type="text" 
+              {...commonProps}
+              value={value || ""} 
+              onChange={(e) => handleInputChange(field.id, e.target.value)}
+              placeholder="..."
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)' }}
+            />
+          </div>
+        );
+      case 'number':
+        return (
+          <div key={field.id} className="form-group">
+            <label className="form-label">{field.label}</label>
+            <input 
+              type="number" 
+              {...commonProps}
+              value={value || ""} 
+              onChange={(e) => handleInputChange(field.id, e.target.value)}
+              placeholder="0"
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)' }}
+            />
+            {['resist_flexora', 'resist_extensora', 'flexao_60', 'sorensen'].includes(field.id) && (
+                <MuscleEnduranceChart 
+                    fieldId={field.id}
+                    currentValue={Number(value) || 0}
+                    gender={patientGender}
+                    age={patientAge}
+                    history={patientAssessments}
+                />
+            )}
+          </div>
+        );
+      case 'select':
+        return (
+          <div key={field.id} className="form-group">
+            <label className="form-label">{field.label}</label>
+            <select 
+              {...commonProps}
+              value={value || ""} 
+              onChange={(e) => handleInputChange(field.id, e.target.value)}
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)' }}
+            >
+              <option value="">Selecione...</option>
+              {(field.options || [0,1,2,3,4,5]).map(v => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+            </select>
+          </div>
+        );
+      case 'bodyschema':
+        return (
+            <div key={field.id} className="form-group">
+                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
+                <div style={{ pointerEvents: isEditing ? 'auto' : 'none', opacity: isEditing ? 1 : 0.8 }}>
+                    <BodySchema 
+                        key={field.id}
+                        image={field.image || ""} 
+                        value={value} 
+                        onChange={(val) => handleInputChange(field.id, val)} 
+                    />
+                </div>
+            </div>
+        );
+      case 'image-upload':
+        return (
+          <div key={field.id} className="form-group">
+            <label className="form-label">{field.label}</label>
+            <ImageUpload 
+                value={value}
+                isEditing={isEditing}
+                onChange={(val) => handleInputChange(field.id, val)}
+                onImageClick={onImageClick}
+            />
+          </div>
+        );
+      case 'paintmap':
+        return (
+            <div key={field.id} className="form-group">
+                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
+                <div style={{ pointerEvents: isEditing ? 'auto' : 'none', opacity: isEditing ? 1 : 0.8 }}>
+                    <BodySchema 
+                        key={field.id}
+                        image={field.image || ""} 
+                        value={value} 
+                        onChange={(val) => handleInputChange(field.id, val)} 
+                        colors={field.colors}
+                    />
+                </div>
+            </div>
+        );
+      case 'angle_measurement':
+        return (
+            <div key={field.id} className="form-group">
+                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
+                <div style={{ pointerEvents: isEditing ? 'auto' : 'none' }}>
+                    <AngleMeasurement 
+                        key={field.id}
+                        value={value} 
+                        onChange={(val) => handleInputChange(field.id, val)} 
+                    />
+                </div>
+            </div>
+        );
+      case 'freecanvas':
+        return (
+            <div key={field.id} className="form-group">
+                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
+                <div style={{ pointerEvents: isEditing ? 'auto' : 'none' }}>
+                    <FreeCanvas 
+                        key={field.id}
+                        value={value} 
+                        onChange={(val) => handleInputChange(field.id, val)} 
+                    />
+                </div>
+            </div>
+        );
+      case 'button':
+        const isQuestButton = field.id.endsWith('_novo');
+        const questType = field.id.split('_')[0];
+        const scoreKey = field.id.replace('_novo', '_score');
+        
+        return (
+            <div key={field.id} className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <button 
+                    type="button"
+                    onClick={() => {
+                        if (isQuestButton) {
+                            router.push(`/dashboard/assessment/${patientId}/${questType}?returnTo=${type}`);
+                        }
+                    }}
+                    className="btn-secondary"
+                    style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem' }}
+                >
+                    {field.label}
+                </button>
+
+                {scoreKey && value && (
+                    <div style={{ marginTop: '1.5rem', padding: '1.5rem', backgroundColor: 'white', borderRadius: '1rem', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+                        <div style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--primary)', marginBottom: '1.5rem', textAlign: 'center' }}>
+                            Score Identificado: {value}
+                        </div>
+                        <FunctionalHistoryChart 
+                            type={questType}
+                            currentScore={Number(String(value).replace('%', '')) || 0}
+                            history={patientAssessments}
+                            isEmbedded={true}
+                            assessmentId={assessmentId}
+                        />
+                    </div>
+                )}
+            </div>
+        );
+      default:
+        return null;
+    }
+});
+
+const FormSection = memo(({ 
+    section, 
+    answers, 
+    isEditing, 
+    handleInputChange, 
+    onImageClick, 
+    patientGender, 
+    patientAge, 
+    patientAssessments, 
+    patientId, 
+    type, 
+    assessmentId,
+    router,
+    isPrint 
+}: { 
+    section: Section, 
+    answers: Record<string, any>, 
+    isEditing: boolean, 
+    handleInputChange: (id: string, val: any) => void,
+    onImageClick: (img: string) => void,
+    patientGender: string,
+    patientAge: number,
+    patientAssessments: any[],
+    patientId: string,
+    type: string,
+    assessmentId: string | null,
+    router: any,
+    isPrint: boolean
+}) => {
+    return (
+        <motion.div
+            initial={isPrint ? {} : { opacity: 0, x: 20 }}
+            animate={isPrint ? {} : { opacity: 1, x: 0 }}
+            className="section-container"
+            style={{ marginBottom: '2.5rem' }}
+        >
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '800', marginBottom: '1.5rem', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {section.title}
+            </h3>
+
+            {section.type === 'table' ? (
+                <DataTable 
+                    section={section} 
+                    answers={answers} 
+                    isEditing={isEditing} 
+                    handleInputChange={handleInputChange} 
+                    renderImageUpload={renderImageUpload}
+                    isPrint={isPrint}
+                />
+            ) : section.type === 'multi-table' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                    {section.subsections?.map((sub: any, sidx: number) => (
+                        <div key={sidx} style={{ padding: '1.5rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '1rem', border: '1px solid var(--border)' }}>
+                            <h4 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', color: 'var(--secondary)' }}>{sub.title}</h4>
+                            {sub.type === 'table' ? (
+                                <DataTable 
+                                    section={sub} 
+                                    answers={answers} 
+                                    isEditing={isEditing} 
+                                    handleInputChange={handleInputChange} 
+                                    onImageClick={onImageClick}
+                                    isPrint={isPrint}
+                                />
+                            ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                                    {sub.fields?.map((field: any) => (
+                                        <FormField 
+                                            key={field.id}
+                                            field={field}
+                                            value={answers[field.id]}
+                                            isEditing={isEditing}
+                                            handleInputChange={handleInputChange}
+                                            onImageClick={onImageClick}
+                                            patientGender={patientGender}
+                                            patientAge={patientAge}
+                                            patientAssessments={patientAssessments}
+                                            patientId={patientId}
+                                            type={type}
+                                            assessmentId={assessmentId}
+                                            router={router}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                    {section.fields?.map((field: any) => (
+                        <FormField 
+                            key={field.id}
+                            field={field}
+                            value={answers[field.id]}
+                            isEditing={isEditing}
+                            handleInputChange={handleInputChange}
+                            renderImageUpload={renderImageUpload}
+                            patientGender={patientGender}
+                            patientAge={patientAge}
+                            patientAssessments={patientAssessments}
+                            patientId={patientId}
+                            type={type}
+                            assessmentId={assessmentId}
+                            router={router}
+                        />
+                    ))}
+                </div>
+            )}
+        </motion.div>
+    );
+});
+
+
 function AssessmentContent() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -401,6 +1172,17 @@ function AssessmentContent() {
     if (savedUser) setUser(JSON.parse(savedUser));
   }, []);
 
+  // Handle autoPrint: if ?autoPrint=true is in the URL, trigger print once the page loads
+  const autoPrint = searchParams.get("autoPrint") === "true";
+  useEffect(() => {
+    if (!autoPrint || !assessmentId) return;
+    // Wait for data to load before printing
+    const timer = setTimeout(() => {
+      window.print();
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [autoPrint, assessmentId]);
+
 
   useEffect(() => {
     async function load() {
@@ -427,8 +1209,35 @@ function AssessmentContent() {
 
             if (!assessmentId && (type === 'afLombar' || type === 'afCervical' || type === 'afOmbro')) {
                 const questType = type === 'afLombar' ? 'oswestry' : type === 'afCervical' ? 'ndi' : 'quickdash';
-                latestQuest = all.find((a: any) => a.assessment_type === questType);
+                // Find latest score > 0 that is NOT from the current session or today if possible
+                const today = new Date().toLocaleDateString('pt-BR');
+                latestQuest = all.find((a: any) => 
+                    a.assessment_type === questType && 
+                    (a.clinical_data?.percentage || 0) > 0 &&
+                    new Date(a.created_at).toLocaleDateString('pt-BR') !== today
+                );
+                
+                // Fallback: if none from other days, take the latest > 0 from today that isn't the current one (id check)
+                if (!latestQuest) {
+                    latestQuest = all.find((a: any) => 
+                        a.assessment_type === questType && 
+                        (a.clinical_data?.percentage || 0) > 0 &&
+                        a.id !== assessmentId
+                    );
+                }
             }
+        }
+
+        // Checkpoint redirection if returning to an edited assessment without ID in URL
+        const checkpointStr = localStorage.getItem(`checkpoint_${patientId}_${type}`);
+        if (checkpointStr && !assessmentId) {
+            try {
+                const cp = JSON.parse(checkpointStr);
+                if (cp.assessmentId) {
+                    router.replace(`/dashboard/assessment/${patientId}/${type}?id=${cp.assessmentId}`);
+                    return; // Yield to route change
+                }
+            } catch(e) {}
         }
 
         if (assessmentId) {
@@ -436,7 +1245,6 @@ function AssessmentContent() {
             if (res.success && res.data) {
                 const data = res.data as any;
                 const loadedAnswers = data.questionnaire_answers as Record<string, any>;
-                setAnswers(loadedAnswers);
                 setOriginalAnswers(loadedAnswers);
                 setChangeLogs(data.change_logs as any[] || []);
                 setAssessmentOwnerId(data.created_by_id);
@@ -444,14 +1252,33 @@ function AssessmentContent() {
                 if (data.created_at) {
                     setAssessmentDate(new Date(data.created_at).toLocaleDateString('pt-BR'));
                 }
-                setIsEditing(false);
+                
+                let finalAnswers = loadedAnswers;
+                if (checkpointStr) {
+                    try {
+                        const cp = JSON.parse(checkpointStr);
+                        finalAnswers = { ...loadedAnswers, ...cp.answers };
+                        setIsEditing(true);
+                    } catch(e) {}
+                    localStorage.removeItem(`checkpoint_${patientId}_${type}`);
+                } else {
+                    setIsEditing(false);
+                }
+                setAnswers(finalAnswers);
             }
         } else {
-            // Check for draft in localStorage
+            // Check for draft or checkpoint
             const draftKey = `assessment_draft_${patientId}_${type}`;
             const draft = localStorage.getItem(draftKey);
             let currentAnswers: Record<string, any> = {};
-            if (draft) {
+            
+            if (checkpointStr) {
+                try {
+                    const cp = JSON.parse(checkpointStr);
+                    currentAnswers = cp.answers || {};
+                } catch(e) {}
+                localStorage.removeItem(`checkpoint_${patientId}_${type}`);
+            } else if (draft) {
                 try {
                     currentAnswers = JSON.parse(draft);
                 } catch (e) {
@@ -462,70 +1289,69 @@ function AssessmentContent() {
             // If no draft but we have a latest quest, populate previous fields
             if (Object.keys(currentAnswers).length === 0 && latestQuest) {
                 const prefix = type === 'afLombar' ? 'oswestry' : type === 'afCervical' ? 'ndi' : 'quickdash';
-                currentAnswers[`${prefix}_score_previo`] = `${(latestQuest as any).score_data?.percentage || 0}%`;
-                if (latestQuest.created_at) {
-                    currentAnswers[`${prefix}_data_previo`] = new Date(latestQuest.created_at).toISOString().split('T')[0];
-                }
-            }
-
-            // CHECK FOR RETURN SCORE
-            const returnScoreKey = `return_score_${patientId}_${type}`;
-            const returnScore = localStorage.getItem(returnScoreKey);
-            if (returnScore) {
-                let fieldId = 'score'; // fallback default
-
-                if (type === 'afLombar') fieldId = 'oswestry_score';
-                else if (type === 'afCervical') fieldId = 'ndi_score';
-                else if (type === 'afOmbro' || type === 'afCotovelo' || type === 'afMao') fieldId = 'quickdash_score';
-                else if (type === 'afGeriatria') {
-                    // For geriatria, the returnToField is encoded in the returnScore key
-                    // We check each possible sub-questionnaire
-                    const geriatricScoreKeys = ['man_score', 'ves13_score', 'lbpq_score', 'brief_score'];
-                    for (const key of geriatricScoreKeys) {
-                        const subKey = `return_score_${patientId}_${type}_${key}`;
-                        const subScore = localStorage.getItem(subKey);
-                        if (subScore) {
-                            currentAnswers[key] = subScore;
-                            localStorage.removeItem(subKey);
-                        }
-                    }
-                    fieldId = ''; // handled above
-                } else if (type === 'afMmii') {
-                    const mmiiScoreKeys = ['lysholm_score', 'womac_score', 'ikdc_score', 'aofas_score'];
-                    for (const key of mmiiScoreKeys) {
-                        const subKey = `return_score_${patientId}_${type}_${key}`;
-                        const subScore = localStorage.getItem(subKey);
-                        if (subScore) {
-                            currentAnswers[key] = subScore;
-                            localStorage.removeItem(subKey);
-                        }
-                    }
-                    fieldId = ''; // handled above
-                }
-
-                if (fieldId) {
-                    currentAnswers[fieldId] = returnScore.includes('%') ? returnScore : `${returnScore}%`;
-                    localStorage.removeItem(returnScoreKey);
-                    toast.success(`Resultado do questionário importado!`);
-                } else if (type !== 'afGeriatria') {
-                    localStorage.removeItem(returnScoreKey);
-                } else {
-                    // For geriatria, still remove the general key if present
-                    localStorage.removeItem(returnScoreKey);
-                    toast.success(`Resultado do questionário importado!`);
-                }
-                
-                // Jump to integration section
-                if (questionnaire.sections) {
-                    const idx = questionnaire.sections.findIndex(s => s.id.includes('integracao'));
-                    if (idx !== -1) {
-                        setCurrentIdx(idx);
+                const score = (latestQuest as any).scoreData?.percentage || (latestQuest as any).clinical_data?.percentage || 0;
+                if (score > 0) {
+                    currentAnswers[`${prefix}_score_previo`] = `${score}%`;
+                    if (latestQuest.created_at) {
+                        currentAnswers[`${prefix}_data_previo`] = new Date(latestQuest.created_at).toISOString().split('T')[0];
                     }
                 }
             }
-
             setAnswers(currentAnswers);
-            if (draft) toast.info("Rascunho detectado e restaurado.");
+            if (draft && !checkpointStr) toast.info("Rascunho detectado e restaurado.");
+        }
+
+        // GLOBAL RETURN SCORE CHECK (applies to both NEW and EDITED assessments)
+        const returnScoreKey = `return_score_${patientId}_${type}`;
+        const returnScore = localStorage.getItem(returnScoreKey);
+        if (returnScore) {
+            let fieldId = 'score'; // fallback default
+
+            if (type === 'afLombar') fieldId = 'oswestry_score';
+            else if (type === 'afCervical') fieldId = 'ndi_score';
+            else if (type === 'afOmbro' || type === 'afCotovelo' || type === 'afMao') fieldId = 'quickdash_score';
+            else if (type === 'afGeriatria') {
+                const geriatricScoreKeys = ['man_score', 'ves13_score', 'lbpq_score', 'brief_score'];
+                for (const key of geriatricScoreKeys) {
+                    const subKey = `return_score_${patientId}_${type}_${key}`;
+                    const subScore = localStorage.getItem(subKey);
+                    if (subScore) {
+                        setAnswers(prev => ({ ...prev, [key]: subScore }));
+                        localStorage.removeItem(subKey);
+                    }
+                }
+                fieldId = ''; 
+                localStorage.removeItem(returnScoreKey);
+                toast.success(`Resultado do questionário importado!`);
+            } else if (type === 'afMmii') {
+                const mmiiScoreKeys = ['lysholm_score', 'womac_score', 'ikdc_score', 'aofas_score'];
+                for (const key of mmiiScoreKeys) {
+                    const subKey = `return_score_${patientId}_${type}_${key}`;
+                    const subScore = localStorage.getItem(subKey);
+                    if (subScore) {
+                        setAnswers(prev => ({ ...prev, [key]: subScore }));
+                        localStorage.removeItem(subKey);
+                    }
+                }
+                fieldId = '';
+                localStorage.removeItem(returnScoreKey);
+                toast.success(`Resultado do questionário importado!`);
+            }
+
+            if (fieldId) {
+                const formattedScore = returnScore.includes('%') ? returnScore : `${returnScore}%`;
+                setAnswers(prev => ({ ...prev, [fieldId]: formattedScore }));
+                localStorage.removeItem(returnScoreKey);
+                toast.success(`Resultado do questionário importado!`);
+            }
+            
+            // Jump to integration section
+            if (questionnaire.sections) {
+                const idx = questionnaire.sections.findIndex(s => s.id.includes('integracao'));
+                if (idx !== -1) {
+                    setCurrentIdx(idx);
+                }
+            }
         }
     }
     load();
@@ -556,12 +1382,12 @@ function AssessmentContent() {
     }
   };
 
-  const handleInputChange = (fieldId: string, value: any) => {
+  const handleInputChange = useCallback((fieldId: string, value: any) => {
     if (!isEditing) return;
     setAnswers(prev => {
         const newAnswers = { ...prev, [fieldId]: value };
         
-        // Auto-calculate RL/RM ratio for Shoulder (Old fields - keeping for compatibility if needed, but primary is now table)
+        // Auto-calculate RL/RM ratio for Shoulder
         if (type === 'afOmbro' && (fieldId === 'forca_rl' || fieldId === 'forca_rm')) {
             const rl = Number(newAnswers['forca_rl']);
             const rm = Number(newAnswers['forca_rm']);
@@ -606,86 +1432,25 @@ function AssessmentContent() {
             }
         }
 
-        // Table-based calculations for afMmii
-        if (type === 'afMmii') {
-            // Perimetry Deficits
-            const perimetry = ['p_joe', 'p_cox'];
-            perimetry.forEach(pId => {
-                if (fieldId === `${pId}_esq` || fieldId === `${pId}_dir`) {
-                    const esq = Number(newAnswers[`${pId}_esq`]);
-                    const dir = Number(newAnswers[`${pId}_dir`]);
-                    if (esq > 0 && dir > 0) {
-                        const max = Math.max(esq, dir);
-                        const min = Math.min(esq, dir);
-                        const deficit = Math.round(((max - min) / max) * 100);
-                        newAnswers[`${pId}_def`] = `${deficit}%`;
-                    } else {
-                        newAnswers[`${pId}_def`] = '';
-                    }
-                }
-            });
-
-            // Strength Deficits
-            const strengthMovements = ['f_abd_q', 'f_ext_q', 'f_ext_j', 'f_flex_j'];
-            strengthMovements.forEach(sId => {
-                if (fieldId === `${sId}_esq` || fieldId === `${sId}_dir`) {
-                    const esq = Number(newAnswers[`${sId}_esq`]);
-                    const dir = Number(newAnswers[`${sId}_dir`]);
-                    if (esq > 0 && dir > 0) {
-                        const max = Math.max(esq, dir);
-                        const min = Math.min(esq, dir);
-                        const deficit = Math.round(((max - min) / max) * 100);
-                        newAnswers[`${sId}_def`] = `${deficit}%`;
-                    } else {
-                        newAnswers[`${sId}_def`] = '';
-                    }
-                }
-            });
-
-            // I/Q Ratio (Flexion / Extension)
-            if (fieldId === 'f_flex_j_esq' || fieldId === 'f_ext_j_esq') {
-                const flex = Number(newAnswers['f_flex_j_esq']);
-                const ext = Number(newAnswers['f_ext_j_esq']);
-                if (flex && ext) newAnswers['rel_iq_esq'] = `${Math.round((flex / ext) * 100)}%`;
-                else newAnswers['rel_iq_esq'] = '';
-            }
-            if (fieldId === 'f_flex_j_dir' || fieldId === 'f_ext_j_dir') {
-                const flex = Number(newAnswers['f_flex_j_dir']);
-                const ext = Number(newAnswers['f_ext_j_dir']);
-                if (flex && ext) newAnswers['rel_iq_dir'] = `${Math.round((flex / ext) * 100)}%`;
-                else newAnswers['rel_iq_dir'] = '';
-            }
+        // Auto-calculate Hip Ratio for afLombar
+        if (type === 'afLombar' && (fieldId === 'mmii_ri_esq' || fieldId === 'mmii_re_esq')) {
+            const ri = Number(newAnswers['mmii_ri_esq']);
+            const re = Number(newAnswers['mmii_re_esq']);
+            if (ri && re) newAnswers['mmii_ri_re_ratio_esq'] = `${Math.round((ri / re) * 100)}%`;
+            else newAnswers['mmii_ri_re_ratio_esq'] = '';
+        }
+        if (type === 'afLombar' && (fieldId === 'mmii_ri_dir' || fieldId === 'mmii_re_dir')) {
+            const ri = Number(newAnswers['mmii_ri_dir']);
+            const re = Number(newAnswers['mmii_re_dir']);
+            if (ri && re) newAnswers['mmii_ri_re_ratio_dir'] = `${Math.round((ri / re) * 100)}%`;
+            else newAnswers['mmii_ri_re_ratio_dir'] = '';
         }
 
-        // Table-based calculations for afMao and afCotovelo (Grip/Pinch Deficits)
-        if (type === 'afMao' || type === 'afCotovelo') {
-            const tests = [
-                { id: 'preensao', def: 'preensao_def' },
-                { id: 'polpa', def: 'polpa_def' },
-                { id: 'lateral', def: 'lateral_def' },
-                { id: 'tripode', def: 'tripode_def' }
-            ];
-            tests.forEach(test => {
-                const isEsq = fieldId === `${test.id}_esq`;
-                const isDir = fieldId === `${test.id}_dir`;
-                if (isEsq || isDir) {
-                    const esq = Number(isEsq ? value : newAnswers[`${test.id}_esq`]);
-                    const dir = Number(isDir ? value : newAnswers[`${test.id}_dir`]);
-                    if (esq > 0 || dir > 0) {
-                        const max = Math.max(esq, dir);
-                        const min = Math.min(esq, dir);
-                        const deficit = Math.round(((max - min) / max) * 100);
-                        newAnswers[test.def] = `${deficit}%`;
-                    } else {
-                        newAnswers[test.def] = '';
-                    }
-                }
-            });
-        }
-        
         return newAnswers;
     });
-  };
+  }, [isEditing, type]);
+
+  const isPrint = searchParams.get("print") === "true";
 
   const handleFinish = async () => {
     setSaving(true);
@@ -806,385 +1571,7 @@ function AssessmentContent() {
     }
   };
 
-  const renderTable = (section: Section, isPrint: boolean = false) => {
-    if (!section.rows || !section.columns) return null;
-
-    return (
-        <div className="table-responsive-wrapper" style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch' }}>
-            <table className={`assessment-table ${isPrint ? 'print' : ''}`}>
-                <thead>
-                    <tr style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                        {section.columns.map((col, i) => {
-                            const isLabelColumn = i === 0;
-                            const colLabel = typeof col === 'string' ? col : col.label;
-                            const colAction = typeof col === 'string' ? null : col.action;
-
-                            return (
-                                <th key={i} style={{ padding: '0.75rem 1rem', textAlign: isLabelColumn ? 'left' : 'center', borderBottom: '2px solid var(--border)', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: isLabelColumn ? 'flex-start' : 'center', gap: '0.5rem' }}>
-                                        <span>{colLabel}</span>
-                                        {colAction && isEditing && (
-                                            <button 
-                                                onClick={() => handleHeaderAction(colAction, i, section)}
-                                                style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', backgroundColor: 'var(--primary)', color: 'white', border: 'none', cursor: 'pointer' }}
-                                            >
-                                                Todos {colAction.value}
-                                            </button>
-                                        )}
-                                    </div>
-                                </th>
-                            );
-                        })}
-                    </tr>
-                </thead>
-                <tbody>
-                    {section.rows.map((row, rIdx) => {
-                        const hasRowData = row.fields.some(f => answers[typeof f === 'string' ? f : f.id]);
-                        if (isPrint && !hasRowData) return null;
-
-                        return (
-                            <tr key={row.id} style={{ borderBottom: '1px solid var(--border)', backgroundColor: rIdx % 2 === 0 ? 'white' : 'var(--bg-secondary)', transition: 'background-color 0.2s' }}>
-                            <td style={{ padding: '0.75rem 1rem', fontWeight: '600', fontSize: '0.85rem', color: 'var(--secondary)', width: '30%' }}>
-                                {row.label}
-                            </td>
-                            {row.fields.map((field, fIdx) => {
-                                const fieldId = typeof field === 'string' ? field : field.id;
-                                const fieldType = typeof field === 'string' ? 'text' : field.type;
-                                const fieldOptions = typeof field === 'string' ? [] : (field.options || []);
-                                
-                                return (
-                                    <td key={fIdx} style={{ padding: '0.5rem 1rem' }}>
-                                        {fieldType === 'checkbox' ? (
-                                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                                                {isPrint ? (
-                                                    answers[fieldId] ? (
-                                                        <span style={{ color: '#8B0000', fontWeight: '900', fontSize: '1.2rem' }}>X</span>
-                                                    ) : (
-                                                        <span style={{ color: '#ccc' }}>-</span>
-                                                    )
-                                                ) : (
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={!!answers[fieldId]}
-                                                        onChange={(e) => handleInputChange(fieldId, e.target.checked)}
-                                                        disabled={!isEditing}
-                                                        style={{ width: '18px', height: '18px', cursor: isEditing ? 'pointer' : 'not-allowed' }}
-                                                    />
-                                                )}
-                                            </div>
-                                        ) : fieldType === 'select' ? (
-                                            isPrint ? (
-                                                <div style={{ textAlign: 'center' }}>
-                                                    <span style={{ fontWeight: '600' }}>{answers[fieldId] || "-"}</span>
-                                                </div>
-                                            ) : (
-                                                <select
-                                                    value={answers[fieldId] || ""}
-                                                    onChange={(e) => handleInputChange(fieldId, e.target.value)}
-                                                    disabled={!isEditing}
-                                                    style={{ 
-                                                        width: '100%', 
-                                                        padding: '0.4rem', 
-                                                        borderRadius: '0.4rem', 
-                                                        border: '1px solid var(--border)',
-                                                        backgroundColor: isEditing ? 'white' : 'transparent',
-                                                        fontSize: '0.85rem',
-                                                        textAlign: 'center'
-                                                    }}
-                                                >
-                                                    <option value="">-</option>
-                                                    {fieldOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                                </select>
-                                            )
-                                        ) : fieldType === 'image-upload' ? (
-                                            <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                                {renderImageUpload(fieldId, true)}
-                                            </div>
-                                        ) : (
-                                            isPrint ? (
-                                                <div style={{ textAlign: 'center' }}>
-                                                    <span style={{ fontWeight: '600' }}>{answers[fieldId] || "-"}</span>
-                                                </div>
-                                            ) : (
-                                                <input 
-                                                    type={fieldType === 'number' ? 'number' : 'text'}
-                                                    value={answers[fieldId] || ""}
-                                                    onChange={(e) => handleInputChange(fieldId, e.target.value)}
-                                                    disabled={!isEditing}
-                                                    placeholder="-"
-                                                    style={{ 
-                                                        width: '100%', 
-                                                        padding: '0.4rem', 
-                                                        borderRadius: '0.4rem', 
-                                                        border: isEditing ? '1px solid var(--border)' : '1px solid transparent',
-                                                        backgroundColor: isEditing ? 'white' : 'transparent',
-                                                        fontSize: '0.85rem',
-                                                        textAlign: 'center'
-                                                    }}
-                                                />
-                                            )
-                                        )}
-                                    </td>
-                                );
-                            })}
-                        </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
-        </div>
-    );
-  };
-
-  const renderField = (field: SectionField) => {
-    const commonProps = {
-        disabled: !isEditing,
-        className: `form-input ${!isEditing ? 'opacity-70 cursor-not-allowed' : ''}`
-    };
-
-    switch (field.type) {
-      case 'textarea':
-        return (
-          <div key={field.id} className="form-group">
-            <label className="form-label">{field.label}</label>
-            <textarea 
-              {...commonProps}
-              rows={3} 
-              value={answers[field.id] || ""} 
-              onChange={(e) => handleInputChange(field.id, e.target.value)}
-              placeholder="Descreva aqui..."
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)', fontSize: '0.85rem' }}
-            />
-          </div>
-        );
-      case 'range':
-        return (
-          <div key={field.id} className="form-group">
-            <div style={{ position: 'relative', width: '100%', height: '40px', marginBottom: '1rem' }}>
-                <span style={{ 
-                    position: 'absolute', 
-                    left: `${(Number(answers[field.id]) || 0) * 10}%`, 
-                    transform: 'translateX(-50%)',
-                    top: '0',
-                    fontWeight: 'bold', 
-                    fontSize: '1.25rem', 
-                    color: 'var(--primary)',
-                    transition: 'left 0.2s ease-out'
-                }}>{answers[field.id] || 0}</span>
-            </div>
-            <input 
-              type="range" 
-              min={field.min} 
-              max={field.max} 
-              step={field.step} 
-              value={answers[field.id] || 0} 
-              onChange={(e) => handleInputChange(field.id, e.target.value)}
-              disabled={!isEditing}
-              style={{ width: '100%', cursor: isEditing ? 'pointer' : 'not-allowed', accentColor: 'var(--primary)' }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                <span>{field.min}</span>
-                <span>{field.max}</span>
-            </div>
-          </div>
-        );
-      case 'number':
-        return (
-          <div key={field.id} className="form-group">
-            <label className="form-label">{field.label}</label>
-            <input 
-              type="number" 
-              {...commonProps}
-              value={answers[field.id] || ""} 
-              onChange={(e) => handleInputChange(field.id, e.target.value)}
-              placeholder="0"
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)' }}
-            />
-            {['resist_flexora', 'resist_extensora', 'flexao_60', 'sorensen'].includes(field.id) && (
-                <MuscleEnduranceChart 
-                    fieldId={field.id}
-                    currentValue={Number(answers[field.id]) || 0}
-                    gender={patientGender}
-                    age={patientAge}
-                    history={patientAssessments}
-                />
-            )}
-          </div>
-        );
-      case 'select':
-        return (
-          <div key={field.id} className="form-group">
-            <label className="form-label">{field.label}</label>
-            <select 
-              {...commonProps}
-              value={answers[field.id] || ""} 
-              onChange={(e) => handleInputChange(field.id, e.target.value)}
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)' }}
-            >
-              <option value="">Selecione...</option>
-              {(field.options || [0,1,2,3,4,5]).map(v => (
-                <option key={v} value={v}>{v}</option>
-              ))}
-            </select>
-          </div>
-        );
-      case 'bodyschema':
-        return (
-            <div key={field.id} className="form-group">
-                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
-                <div style={{ pointerEvents: isEditing ? 'auto' : 'none', opacity: isEditing ? 1 : 0.8 }}>
-                    <BodySchema 
-                        key={field.id}
-                        image={field.image || ""} 
-                        value={answers[field.id]} 
-                        onChange={(val) => handleInputChange(field.id, val)} 
-                    />
-                </div>
-            </div>
-        );
-      case 'image-upload':
-        return (
-          <div key={field.id} className="form-group">
-            <label className="form-label">{field.label}</label>
-            {renderImageUpload(field.id)}
-          </div>
-        );
-      case 'paintmap':
-        return (
-            <div key={field.id} className="form-group">
-                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
-                <div style={{ pointerEvents: isEditing ? 'auto' : 'none', opacity: isEditing ? 1 : 0.8 }}>
-                    <BodySchema 
-                        key={field.id}
-                        image={field.image || ""} 
-                        value={answers[field.id]} 
-                        onChange={(val) => handleInputChange(field.id, val)} 
-                        colors={field.colors}
-                    />
-                </div>
-            </div>
-        );
-      case 'angle_measurement':
-        return (
-            <div key={field.id} className="form-group">
-                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
-                <div style={{ pointerEvents: isEditing ? 'auto' : 'none' }}>
-                    <AngleMeasurement 
-                        key={field.id}
-                        value={answers[field.id]} 
-                        onChange={(val) => handleInputChange(field.id, val)} 
-                    />
-                </div>
-            </div>
-        );
-      case 'freecanvas':
-        return (
-            <div key={field.id} className="form-group">
-                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
-                <div style={{ pointerEvents: isEditing ? 'auto' : 'none' }}>
-                    <FreeCanvas 
-                        key={field.id}
-                        value={answers[field.id]} 
-                        onChange={(val) => handleInputChange(field.id, val)} 
-                    />
-                </div>
-            </div>
-        );
-      case 'button':
-        const isQuestButton = field.id.endsWith('_novo');
-        const questType = field.id.split('_')[0];
-        
-        // Find history for the related questionnaire (e.g. if we are in afLombar, find 'oswestry' history)
-        return (
-            <div key={field.id} className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <button 
-                    type="button"
-                    onClick={() => {
-                        if (isQuestButton) {
-                            router.push(`/dashboard/assessment/${patientId}/${questType}?returnTo=${type}`);
-                        }
-                    }}
-                    className="btn-secondary"
-                    style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem' }}
-                >
-                    {field.label}
-                </button>
-
-                {answers[field.id.replace('_novo', '_score')] && field.id.endsWith('_novo') && (
-                    <div style={{ marginTop: '1.5rem', padding: '1.5rem', backgroundColor: 'white', borderRadius: '1rem', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-                        <div style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--primary)', marginBottom: '1.5rem', textAlign: 'center' }}>
-                            Score Atual: {answers[field.id.replace('_novo', '_score')]}
-                        </div>
-                        <FunctionalHistoryChart 
-                            type={field.id.replace('_novo', '')}
-                            currentScore={Number(String(answers[field.id.replace('_novo', '_score')]).split('%')[0].trim()) || 0}
-                            history={patientAssessments}
-                            isEmbedded={true}
-                        />
-                    </div>
-                )}
-            </div>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const renderImageUpload = (fieldId: string, isTable: boolean = false) => {
-    const value = answers[fieldId];
-    
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            handleInputChange(fieldId, reader.result as string);
-        };
-        reader.readAsDataURL(file);
-    };
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: isTable ? 'center' : 'flex-start' }}>
-            {value ? (
-                <div 
-                    style={{ position: 'relative', width: isTable ? '60px' : '200px', height: isTable ? '60px' : '150px', cursor: 'zoom-in' }}
-                    onClick={() => setSelectedImage(value)}
-                >
-                    <img 
-                        src={value} 
-                        alt="Upload" 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid var(--border)' }} 
-                    />
-                    <div style={{ position: 'absolute', bottom: '4px', right: '4px', backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', borderRadius: '4px', padding: '2px' }}>
-                        <Maximize2 size={12} />
-                    </div>
-                    {isEditing && (
-                        <button
-                            onClick={() => handleInputChange(fieldId, "")}
-                            style={{ position: 'absolute', top: '-8px', right: '-8px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}
-                        >
-                            <Trash2 size={14} />
-                        </button>
-                    )}
-                </div>
-            ) : (
-                isEditing && (
-                    <div style={{ display: 'flex', gap: '0.5rem', flexDirection: isTable ? 'column' : 'row' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: isTable ? '0.4rem' : '0.6rem 1rem', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)' }}>
-                            <Camera size={isTable ? 16 : 18} /> {!isTable && <span>Tirar Foto</span>}
-                            <input type="file" accept="image/*" capture="environment" onChange={handleFileChange} style={{ display: 'none' }} />
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: isTable ? '0.4rem' : '0.6rem 1rem', backgroundColor: 'white', border: '1.5px dashed var(--border)', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)' }}>
-                            <UploadCloud size={isTable ? 16 : 18} /> {!isTable && <span>Galeria</span>}
-                            <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
-                        </label>
-                    </div>
-                )
-            )}
-        </div>
-    );
-  };
+  // Old render functions removed for performance optimization
 
   if (isFinished) {
     const result = questionnaire.calculateScore?.(answers);
@@ -1258,7 +1645,7 @@ function AssessmentContent() {
                     onClick={handleReturn}
                     style={{ padding: '1rem 2rem', fontSize: '1.1rem', borderRadius: '0.75rem', cursor: 'pointer' }}
                 >
-                    Retornar ao Fluxo
+                    Retornar ao Questionário
                 </button>
             )}
             <button 
@@ -1267,7 +1654,7 @@ function AssessmentContent() {
                 style={{ padding: '1rem 2rem', fontSize: '1.1rem', borderRadius: '0.75rem', cursor: 'pointer', backgroundColor: 'var(--secondary)' }}
             >
                 Voltar ao Histórico
-            </button>
+          </button>
         </div>
       </div>
     );
@@ -1288,88 +1675,39 @@ function AssessmentContent() {
             )}
         </div>
 
-        {items.map((item, idx) => {
-          const section = item as Section;
-          const isActuallyClinical = !!section.fields || section.type === 'table';
-          
-          if (isClinical) {
-            // Check if section has any answered field
-            const hasData = section.fields?.some(f => answers[f.id]) || 
-                           (section.type === 'table' && section.rows?.some(r => r.fields.some(f => answers[typeof f === 'string' ? f : f.id])));
-            
-            if (!hasData) return null;
+        {items.map((item, idx) => (
+            <FormSection 
+                key={idx}
+                section={item as Section}
+                isPrint={true}
+                answers={answers}
+                handleInputChange={handleInputChange}
+                isEditing={false}
+                onImageClick={setSelectedImage}
+                patientGender={patientGender}
+                patientAge={patientAge}
+                patientAssessments={patientAssessments}
+                assessmentId={assessmentId}
+                index={idx}
+                questionnaire={questionnaire}
+                type={type}
+                router={router}
+            />
+        ))}
 
-            return (
-              <div key={idx} className="print-section" style={{ marginBottom: '1.5rem', pageBreakInside: 'auto' }}>
-                <div style={{ padding: '0.5rem 0' }}>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '1rem', color: '#8B0000', borderBottom: '1px solid #eee', paddingBottom: '0.3rem' }}>
-                      {section.title}
-                    </h3>
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        {section.fields?.map(field => {
-                            if (['resist_flexora', 'resist_extensora', 'flexao_60', 'sorensen'].includes(field.id)) {
-                                return (
-                                    <div key={`print-chart-${field.id}`} className="print-chart-container">
-                                        <div style={{ marginBottom: '0.5rem', fontWeight: '700' }}>{field.label}: {answers[field.id]}s</div>
-                                        <MuscleEnduranceChart 
-                                            fieldId={field.id}
-                                            currentValue={Number(answers[field.id]) || 0}
-                                            gender={patientGender}
-                                            age={patientAge}
-                                            history={patientAssessments}
-                                            isPrint={true}
-                                        />
-                                    </div>
-                                );
-                            }
-                            return null;
-                        })}
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        {section.type === 'table' && renderTable(section, true)}
-                        {section.fields?.map(field => {
-                            const isEndurance = ['resist_flexora', 'resist_extensora', 'flexao_60', 'sorensen'].includes(field.id);
-                            if (!answers[field.id] && field.type !== 'bodyschema' && !isEndurance) return null;
-                            if (isEndurance) return null; // Already rendered above
-                            if (field.type === 'button') {
-                                return null;
-                            }
-                            
-                            return (
-                                <div key={field.id} style={{ marginBottom: '0.5rem' }}>
-                                    <span style={{ fontWeight: 'bold', marginRight: '0.5rem' }}>{field.label}:</span>
-                                    <span>{answers[field.id]}</span>
-                                    {field.type === 'bodyschema' && (
-                                         <div style={{ marginTop: '0.5rem', maxWidth: '400px' }}>
-                                             <img src={answers[field.id]} style={{ width: '100%', border: '1px solid #eee' }} />
-                                         </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-              </div>
-            );
-          } else {
-            // Functional questionnaire
-            if (answers[idx] === undefined) return null;
-            return (
-                <div key={idx} style={{ padding: '0.5rem 0', borderBottom: '1px solid #f0f0f0' }}>
-                    <p style={{ fontWeight: 'bold', fontSize: '1rem', marginBottom: '0.25rem' }}>{idx + 1}. {(item as any).text}</p>
-                    <p style={{ paddingLeft: '1rem', color: '#8B0000', fontWeight: '700' }}>
-                        {(item as any).options?.find((o:any) => o.value === answers[idx])?.label || "Não respondido"}
-                    </p>
-                </div>
-            );
-          }
-        })}
-
-        {isFinished && (
+        {isFinished && !isClinical && (
             <div style={{ marginTop: '2rem', padding: '1rem', border: '2px solid #8B0000', borderRadius: '0.5rem' }}>
                 <h4 style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>Resultado da Avaliação:</h4>
                 <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#8B0000' }}>
-                    {calculateAssessmentScore((questionnaire as any).structure?.calculationType || (type as CalculationType), answers).interpretation}
+                    {(() => {
+                        const res = calculateAssessmentScore((questionnaire as any).structure?.calculationType || (type as CalculationType), answers);
+                        let scoreStr = `${res.score} pts`;
+                        if (res.percentage !== undefined && res.unit === '%') {
+                            scoreStr += ` (${res.percentage}%)`;
+                        }
+                        const displayInterpretation = res.interpretation === 'Avaliação Concluída' ? '' : ` — ${res.interpretation}`;
+                        return `Pontuação: ${scoreStr}${displayInterpretation}`;
+                    })()}
                 </div>
             </div>
         )}
@@ -1399,6 +1737,7 @@ function AssessmentContent() {
                             history={patientAssessments}
                             isEmbedded={true}
                             isPrint={true}
+                            assessmentId={assessmentId}
                         />
                     </div>
                 );
@@ -1406,7 +1745,7 @@ function AssessmentContent() {
         </div>
       </div>
     );
-  };
+  }
 
   return (
     <div className="assessment-page">
@@ -1491,50 +1830,50 @@ function AssessmentContent() {
                     className="assessment-card"
                 >
                     {isClinical ? (
-                        <>
-                            <h3 className="section-title">
-                                {(currentItem as Section).title}
-                            </h3>
-                            <div className="section-fields">
-                                {(currentItem as Section).type === 'table' && renderTable(currentItem as Section)}
-                                {(currentItem as Section).fields?.map(field => renderField(field))}
-                            </div>
-                        </>
+                        <FormSection 
+                            section={currentItem as Section}
+                            answers={answers}
+                            handleInputChange={handleInputChange}
+                            isEditing={isEditing}
+                            onImageClick={setSelectedImage}
+                            patientGender={patientGender}
+                            patientAge={patientAge}
+                            patientAssessments={patientAssessments}
+                            assessmentId={assessmentId}
+                            isClinical={true}
+                            index={currentIdx}
+                            isPrint={false}
+                            questionnaire={questionnaire}
+                            type={type}
+                            router={router}
+                        />
                     ) : (
-                        <>
-                            <h3 className="functional-title">
-                                {(currentItem as any).text}
-                            </h3>
-
-                            <div className="options-grid">
-                                {(currentItem as any).options?.map((option: any) => (
-                                    <button
-                                        key={option.value}
-                                        onClick={() => handleSelect(option.value)}
-                                        disabled={!isEditing}
-                                        className={`option-button ${answers[currentIdx] === option.value ? 'selected' : ''}`}
-                                        style={{ opacity: !isEditing && answers[currentIdx] !== option.value ? 0.5 : 1 }}
-                                    >
-                                        <span className="option-label">
-                                            {option.label}
-                                        </span>
-                                        <div className="radio-circle">
-                                            {answers[currentIdx] === option.value && (
-                                                <div className="radio-inner" />
-                                            )}
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Removed chart during questionnaire filling as requested */}
-                        </>
+                        <FormSection 
+                            section={currentItem as any}
+                            answers={answers}
+                            handleInputChange={handleInputChange}
+                            isEditing={isEditing}
+                            onImageClick={setSelectedImage}
+                            patientGender={patientGender}
+                            patientAge={patientAge}
+                            patientAssessments={patientAssessments}
+                            assessmentId={assessmentId}
+                            isClinical={false}
+                            index={currentIdx}
+                            isPrint={false}
+                            questionnaire={questionnaire}
+                            type={type}
+                            router={router}
+                        />
                     )}
 
                     <div className="navigation-footer">
                         <button
                             disabled={currentIdx === 0}
-                            onClick={() => setCurrentIdx(currentIdx - 1)}
+                            onClick={() => {
+                                setCurrentIdx(currentIdx - 1);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
                             className="btn-nav-back"
                         >
                             <ChevronLeft size={20} />
@@ -1544,7 +1883,10 @@ function AssessmentContent() {
                         <div className="nav-main-actions">
                             {currentIdx < items.length - 1 && (
                                 <button
-                                    onClick={() => setCurrentIdx(currentIdx + 1)}
+                                    onClick={() => {
+                                        setCurrentIdx(currentIdx + 1);
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
                                     className="btn-nav-next"
                                 >
                                     <span>Próxima</span>
@@ -1552,7 +1894,7 @@ function AssessmentContent() {
                                 </button>
                             )}
 
-                            {isEditing && (
+                            {isEditing && currentIdx === items.length - 1 && (
                                 <button
                                     disabled={saving}
                                     onClick={handleFinish}
@@ -2038,12 +2380,12 @@ function AssessmentContent() {
 
       <style jsx global>{`
         @media print {
-            @page { margin: 1cm; }
+            @page { margin: 0.8cm; }
             .no-print { display: none !important; }
             .print-all-content { display: block !important; width: 100% !important; background: white !important; color: black !important; }
             body { background: white !important; padding: 0 !important; overflow: visible !important; }
             .background-gradient { display: none !important; }
-            .form-group { break-inside: avoid; margin-bottom: 1rem !important; }
+            .form-group { break-inside: avoid; margin-bottom: 0.5rem !important; }
             div[style*="max-width: 800px"] { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
             div[style*="box-shadow"], div[style*="border: 1px solid var(--border)"] { 
                 box-shadow: none !important; 
@@ -2053,14 +2395,25 @@ function AssessmentContent() {
                 background: none !important;
             }
             main { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
-            table { font-size: 9pt !important; width: 100% !important; border-collapse: collapse !important; table-layout: fixed !important; }
-            th, td { border: 1px solid #333 !important; padding: 4px !important; word-wrap: break-word !important; }
+            table { font-size: 8pt !important; width: 100% !important; border-collapse: collapse !important; table-layout: fixed !important; }
+            th, td { border: 1px solid #333 !important; padding: 3px 6px !important; word-wrap: break-word !important; }
             .btn-primary, button, .no-print-element { display: none !important; }
             img, canvas { max-width: 100% !important; height: auto !important; }
-            .print-section { page-break-inside: auto; margin-bottom: 1.5rem; }
-            /* Hide browser footers */
+            .print-section { page-break-inside: auto; margin-bottom: 0.75rem; }
             footer, .footer, #footer { display: none !important; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            /* Chart fixes for print */
+            .chart-container { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; padding: 0.75rem !important; }
+            .chart-bars-container { min-height: 140px !important; }
+            .print-chart-container { page-break-inside: avoid; }
+            /* Prevent title from orphaning from its content */
+            h3 { page-break-after: avoid; }
+            h4 { page-break-after: avoid; }
+            /* Keep table headers with their table body */
+            thead { display: table-header-group; }
+            tr { page-break-inside: avoid; }
+            /* Keep sections together */
+            .print-section div { page-break-inside: avoid; }
         }
       `}</style>
     </div>

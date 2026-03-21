@@ -170,6 +170,32 @@ body {
   cursor: not-allowed;
 }
 
+.btn-action-outline {
+  background-color: white;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-action-outline:hover {
+  background-color: var(--bg);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-action-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .error-alert {
   background-color: #FEF2F2;
   border: 1px solid #FEE2E2;
@@ -270,5 +296,44 @@ body {
   
   .container {
     padding: 0 1rem;
+  }
+}
+
+/* Print Utilities */
+@media print {
+  body {
+    background-color: transparent !important;
+    font-size: 11pt !important;
+  }
+  
+  /* Hide all generic app navigation */
+  header, 
+  nav, 
+  .nav-main-actions, 
+  .navigation-footer, 
+  .btn-primary, 
+  .btn-secondary, 
+  .btn-nav-back, 
+  .btn-nav-next, 
+  .btn-finish,
+  button[type="button"], /* Hide ALL clickable buttons! They shouldn't appear in print anywhere */
+  .hide-on-print {
+    display: none !important;
+  }
+
+  /* Don't hide radio/checkboxes inside forms if they're used to display results */
+  .form-group button {
+    display: none !important;
+  }
+
+  .container {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  .print-all-content {
+    display: block !important;
+    width: 100% !important;
   }
 }

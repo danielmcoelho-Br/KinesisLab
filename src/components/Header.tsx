@@ -43,7 +43,7 @@ export default function Header({ showBackButton = false }: HeaderProps) {
         >
           <div className="logo-wrapper">
               <Image 
-                  src="/logo-kinesis.jpg" 
+                  src="/logo-kinesis.png" 
                   alt="KinesisLab Logo" 
                   fill
                   style={{ objectFit: 'contain' }}

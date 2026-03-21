@@ -95,6 +95,9 @@ export default function BodySchema({ image, value, onChange, colors: customColor
     const { offsetX, offsetY } = getCoordinates(e);
     ctx.beginPath();
     ctx.moveTo(offsetX, offsetY);
+    // Draw point exactly where clicked, allowing dots instead of just lines
+    ctx.lineTo(offsetX, offsetY);
+    ctx.stroke();
     setIsDrawing(true);
   };
 
@@ -215,7 +218,7 @@ export default function BodySchema({ image, value, onChange, colors: customColor
                 position: "relative", 
                 width: "100%",
                 maxWidth: "500px",  
-                backgroundColor: "transparent", // Remove gray background
+                backgroundColor: "white", // Restored white background for visibility of transparent maps
                 borderRadius: "1rem",
                 overflow: "hidden",
                 border: "2px solid var(--border)",

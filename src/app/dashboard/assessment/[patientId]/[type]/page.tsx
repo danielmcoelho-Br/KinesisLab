@@ -1622,7 +1622,7 @@ function AssessmentContent() {
 
     return (
       <div style={{ minHeight: '100vh', padding: '2rem', backgroundColor: 'white' }}>
-        <div className="no-print" style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+        <div className="no-print print:hidden" style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
             <div style={{ backgroundColor: 'var(--primary-light)', padding: '1.5rem', borderRadius: '1rem', textAlign: 'center', maxWidth: '600px', width: '100%' }}>
                 <CheckCircle size={48} style={{ color: 'var(--primary)', margin: '0 auto 1rem auto' }} />
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '0.5rem' }}>Avaliação Concluída!</h2>
@@ -1632,7 +1632,7 @@ function AssessmentContent() {
 
         {renderFullPrintView()}
 
-        <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
+        <div className="no-print print:hidden" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
             <button
                 className="btn-action-outline"
                 onClick={() => window.print()}

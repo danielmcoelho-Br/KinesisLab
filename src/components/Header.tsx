@@ -34,7 +34,7 @@ export default function Header({ showBackButton = false }: HeaderProps) {
   };
 
   return (
-    <header className="header-container">
+    <header className="header-container print:hidden">
       <div className="header-inner">
         
         <div 

@@ -1772,17 +1772,11 @@ export const questionnairesData: Record<string, Questionnaire> = {
     description: 'Faça o upload de uma foto e trace ângulos articulares ou posturais.',
     sections: [
         {
-            id: 'dadosClinicos',
-            title: 'Informações da Avaliação',
+            id: 'analiseAngular',
+            title: 'Informações e Estúdio de Análise',
             fields: [
                 { id: 'diagnostico', label: 'Descrição da Postura/Movimento', type: 'textarea' },
-                { id: 'observacoes', label: 'Observações Adicionais', type: 'textarea' }
-            ]
-        },
-        {
-            id: 'analiseAngular',
-            title: 'Estúdio de Análise',
-            fields: [
+                { id: 'observacoes', label: 'Observações Adicionais', type: 'textarea' },
                 {
                     id: 'canvas_angular',
                     label: 'Clique abaixo para carregar a foto e marcar os 3 pontos do ângulo.',
@@ -1801,21 +1795,15 @@ export const questionnairesData: Record<string, Questionnaire> = {
     description: 'Desenhe esquemas, orientações e diagramas personalizados para o paciente.',
     sections: [
         {
-            id: 'desenho',
-            title: 'Desenho Livre / Esquemas',
+            id: 'desenho_observacoes',
+            title: 'Orientação e Observações',
             fields: [
+                { id: 'obs_texto', label: 'Notas complementares e orientações textuais', type: 'textarea' },
                 {
                     id: 'canvas_orientacao',
                     label: 'Use o canvas abaixo para desenhar orientações',
                     type: 'freecanvas'
                 }
-            ]
-        },
-        {
-            id: 'observacoes_orientacao',
-            title: 'Observações',
-            fields: [
-                { id: 'obs_texto', label: 'Notas complementares e orientações textuais', type: 'textarea' }
             ]
         }
     ],

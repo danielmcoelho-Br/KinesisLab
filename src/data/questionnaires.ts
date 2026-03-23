@@ -4,6 +4,7 @@ export type Option = {
 };
 
 export type Question = {
+  id?: string;
   text: string;
   isInstruction?: boolean;
   options?: Option[];
@@ -273,39 +274,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
                 { id: 'doencas', label: 'Doenças Associadas/Cirurgias Realizadas', type: 'textarea' }
             ]
         },
-        {
-            id: 'neuro_geral',
-            title: 'Avaliação Neurológica',
-            type: 'multi-table',
-            subsections: [
-                {
-                    id: 'neuro_forca',
-                    title: 'Força Muscular',
-                    type: 'table',
-                    columns: ['Neurológico / Músculo', { label: 'Esquerdo', action: { type: 'fill', value: '5' } }, { label: 'Direito', action: { type: 'fill', value: '5' } }],
-                    rows: [
-                        { id: 'c5', label: 'Flexor de Cotovelo (C5)', fields: ['c5_esq', 'c5_dir'] },
-                        { id: 'c6', label: 'Extensor de Punho (C6)', fields: ['c6_esq', 'c6_dir'] },
-                        { id: 'c7', label: 'Extensor de Cotovelo (C7)', fields: ['c7_esq', 'c7_dir'] },
-                        { id: 'c8', label: 'Flexores de Dedos (C8)', fields: ['c8_esq', 'c8_dir'] },
-                        { id: 't1', label: 'Abdutor do 5º Dedo (T1)', fields: ['t1_esq', 't1_dir'] }
-                    ],
-                    fields: [{ id: 'neuro_forca_obs', label: 'Observações de Força Muscular', type: 'textarea' }]
-                },
-                {
-                    id: 'neuro_reflexos',
-                    title: 'Reflexos',
-                    type: 'table',
-                    columns: ['Reflexo', { label: 'Esquerdo', action: { type: 'fill', value: 'Normal' } }, { label: 'Direito', action: { type: 'fill', value: 'Normal' } }],
-                    rows: [
-                        { id: 'bicipital', label: 'Reflexo Bicipital (C5-C6)', fields: [{ id: 'bicipital_esq', type: 'select', options: reflexOptions }, { id: 'bicipital_dir', type: 'select', options: reflexOptions }] },
-                        { id: 'tricipital', label: 'Reflexo Tricipital (C7-T1)', fields: [{ id: 'tricipital_esq', type: 'select', options: reflexOptions }, { id: 'tricipital_dir', type: 'select', options: reflexOptions }] },
-                        { id: 'estiloradial', label: 'Reflexo Estiloradial (C6)', fields: [{ id: 'estiloradial_esq', type: 'select', options: reflexOptions }, { id: 'estiloradial_dir', type: 'select', options: reflexOptions }] }
-                    ],
-                    fields: [{ id: 'neuro_obs', label: 'Observações de Avaliação Neurológica', type: 'textarea' }]
-                }
-            ]
-        },
+
         {
             id: 'postural',
             title: 'Avaliação Postural',
@@ -373,18 +342,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
                     ],
                     fields: [{ id: 'mio_obs', label: 'Observações Miofasciais', type: 'textarea' }]
                 },
-                {
-                    id: 'testes_neurais',
-                    title: 'Teste de Tensão Neural',
-                    type: 'table',
-                    columns: ['Teste', 'Esquerdo', 'Direito'],
-                    rows: [
-                        { id: 'mediano', label: 'N. Mediano', fields: [{ id: 'neural_mediano_esq', type: 'checkbox' }, { id: 'neural_mediano_dir', type: 'checkbox' }] },
-                        { id: 'ulnar', label: 'N. Ulnar', fields: [{ id: 'neural_ulnar_esq', type: 'checkbox' }, { id: 'neural_ulnar_dir', type: 'checkbox' }] },
-                        { id: 'radial', label: 'N. Radial', fields: [{ id: 'neural_radial_esq', type: 'checkbox' }, { id: 'neural_radial_dir', type: 'checkbox' }] }
-                    ],
-                    fields: [{ id: 'neural_obs', label: 'Observações Testes Neurais', type: 'textarea' }]
-                }
+
             ]
         },
         {
@@ -440,43 +398,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
                 { id: 'doencas', label: 'Doenças Associadas/Cirurgias Realizadas', type: 'textarea' }
             ]
         },
-        {
-            id: 'neuro_geral',
-            title: 'Avaliação Neurológica',
-            type: 'multi-table',
-            subsections: [
-                {
-                    id: 'neuro_forca',
-                    title: 'Força Muscular',
-                    type: 'table',
-                    columns: ['Neurológico / Músculo', { label: 'Esquerdo', action: { type: 'fill', value: '5' } }, { label: 'Direito', action: { type: 'fill', value: '5' } }],
-                    rows: [
-                        { id: 'l2', label: 'Flexor de Quadril (L2)', fields: ['l2_esq', 'l2_dir'] },
-                        { id: 'l3', label: 'Extensor de Joelho (L3)', fields: ['l3_esq', 'l3_dir'] },
-                        { id: 'l4', label: 'Dorsiflexor (L4)', fields: ['l4_esq', 'l4_dir'] },
-                        { id: 'l5', label: 'Extensor de Hálux (L5)', fields: ['l5_esq', 'l5_dir'] },
-                        { id: 's1', label: 'Flexor Plantar (S1)', fields: ['s1_esq', 's1_dir'] }
-                    ],
-                    fields: [{ id: 'neuro_forca_obs', label: 'Observações de Força Muscular', type: 'textarea' }]
-                },
-                {
-                    id: 'neuro_reflexos',
-                    title: 'Reflexos',
-                    type: 'table',
-                    columns: ['Reflexo', { label: 'Esquerdo', action: { type: 'fill', value: 'Normal' } }, { label: 'Direito', action: { type: 'fill', value: 'Normal' } }],
-                    rows: [
-                        { id: 'patelar', label: 'Reflexo Patelar (L3-L4)', fields: [{ id: 'patelar_esq', type: 'select', options: reflexOptions }, { id: 'patelar_dir', type: 'select', options: reflexOptions }] },
-                        { id: 'aquileu', label: 'Reflexo Aquileu (S1-S2)', fields: [{ id: 'aquileu_esq', type: 'select', options: reflexOptions }, { id: 'aquileu_dir', type: 'select', options: reflexOptions }] }
-                    ],
-                    fields: [{ id: 'neuro_ref_obs', label: 'Observações de Reflexos', type: 'textarea' }]
-                },
-                {
-                    id: 'neuro_adicional',
-                    title: 'Avaliação Adicional (Sensibilidade e outros)',
-                    fields: [{ id: 'observacoes_neuro', label: 'Observações Adicionais', type: 'textarea' }]
-                }
-            ]
-        },
+
         {
             id: 'postural',
             title: 'Avaliação Postural',
@@ -560,18 +482,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
                     ],
                     fields: [{ id: 'mio_obs', label: 'Observações Miofasciais', type: 'textarea' }]
                 },
-                {
-                    id: 'testes_neurais',
-                    title: 'Teste de Tensão Neural',
-                    type: 'table',
-                    columns: ['Teste', 'Esquerdo', 'Direito'],
-                    rows: [
-                        { id: 'lasegue', label: 'Neural: Lasegue', fields: [{ id: 'neural_lasegue_esq', type: 'checkbox' }, { id: 'neural_lasegue_dir', type: 'checkbox' }] },
-                        { id: 'femoral', label: 'Neural: Femoral', fields: [{ id: 'neural_femoral_esq', type: 'checkbox' }, { id: 'neural_femoral_dir', type: 'checkbox' }] },
-                        { id: 'slump', label: 'Neural: SLUMP', fields: [{ id: 'neural_slump_esq', type: 'checkbox' }, { id: 'neural_slump_dir', type: 'checkbox' }] }
-                    ],
-                    fields: [{ id: 'neural_obs', label: 'Observações Testes Neurais', type: 'textarea' }]
-                }
+
             ]
         },
         {
@@ -612,18 +523,18 @@ export const questionnairesData: Record<string, Questionnaire> = {
     description: 'Questionário para avaliar sintomas e capacidade física focado no ombro, braço e mão.',
     questions: [
         { text: 'Instrução: Por favor, gradue a sua capacidade para realizar as atividades abaixo, na ÚLTIMA SEMANA, assinalando a opção correspondente.', isInstruction: true },
-        { text: '1. Abrir um vidro novo com tampa de rosca ou muito apertada.', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Média Dificuldade' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Incapaz de Fazer' }] },
-        { text: '2. Fazer trabalhos domésticos pesados (ex.: lavar o chão, lavar paredes, etc.).', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Média Dificuldade' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Incapaz de Fazer' }] },
-        { text: '3. Carregar uma sacola de compras pesada ou mala.', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Média Dificuldade' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Incapaz de Fazer' }] },
-        { text: '4. Lavar as costas.', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Média Dificuldade' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Incapaz de Fazer' }] },
-        { text: '5. Usar uma faca para cortar os alimentos.', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Média Dificuldade' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Incapaz de Fazer' }] },
-        { text: '6. Atividades recreacionais de lazer em que você aplica alguma força com o seu braço, ombro ou mão.', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Média Dificuldade' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Incapaz de Fazer' }] },
-        { text: '7. O problema no braço, ombro ou mão impediu-o de realizar suas atividades sociais e normais na ÚLTIMA SEMANA?', options: [{ value: 1, label: 'De Forma Nenhuma' }, { value: 2, label: 'Dificultou um Pouco' }, { value: 3, label: 'Dificultou Moderadamente' }, { value: 4, label: 'Dificultou Bastante' }, { value: 5, label: 'Impediu Totalmente' }] },
-        { text: '8. O problema no braço, ombro ou mão limitou as suas atividades normais de trabalho ou cotidiano?', options: [{ value: 1, label: 'Não Limitou nada' }, { value: 2, label: 'Limitou um Pouco' }, { value: 3, label: 'Limitou Moderadamente' }, { value: 4, label: 'Limitou Bastante' }, { value: 5, label: 'Impediu Totalmente' }] },
+        { id: 'q1', text: '1. Abrir um vidro novo com tampa de rosca ou muito apertada.', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Média Dificuldade' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Incapaz de Fazer' }] },
+        { id: 'q2', text: '2. Fazer trabalhos domésticos pesados (ex.: lavar o chão, lavar paredes, etc.).', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Média Dificuldade' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Incapaz de Fazer' }] },
+        { id: 'q3', text: '3. Carregar uma sacola de compras pesada ou mala.', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Média Dificuldade' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Incapaz de Fazer' }] },
+        { id: 'q4', text: '4. Lavar as costas.', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Média Dificuldade' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Incapaz de Fazer' }] },
+        { id: 'q5', text: '5. Usar uma faca para cortar os alimentos.', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Média Dificuldade' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Incapaz de Fazer' }] },
+        { id: 'q6', text: '6. Atividades recreacionais de lazer em que você aplica alguma força com o seu braço, ombro ou mão.', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Média Dificuldade' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Incapaz de Fazer' }] },
+        { id: 'q7', text: '7. O problema no braço, ombro ou mão impediu-o de realizar suas atividades sociais e normais na ÚLTIMA SEMANA?', options: [{ value: 1, label: 'De Forma Nenhuma' }, { value: 2, label: 'Dificultou um Pouco' }, { value: 3, label: 'Dificultou Moderadamente' }, { value: 4, label: 'Dificultou Bastante' }, { value: 5, label: 'Impediu Totalmente' }] },
+        { id: 'q8', text: '8. O problema no braço, ombro ou mão limitou as suas atividades normais de trabalho ou cotidiano?', options: [{ value: 1, label: 'Não Limitou nada' }, { value: 2, label: 'Limitou um Pouco' }, { value: 3, label: 'Limitou Moderadamente' }, { value: 4, label: 'Limitou Bastante' }, { value: 5, label: 'Impediu Totalmente' }] },
         { text: 'Instrução: Por favor, gradue a intensidade dos sintomas que você sentiu na ÚLTIMA SEMANA.', isInstruction: true },
-        { text: '9. Dor no braço, ombro ou mão.', options: [{ value: 1, label: 'Nenhuma Dor' }, { value: 2, label: 'Dor Leve' }, { value: 3, label: 'Dor Moderada' }, { value: 4, label: 'Dor Severa' }, { value: 5, label: 'Dor Extrema' }] },
-        { text: '10. Sensação de formigamento ou dormência no seu braço, ombro ou mão.', options: [{ value: 1, label: 'Nenhum sintoma' }, { value: 2, label: 'De Leve intensidade' }, { value: 3, label: 'De Média intensidade' }, { value: 4, label: 'De Muita intensidade' }, { value: 5, label: 'Extremo' }] },
-        { text: '11. dificuldade para dormir por causa de dor no seu braço, ombro ou mão?', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Moderada' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Extrema' }] }
+        { id: 'q9', text: '9. Dor no braço, ombro ou mão.', options: [{ value: 1, label: 'Nenhuma Dor' }, { value: 2, label: 'Dor Leve' }, { value: 3, label: 'Dor Moderada' }, { value: 4, label: 'Dor Severa' }, { value: 5, label: 'Dor Extrema' }] },
+        { id: 'q10', text: '10. Sensação de formigamento ou dormência no seu braço, ombro ou mão.', options: [{ value: 1, label: 'Nenhum sintoma' }, { value: 2, label: 'De Leve intensidade' }, { value: 3, label: 'De Média intensidade' }, { value: 4, label: 'De Muita intensidade' }, { value: 5, label: 'Extremo' }] },
+        { id: 'q11', text: '11. dificuldade para dormir por causa de dor no seu braço, ombro ou mão?', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Moderada' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Extrema' }] }
     ],
     calculateScore: (answers) => {
         const values = Object.values(answers).filter(v => typeof v === 'number');
@@ -680,24 +591,49 @@ export const questionnairesData: Record<string, Questionnaire> = {
                 { id: 'abd_frontal', label: 'Abdução Frontal', fields: ['abd_f_ativa', 'abd_f_passiva', { id: 'abd_f_img', type: 'image-upload' }] },
                 { id: 'rot_med', label: 'Rotação Medial', fields: ['rm_ativa', 'rm_passiva', { id: 'rm_img', type: 'image-upload' }] },
                 { id: 'rot_lat', label: 'Rotação Lateral', fields: ['rl_ativa', 'rl_passiva', { id: 'rl_img', type: 'image-upload' }] }
-            ]
+            ],
+            fields: [{ id: 'adm_ombro_obs', label: 'Observações de ADM', type: 'textarea' }]
         },
         {
             id: 'testes_especiais',
-            title: 'Testes Especiais',
-            type: 'table',
-            columns: ['Teste', 'Esquerdo', 'Direito'],
-            rows: [
-                { id: 'neer', label: 'Neer (Impacto)', fields: [{ id: 'neer_esq', type: 'checkbox' }, { id: 'neer_dir', type: 'checkbox' }] },
-                { id: 'hawkins', label: 'Hawkins-Kennedy (Impacto)', fields: [{ id: 'hawkins_esq', type: 'checkbox' }, { id: 'hawkins_dir', type: 'checkbox' }] },
-                { id: 'job', label: 'Jobe (Supraespinhal)', fields: [{ id: 'job_esq', type: 'checkbox' }, { id: 'job_dir', type: 'checkbox' }] },
-                { id: 'patte', label: 'Patte (Infraespinhal)', fields: [{ id: 'patte_esq', type: 'checkbox' }, { id: 'patte_dir', type: 'checkbox' }] },
-                { id: 'gerber', label: 'Gerber (Subescapular)', fields: [{ id: 'gerber_esq', type: 'checkbox' }, { id: 'gerber_dir', type: 'checkbox' }] },
-                { id: 'speed', label: 'Speed (Bíceps)', fields: [{ id: 'speed_esq', type: 'checkbox' }, { id: 'speed_dir', type: 'checkbox' }] },
-                { id: 'apreensao', label: 'Apreensão (Instabilidade)', fields: [{ id: 'apreensao_esq', type: 'checkbox' }, { id: 'apreensao_dir', type: 'checkbox' }] },
-                { id: 'ckcuest', label: 'CKCUEST (Nº de toques)', fields: [{ id: 'ckcuest_valor', type: 'number' }, { id: 'ckcuest_obs', type: 'text' }] },
-                { id: 'fadiga_serratil', label: 'Fadiga Serrátil Anterior (segundos)', fields: [{ id: 'fadiga_serratil_esq', type: 'number' }, { id: 'fadiga_serratil_dir', type: 'number' }] }
-            ]
+            title: 'Testes Especiais e Funcionais',
+            type: 'multi-table',
+            subsections: [
+                {
+                    id: 'testes_impacto_instabilidade',
+                    title: 'Impacto e Instabilidade',
+                    type: 'table',
+                    columns: ['Teste', 'Esquerdo', 'Direito'],
+                    rows: [
+                        { id: 'neer', label: 'Neer (Impacto)', fields: [{ id: 'neer_esq', type: 'checkbox' }, { id: 'neer_dir', type: 'checkbox' }] },
+                        { id: 'hawkins', label: 'Hawkins-Kennedy (Impacto)', fields: [{ id: 'hawkins_esq', type: 'checkbox' }, { id: 'hawkins_dir', type: 'checkbox' }] },
+                        { id: 'job', label: 'Jobe (Supraespinhal)', fields: [{ id: 'job_esq', type: 'checkbox' }, { id: 'job_dir', type: 'checkbox' }] },
+                        { id: 'patte', label: 'Patte (Infraespinhal)', fields: [{ id: 'patte_esq', type: 'checkbox' }, { id: 'patte_dir', type: 'checkbox' }] },
+                        { id: 'gerber', label: 'Gerber (Subescapular)', fields: [{ id: 'gerber_esq', type: 'checkbox' }, { id: 'gerber_dir', type: 'checkbox' }] },
+                        { id: 'speed', label: 'Speed (Bíceps)', fields: [{ id: 'speed_esq', type: 'checkbox' }, { id: 'speed_dir', type: 'checkbox' }] },
+                        { id: 'apreensao', label: 'Apreensão (Instabilidade)', fields: [{ id: 'apreensao_esq', type: 'checkbox' }, { id: 'apreensao_dir', type: 'checkbox' }] }
+                    ]
+                },
+                {
+                    id: 'testes_ckcuest',
+                    title: 'Teste Funcional (CKCUEST)',
+                    type: 'table',
+                    columns: ['Teste', 'Nº de toques', 'Observação'],
+                    rows: [
+                        { id: 'ckcuest', label: 'CKCUEST', fields: [{ id: 'ckcuest_valor', type: 'number' }, { id: 'ckcuest_obs', type: 'text' }] }
+                    ]
+                },
+                {
+                    id: 'testes_fadiga',
+                    title: 'Teste de Fadiga',
+                    type: 'table',
+                    columns: ['Teste', 'Esquerdo', 'Direito'],
+                    rows: [
+                        { id: 'fadiga_serratil', label: 'Fadiga Serrátil Anterior (segundos)', fields: [{ id: 'fadiga_serratil_esq', type: 'number' }, { id: 'fadiga_serratil_dir', type: 'number' }] }
+                    ]
+                }
+            ],
+            fields: [{ id: 'testes_especiais_obs', label: 'Observações Especiais', type: 'textarea' }]
         },
         {
             id: 'palpacao_miofascial',
@@ -720,7 +656,8 @@ export const questionnairesData: Record<string, Questionnaire> = {
                 { id: 'extensores_toracicos', label: 'Extensores Torácicos', fields: [{ id: 'extensores_toracicos_esq', type: 'checkbox' }, { id: 'extensores_toracicos_dir', type: 'checkbox' }] },
                 { id: 'biceps', label: 'Bíceps', fields: [{ id: 'biceps_esq', type: 'checkbox' }, { id: 'biceps_dir', type: 'checkbox' }] },
                 { id: 'triceps', label: 'Tríceps', fields: [{ id: 'triceps_esq', type: 'checkbox' }, { id: 'triceps_dir', type: 'checkbox' }] }
-            ]
+            ],
+            fields: [{ id: 'palpacao_obs', label: 'Observações Miofasciais', type: 'textarea' }]
         },
         {
             id: 'dinamometria',
@@ -732,7 +669,8 @@ export const questionnairesData: Record<string, Questionnaire> = {
                 { id: 'rl_forca', label: 'Rotadores Laterais (RL)', fields: ['forca_rl_esq', 'forca_rl_dir', 'forca_rl_deficit'] },
                 { id: 'rm_forca', label: 'Rotadores Mediais (RM)', fields: ['forca_rm_esq', 'forca_rm_dir', 'forca_rm_deficit'] },
                 { id: 'ratio_forca', label: 'Relação RL/RM', fields: ['rl_rm_ratio_esq', 'rl_rm_ratio_dir', ''] }
-            ]
+            ],
+            fields: [{ id: 'forca_obs', label: 'Observações de Força', type: 'textarea' }]
         },
         {
             id: 'quickdash_integracao',
@@ -749,7 +687,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'diagnostico_conclusoes',
             title: 'Diagnóstico e Conclusões',
             fields: [
-                { id: 'diagnostico', label: 'Diagnóstico Sinésio-Funcional', type: 'textarea' },
+                { id: 'diagnostico', label: 'Diagnóstico Cinético Funcional', type: 'textarea' },
                 { id: 'conclusao', label: 'Metas e Conduta Terapêutica', type: 'textarea' }
             ]
         }
@@ -778,11 +716,11 @@ export const questionnairesData: Record<string, Questionnaire> = {
             type: 'table',
             columns: ['Movimento', 'Esquerdo', 'Direito'],
             rows: [
-                { id: 'adm_quadril', label: 'ADM de Quadril', fields: ['esquerdo', 'direito'] },
-                { id: 'extensao_joelho', label: 'Extensão do Joelho', fields: ['esquerdo', 'direito'] },
-                { id: 'flexao_joelho', label: 'Flexão do Joelho', fields: ['esquerdo', 'direito'] },
-                { id: 'dorsiflexao', label: 'Dorsiflexão', fields: ['esquerdo', 'direito'] },
-                { id: 'flexao_plantar', label: 'Flexão Plantar', fields: ['esquerdo', 'direito'] }
+                { id: 'adm_quadril', label: 'ADM de Quadril', fields: ['adm_quadril_esq', 'adm_quadril_dir'] },
+                { id: 'extensao_joelho', label: 'Extensão do Joelho', fields: ['ext_joelho_esq', 'ext_joelho_dir'] },
+                { id: 'flexao_joelho', label: 'Flexão do Joelho', fields: ['flex_joelho_esq', 'flex_joelho_dir'] },
+                { id: 'dorsiflexao', label: 'Dorsiflexão', fields: ['dorsi_esq', 'dorsi_dir'] },
+                { id: 'flexao_plantar', label: 'Flexão Plantar', fields: ['plantar_esq', 'plantar_dir'] }
             ]
         },
         {
@@ -800,8 +738,8 @@ export const questionnairesData: Record<string, Questionnaire> = {
             type: 'table',
             columns: ['Lado', '1ª Tentativa (seg)', '2ª Tentativa (seg)'],
             rows: [
-                { id: 'unipodal_dir', label: 'Direita', fields: ['tentativa1', 'tentativa2'] },
-                { id: 'unipodal_esq', label: 'Esquerda', fields: ['tentativa1', 'tentativa2'] }
+                { id: 'unipodal_dir', label: 'Direita', fields: ['unipodal_dir_t1', 'unipodal_dir_t2'] },
+                { id: 'unipodal_esq', label: 'Esquerda', fields: ['unipodal_esq_t1', 'unipodal_esq_t2'] }
             ]
         },
         {
@@ -1397,177 +1335,13 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'diagnostico_conclusoes',
             title: 'Diagnostico e Conclusões',
             fields: [
-                { id: 'diagnostico', label: 'Diagnostico Cinético Funcional', type: 'textarea' },
+                { id: 'diagnostico', label: 'Diagnóstico Cinético Funcional', type: 'textarea' },
                 { id: 'conclusao', label: 'Conclusões e Sugestões Terapêuticas', type: 'textarea' }
             ]
         }
     ]
   },
-  afCotovelo: {
-    id: 'afCotovelo',
-    type: 'clinical',
-    segment: 'cotovelo',
-    title: 'Avaliação Funcional de Cotovelo',
-    description: 'Protocolo clínico para avaliação de epicondilites e outras disfunções do cotovelo.',
-    sections: [
-        {
-            id: 'anamnese',
-            title: 'Anamnese',
-            fields: [
-                { id: 'queixa', label: 'Queixa Principal', type: 'textarea' },
-                { id: 'intensidade_dor', label: 'Intensidade da Dor (EVA)', type: 'range', min: 0, max: 10, step: 1 },
-                { id: 'area_dor', label: 'Área da Dor', type: 'bodyschema', image: '/img/esquema_corpo_inteiro.png' },
-                { id: 'historia', label: 'História Atual / Mecanismo de Lesão', type: 'textarea' },
-                { id: 'piora', label: 'Atividade de Piora', type: 'textarea' },
-                { id: 'alivio', label: 'Atividade de Alívio', type: 'textarea' },
-                { id: 'doencas', label: 'Doenças Associadas e Medicamentos', type: 'textarea' },
-                { id: 'exames', label: 'Exames Complementares', type: 'textarea' }
-            ]
-        },
-        {
-            id: 'inspecao_palpacao',
-            title: 'Inspeção e Palpação',
-            fields: [
-                { id: 'inspecao', label: 'Inspeção (Deformidades, Edema, Cicatrizes, Trofismo)', type: 'textarea' },
-                { id: 'perimetria_cotovelo_e', label: 'Perimetria Cotovelo Esq. (cm)', type: 'number' },
-                { id: 'perimetria_cotovelo_d', label: 'Perimetria Cotovelo Dir. (cm)', type: 'number' }
-            ]
-        },
-        {
-            id: 'palpacao_articular',
-            title: 'Palpação Articular',
-            type: 'table',
-            columns: ['Estrutura', 'Esquerdo', 'Direito'],
-            rows: [
-                { id: 'epicondilo_lateral', label: 'Epicôndilo Lateral', fields: [{ id: 'palp_epil_esq', type: 'checkbox' }, { id: 'palp_epil_dir', type: 'checkbox' }] },
-                { id: 'epicondilo_medial', label: 'Epicôndilo Medial', fields: [{ id: 'palp_epim_esq', type: 'checkbox' }, { id: 'palp_epim_dir', type: 'checkbox' }] },
-                { id: 'cabeca_radio', label: 'Cabeça do Rádio', fields: [{ id: 'palp_cradio_esq', type: 'checkbox' }, { id: 'palp_cradio_dir', type: 'checkbox' }] },
-                { id: 'olecrano', label: 'Olécrano', fields: [{ id: 'palp_olec_esq', type: 'checkbox' }, { id: 'palp_olec_dir', type: 'checkbox' }] },
-                { id: 'face_anterior_cotovelo', label: 'Face Anterior do Cotovelo', fields: [{ id: 'palp_face_ant_esq', type: 'checkbox' }, { id: 'palp_face_ant_dir', type: 'checkbox' }] },
-                { id: 'tuberoculo_bicipital', label: 'Tubérculo Bicipital', fields: [{ id: 'palp_tub_bic_esq', type: 'checkbox' }, { id: 'palp_tub_bic_dir', type: 'checkbox' }] }
-            ]
-        },
-        {
-            id: 'palpacao_miofascial',
-            title: 'Palpação Miofascial',
-            type: 'table',
-            columns: ['Músculo', 'Esquerdo', 'Direito'],
-            rows: [
-                { id: 'biceps', label: 'Bíceps Braquial', fields: [{ id: 'mio_bic_esq', type: 'checkbox' }, { id: 'mio_bic_dir', type: 'checkbox' }] },
-                { id: 'triceps', label: 'Tríceps Braquial', fields: [{ id: 'mio_tri_esq', type: 'checkbox' }, { id: 'mio_tri_dir', type: 'checkbox' }] },
-                { id: 'extensores_punho', label: 'Extensores do Punho', fields: [{ id: 'mio_ext_p_esq', type: 'checkbox' }, { id: 'mio_ext_p_dir', type: 'checkbox' }] },
-                { id: 'flexores_punho', label: 'Flexores do Punho', fields: [{ id: 'mio_flex_p_esq', type: 'checkbox' }, { id: 'mio_flex_p_dir', type: 'checkbox' }] },
-                { id: 'pronadores', label: 'Pronadores', fields: [{ id: 'mio_pro_esq', type: 'checkbox' }, { id: 'mio_pro_dir', type: 'checkbox' }] },
-                { id: 'supinadores', label: 'Supinadores', fields: [{ id: 'mio_sup_esq', type: 'checkbox' }, { id: 'mio_sup_dir', type: 'checkbox' }] }
-            ]
-        },
-        {
-            id: 'avaliacao_neurologica',
-            title: 'Avaliação Neurológica',
-            type: 'multi-table',
-            subsections: [
-                {
-                    id: 'neuro_forca',
-                    title: 'Força Muscular',
-                    type: 'table',
-                    columns: [
-                        'Miótono / Músculo', 
-                        { label: 'Esquerdo (0-5)', action: { type: 'fill', value: '5' } }, 
-                        { label: 'Direito (0-5)', action: { type: 'fill', value: '5' } }
-                    ],
-                    rows: [
-                        { id: 'c5', label: 'Flexor de Cotovelo (C5)', fields: ['c5_esq', 'c5_dir'] },
-                        { id: 'c6', label: 'Extensor de Punho (C6)', fields: ['c6_esq', 'c6_dir'] },
-                        { id: 'c7', label: 'Extensor de Cotovelo (C7)', fields: ['c7_esq', 'c7_dir'] },
-                        { id: 'c8', label: 'Flexores de Dedos (C8)', fields: ['c8_esq', 'c8_dir'] },
-                        { id: 't1', label: 'Abdutor do 5º Dedo (T1)', fields: ['t1_esq', 't1_dir'] }
-                    ]
-                },
-                {
-                    id: 'neuro_reflexos',
-                    title: 'Reflexos',
-                    type: 'table',
-                    columns: [
-                        'Reflexo', 
-                        { label: 'Esquerdo', action: { type: 'fill', value: 'Normal' } }, 
-                        { label: 'Direito', action: { type: 'fill', value: 'Normal' } }
-                    ],
-                    rows: [
-                        { id: 'bicipital', label: 'Bicipital (C5 e C6)', fields: [{ id: 'bicipital_esq', type: 'select', options: reflexOptions }, { id: 'bicipital_dir', type: 'select', options: reflexOptions }] },
-                        { id: 'tricipital', label: 'Tricipital (C7 e T1)', fields: [{ id: 'tricipital_esq', type: 'select', options: reflexOptions }, { id: 'tricipital_dir', type: 'select', options: reflexOptions }] },
-                        { id: 'estiloradial', label: 'Estiloradial (C6)', fields: [{ id: 'estiloradial_esq', type: 'select', options: reflexOptions }, { id: 'estiloradial_dir', type: 'select', options: reflexOptions }] }
-                    ]
-                }
-            ]
-        },
-        {
-            id: 'adm_cotovelo',
-            title: 'Amplitude de Movimento - Cotovelo (Graus)',
-            type: 'table',
-            columns: ['Movimento', 'Esquerdo (°)', 'Direito (°)', 'Observações'],
-            rows: [
-                { id: 'flexao_cot', label: 'Flexão', fields: ['flexao_cot_esq', 'flexao_cot_dir', 'flexao_cot_obs'] },
-                { id: 'extensao_cot', label: 'Extensão', fields: ['extensao_cot_esq', 'extensao_cot_dir', 'extensao_cot_obs'] },
-                { id: 'pronacao', label: 'Pronação', fields: ['pronacao_esq', 'pronacao_dir', 'pronacao_obs'] },
-                { id: 'supinacao', label: 'Supinação', fields: ['supinacao_esq', 'supinacao_dir', 'supinacao_obs'] }
-            ]
-        },
-        {
-            id: 'testes_especiais',
-            title: 'Testes Especiais',
-            type: 'table',
-            columns: ['Teste', 'Esquerdo', 'Direito'],
-            rows: [
-                { id: 'cozen', label: 'Teste de Cozen (Epicondilite Lateral)', fields: [{ id: 'test_cozen_esq', type: 'checkbox' }, { id: 'test_cozen_dir', type: 'checkbox' }] },
-                { id: 'mill', label: 'Teste de Mill (Epicondilite Lateral)', fields: [{ id: 'test_mill_esq', type: 'checkbox' }, { id: 'test_mill_dir', type: 'checkbox' }] },
-                { id: 'epicondilite_medial', label: "Teste Epicondilite Medial (Golfer's Elbow)", fields: [{ id: 'test_epim_esq', type: 'checkbox' }, { id: 'test_epim_dir', type: 'checkbox' }] },
-                { id: 'valgo_stress', label: 'Teste de Valgo (Ligamento Colateral Medial)', fields: [{ id: 'test_valgo_esq', type: 'checkbox' }, { id: 'test_valgo_dir', type: 'checkbox' }] },
-                { id: 'varo_stress', label: 'Teste de Varo (Ligamento Colateral Lateral)', fields: [{ id: 'test_varo_esq', type: 'checkbox' }, { id: 'test_varo_dir', type: 'checkbox' }] },
-                { id: 'tinel_cotovelo', label: 'Sinal de Tinel (N. Ulnar)', fields: [{ id: 'test_tinelc_esq', type: 'checkbox' }, { id: 'test_tinelc_dir', type: 'checkbox' }] }
-            ]
-        },
-        {
-            id: 'testes_neurais',
-            title: 'Teste Neural',
-            type: 'table',
-            columns: ['Nervo', 'Esquerdo', 'Direito'],
-            rows: [
-                { id: 'mediano', label: 'Mediano (ULNT1)', fields: [{ id: 'neural_med_esq', type: 'checkbox' }, { id: 'neural_med_dir', type: 'checkbox' }] },
-                { id: 'ulnar', label: 'Ulnar (ULNT4)', fields: [{ id: 'neural_uln_esq', type: 'checkbox' }, { id: 'neural_uln_dir', type: 'checkbox' }] },
-                { id: 'radial', label: 'Radial (ULNT2b)', fields: [{ id: 'neural_rad_esq', type: 'checkbox' }, { id: 'neural_rad_dir', type: 'checkbox' }] }
-            ]
-        },
-        {
-            id: 'diagnostico_conclusoes',
-            title: 'Diagnóstico e Conclusões',
-            fields: [
-                { id: 'diagnostico', label: 'Diagnóstico Cinético Funcional', type: 'textarea' },
-                { id: 'conclusao', label: 'Conclusões e Sugestões Terapêuticas', type: 'textarea' }
-            ]
-        },
-        {
-            id: 'quickdash_integracao',
-            title: 'Quick DASH (Braço, Ombro e Mão)',
-            fields: [
-                { id: 'quickdash_novo', label: 'Preencher novo Questionário Quick DASH', type: 'button' },
-                { id: 'quickdash_score', label: 'Resultado/Score Quick DASH Atual', type: 'text' }
-            ]
-        },
-        {
-            id: 'forca_preensao',
-            title: 'Força de Preensão e Pinça (kgF)',
-            type: 'table',
-            columns: ['Teste', 'Esquerdo', 'Direito', '% Déficit'],
-            rows: [
-                { id: 'preensao_palmar', label: 'Preensão Palmar (Dinamômetro)', fields: ['preensao_esq', 'preensao_dir', 'preensao_def'] },
-                { id: 'pinca_polpa', label: 'Pinça Polpa a Polpa', fields: ['polpa_esq', 'polpa_dir', 'polpa_def'] },
-                { id: 'pinca_lateral', label: 'Pinça Lateral (Chave)', fields: ['lateral_esq', 'lateral_dir', 'lateral_def'] },
-                { id: 'pinca_tripode', label: 'Pinça Trípode (3 dedos)', fields: ['tripode_esq', 'tripode_dir', 'tripode_def'] }
-            ]
-        }
-    ],
-    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
-  },
+
   afMao: {
     id: 'afMao',
     type: 'clinical',
@@ -1591,11 +1365,20 @@ export const questionnairesData: Record<string, Questionnaire> = {
         },
         {
             id: 'inspecao_palpacao',
-            title: 'Inspeção e Palpação',
+            title: 'Inspeção',
             fields: [
-                { id: 'inspecao', label: 'Inspeção (Deformidades, Edema, Cicatrizes, Trofismo)', type: 'textarea' },
-                { id: 'perimetria_punho_e', label: 'Perimetria Punho Esq. (cm)', type: 'number' },
-                { id: 'perimetria_punho_d', label: 'Perimetria Punho Dir. (cm)', type: 'number' }
+                { id: 'inspecao', label: 'Inspeção (Deformidades, Edema, Cicatrizes, Trofismo)', type: 'textarea' }
+            ]
+        },
+        {
+            id: 'perimetria',
+            title: 'Perimetria (cm)',
+            type: 'table',
+            columns: ['Local', 'Esquerdo', 'Direito', '% Déficit'],
+            rows: [
+                { id: 'p_ant_sup', label: 'Antebraço Superior', fields: ['peri_ant_sup_esq', 'peri_ant_sup_dir', 'peri_ant_sup_def'] },
+                { id: 'p_ant_inf', label: 'Antebraço Inferior', fields: ['peri_ant_inf_esq', 'peri_ant_inf_dir', 'peri_ant_inf_def'] },
+                { id: 'p_punho', label: 'Punho', fields: ['peri_punho_esq', 'peri_punho_dir', 'peri_punho_def'] }
             ]
         },
         {
@@ -1622,44 +1405,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
                 { id: 'hipotenar', label: 'Musculatura Hipotênar', fields: [{ id: 'mio_hipo_esq', type: 'checkbox' }, { id: 'mio_hipo_dir', type: 'checkbox' }] }
             ]
         },
-        {
-            id: 'avaliacao_neurologica',
-            title: 'Avaliação Neurológica',
-            type: 'multi-table',
-            subsections: [
-                {
-                    id: 'neuro_forca',
-                    title: 'Força Muscular',
-                    type: 'table',
-                    columns: [
-                        'Miótono / Músculo', 
-                        { label: 'Esquerdo (0-5)', action: { type: 'fill', value: '5' } }, 
-                        { label: 'Direito (0-5)', action: { type: 'fill', value: '5' } }
-                    ],
-                    rows: [
-                        { id: 'c5', label: 'Flexor de Cotovelo (C5)', fields: ['c5_esq', 'c5_dir'] },
-                        { id: 'c6', label: 'Extensor de Punho (C6)', fields: ['c6_esq', 'c6_dir'] },
-                        { id: 'c7', label: 'Extensor de Cotovelo (C7)', fields: ['c7_esq', 'c7_dir'] },
-                        { id: 'c8', label: 'Flexores de Dedos (C8)', fields: ['c8_esq', 'c8_dir'] },
-                        { id: 't1', label: 'Abdutor do 5º Dedo (T1)', fields: ['t1_esq', 't1_dir'] }
-                    ]
-                },
-                {
-                    id: 'neuro_reflexos',
-                    title: 'Reflexos',
-                    type: 'table',
-                    columns: [
-                        'Reflexo', 
-                        { label: 'Esquerdo', action: { type: 'fill', value: 'Normal' } }, 
-                        { label: 'Direito', action: { type: 'fill', value: 'Normal' } }
-                    ],
-                    rows: [
-                        { id: 'reflex_mediano', label: 'Mediano (C6)', fields: [{ id: 'ref_med_esq', type: 'select', options: reflexOptions }, { id: 'ref_med_dir', type: 'select', options: reflexOptions }] },
-                        { id: 'reflex_ulnar', label: 'Ulnar (C8)', fields: [{ id: 'ref_uln_esq', type: 'select', options: reflexOptions }, { id: 'ref_uln_dir', type: 'select', options: reflexOptions }] }
-                    ]
-                }
-            ]
-        },
+
         {
             id: 'adm_punho',
             title: 'Amplitude de Movimento - Punho (Graus)',

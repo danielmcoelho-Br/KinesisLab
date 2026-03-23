@@ -36,7 +36,7 @@ export default function LoginPage() {
       <main className="login-card">
         <header className="login-header">
           <div className="logo-container">
-            <div className="logo-image-wrapper">
+            <div className="logo-image-wrapper logo-blend-multiply">
               <Image 
                   src="/logo-kinesis.png" 
                   alt="KinesisLab Logo" 

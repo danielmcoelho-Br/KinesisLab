@@ -214,9 +214,24 @@ body {
   right: 0;
   bottom: 0;
   z-index: -1;
-  background: radial-gradient(circle at 0% 0%, var(--primary-light) 0%, transparent 40%),
-              radial-gradient(circle at 100% 100%, var(--accent) 0%, transparent 40%);
+  background: 
+    radial-gradient(at 0% 0%, var(--primary-light) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, var(--accent) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, var(--primary-light) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, var(--accent) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(255, 255, 255, 0.8) 0px, transparent 50%);
   background-color: var(--bg);
+  animation: backgroundMove 20s ease infinite alternate;
+}
+
+@keyframes backgroundMove {
+  0% { background-position: 0% 0%, 100% 100%, 0% 100%, 100% 0%, 50% 50%; }
+  100% { background-position: 10% 10%, 90% 90%, 10% 90%, 90% 10%, 45% 45%; }
+}
+
+.logo-blend-multiply {
+  mix-blend-mode: multiply;
+  filter: contrast(1.1);
 }
 
 /* Responsive Utilities */

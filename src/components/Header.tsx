@@ -41,7 +41,7 @@ export default function Header({ showBackButton = false }: HeaderProps) {
           onClick={() => router.push('/dashboard')}
           className="logo-section"
         >
-          <div className="logo-wrapper">
+          <div className="logo-wrapper logo-blend-multiply">
               <Image 
                   src="/logo-kinesis.png" 
                   alt="KinesisLab Logo" 

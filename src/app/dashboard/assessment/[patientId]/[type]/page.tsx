@@ -135,50 +135,48 @@ const Bar = ({ value, maxValue, label, color, subLabel, unit = 's', isPrint = fa
     );
 };
 
-const MuscleEnduranceChart = ({ 
+const AssessmentHistoryChart = ({ 
     currentValue, 
-    gender, 
-    age, 
     fieldId,
+    chartTitle,
+    unit = 'seg',
     history = [], 
-    isPrint = false 
+    isPrint = false,
+    referenceValue,
+    referenceLabel,
+    assessmentId
 }: { 
     currentValue: number, 
-    gender?: string, 
-    age?: number, 
     fieldId: string,
+    chartTitle: string,
+    unit?: string,
     history?: any[], 
-    isPrint?: boolean 
+    isPrint?: boolean,
+    referenceValue?: number,
+    referenceLabel?: string,
+    assessmentId?: string | null
 }) => {
-    const validHistory = history.filter(h => Number(h.answers?.[fieldId]) > 0);
+    // Filter history for the specific field, score > 0, and NOT the current assessment being viewed
+    const validHistory = history.filter(h => Number(h.answers?.[fieldId]) > 0 && h.id !== assessmentId);
 
     if (!currentValue && validHistory.length === 0) return null;
 
-    let type = 'neck_flexor';
-    let chartTitle = 'Comparativo de Resistência (Flexores Cervicais)';
-    
-    if (fieldId === 'flexao_60') {
-        type = 'lumbar_flexor';
-        chartTitle = 'Resistência Flexora (Flexão 60°)';
-    } else if (fieldId === 'sorensen') {
-        type = 'sorensen';
-        chartTitle = 'Resistência Extensora (Sorensen)';
-    } else if (fieldId === 'resist_extensora') {
-        chartTitle = 'Comparativo de Resistência (Extensores Cervicais)';
-        // No normative for neck extensors yet
-        type = 'none';
-    }
-
-    const normalizedGender = gender?.toLowerCase().includes('fem') || gender?.toLowerCase() === 'f' ? 'women' : 'men';
-    const norm = type !== 'none' ? NORMATIVE_DATA[type]?.[normalizedGender]?.find(
-        (n: any) => age && age >= n.ageRange[0] && age <= n.ageRange[1]
-    ) : null;
-
     const maxValue = Math.max(
         currentValue || 0,
-        norm?.mean || 0,
+        referenceValue || 0,
         ...validHistory.map(h => Number(h.answers?.[fieldId]) || 0)
     ) * 1.2 || 60;
+    
+    const validHistoryData = validHistory.map(h => ({
+        id: h.id,
+        value: Number(h.answers?.[fieldId]) || 0,
+        date: new Date(h.created_at).toLocaleDateString('pt-BR'),
+        timestamp: new Date(h.created_at).getTime()
+    })).sort((a, b) => a.timestamp - b.timestamp);
+
+    const totalBars = validHistoryData.length + (currentValue ? 1 : 0) + (referenceValue ? 1 : 0);
+    const chartMaxWidth = isPrint ? `${Math.min(100, Math.max(33, totalBars * 12))}%` : '100%';
+
 
 
     return (
@@ -187,34 +185,55 @@ const MuscleEnduranceChart = ({
                 <ImageIcon size={18} /> {chartTitle}
             </h4>
             <div className="chart-scroll-wrapper">
-                <div className="chart-bars-container">
-                    {norm && (
-                        <Bar 
-                            value={norm.mean} 
-                            maxValue={maxValue}
-                            label="Normalidade" 
-                            color="#94a3b8" 
-                            isPrint={isPrint}
-                            subLabel={`${gender === 'Feminino' ? 'Mulheres' : 'Homens'} ${norm.ageRange[0]}-${norm.ageRange[1]}a`} 
-                        />
+                <div className="chart-bars-container" style={{ position: 'relative' }}>
+                    {referenceValue && (
+                        <div style={{ 
+                            position: 'absolute', 
+                            left: 0, 
+                            right: 0, 
+                            bottom: `calc(${(referenceValue / (maxValue || 1)) * 150}px + 30px)`, // 30px is roughly the label height offset if any, but Bar uses bottom alignment
+                            borderTop: '2px dashed #94a3b8',
+                            zIndex: 5,
+                            pointerEvents: 'none'
+                        }}>
+                            <span style={{ 
+                                position: 'absolute', 
+                                top: '-1.1rem', 
+                                right: '10px', 
+                                fontSize: '0.65rem', 
+                                fontWeight: '800', 
+                                color: '#64748b',
+                                backgroundColor: 'rgba(255,255,255,0.9)',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                whiteSpace: 'nowrap'
+                            }}>
+                                {referenceLabel || 'Ref'}: {referenceValue}{unit}
+                            </span>
+                        </div>
                     )}
                     
-                    {(() => {
-                        const historyData = validHistory.map(h => ({
-                            id: h.id,
-                            value: Number(h.answers?.[fieldId]) || 0,
-                            date: new Date(h.created_at).toLocaleDateString('pt-BR'),
-                            timestamp: new Date(h.created_at).getTime()
-                        })).sort((a, b) => a.timestamp - b.timestamp);
+                    {referenceValue && (
+                        <Bar 
+                            value={referenceValue} 
+                            maxValue={maxValue}
+                            label="Referência" 
+                            unit={unit}
+                            color="#cbd5e1" 
+                            isPrint={isPrint}
+                        />
+                    )}
 
+                    {(() => {
                         // Count occurrences per date to add suffixes
                         const dateCounts = new Map();
-                        historyData.forEach(item => {
+                        validHistoryData.forEach(item => {
                             dateCounts.set(item.date, (dateCounts.get(item.date) || 0) + 1);
                         });
 
                         const currentCounts = new Map();
-                        return historyData.map((d: any) => {
+                        return validHistoryData.map((d: any) => {
                             const count = (currentCounts.get(d.date) || 0) + 1;
                             currentCounts.set(d.date, count);
                             const hasMultiple = dateCounts.get(d.date) > 1;
@@ -227,6 +246,7 @@ const MuscleEnduranceChart = ({
                                     maxValue={maxValue}
                                     label={`Avaliação`} 
                                     subLabel={displayDate}
+                                    unit={unit}
                                     color={isPrint ? "#fee2e2" : "var(--primary-light)"} 
                                     isPrint={isPrint}
                                 />
@@ -237,7 +257,8 @@ const MuscleEnduranceChart = ({
                     <Bar 
                         value={Number(currentValue) || 0} 
                         maxValue={maxValue}
-                        label="Teste Atual" 
+                        label={new Date().toLocaleDateString('pt-BR')} 
+                        unit={unit}
                         color={isPrint ? "#8B0000" : "var(--primary)"} 
                         isPrint={isPrint}
                     />
@@ -245,18 +266,19 @@ const MuscleEnduranceChart = ({
             </div>
             <style jsx>{`
                 .chart-container {
-                    margin-top: 1.5rem;
-                    margin-bottom: 2rem;
-                    padding: 1.5rem;
+                    margin-top: 1rem;
+                    margin-bottom: 1.5rem;
+                    padding: 1.25rem;
                     background-color: white;
                     border-radius: 1rem;
                     border: 1px solid var(--border);
                     box-shadow: ${isPrint ? 'none' : 'var(--shadow-sm)'};
+                    max-width: ${chartMaxWidth};
                 }
                 .chart-title {
-                    font-size: 0.9rem;
+                    font-size: 0.85rem;
                     font-weight: 700;
-                    margin-bottom: 1.5rem;
+                    margin-bottom: 1.25rem;
                     color: var(--secondary);
                     display: flex;
                     align-items: center;
@@ -268,17 +290,14 @@ const MuscleEnduranceChart = ({
                 }
                 .chart-bars-container {
                     display: flex;
-                    gap: 1rem;
+                    gap: 0.75rem;
                     align-items: flex-end;
-                    min-height: 200px;
-                    min-width: 300px;
+                    min-height: 180px;
+                    min-width: 250px;
                 }
                 @media (max-width: 600px) {
                     .chart-container {
                         padding: 1rem;
-                    }
-                    .chart-bars-container {
-                        min-width: 450px;
                     }
                 }
             `}</style>
@@ -486,7 +505,7 @@ const ImageUpload = memo(({
                     {images.map((img, idx) => (
                         <div 
                             key={idx}
-                            style={{ position: 'relative', width: isTable ? '60px' : '120px', height: isTable ? '60px' : '90px', cursor: 'zoom-in' }}
+                            style={{ position: 'relative', width: isTable ? '60px' : '360px', height: isTable ? '60px' : '270px', cursor: 'zoom-in' }}
                             onClick={() => onImageClick(img)}
                         >
                             <img 
@@ -673,10 +692,10 @@ const DataTable = memo(({
     const reflexOptions = ['Normal', 'Aumentado', 'Diminuído', 'Abolido'];
     
     return (
-        <div className="table-wrapper" style={{ overflowX: 'auto', marginBottom: '2rem' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--border)', borderRadius: '0.5rem', overflow: 'hidden' }}>
+        <div className="table-wrapper print-avoid-break" style={{ overflowX: 'auto', marginBottom: '2rem', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--border)', borderRadius: '1rem', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
                 <thead>
-                    <tr style={{ backgroundColor: 'var(--secondary)', color: 'white' }}>
+                    <tr style={{ backgroundColor: 'var(--primary)', color: 'white' }}>
                         {section.columns?.map((col: any, idx: number) => {
                             const label = typeof col === 'string' ? col : col.label;
                             const action = typeof col === 'string' ? null : col.action;
@@ -686,7 +705,7 @@ const DataTable = memo(({
                                     const f = r.fields[idx - 1];
                                     const fid = typeof f === 'string' ? f : f?.id;
                                     const val = answers[fid];
-                                    return val && val !== "" && val !== "0" && val !== false && (!Array.isArray(val) || val.length > 0);
+                                    return val !== undefined && val !== '' && val !== null && val !== '0' && val !== 0 && (!Array.isArray(val) || val.length > 0);
                                 });
                                 if (!hasAnyData) return null;
                             }
@@ -717,13 +736,14 @@ const DataTable = memo(({
                     </tr>
                 </thead>
                 <tbody>
-                    {section.rows?.map((row: any, rIdx: number) => {
-                        const hasRowData = row.fields.some((f: any) => {
-                            const val = answers[typeof f === 'string' ? f : f.id];
-                            return val && val !== "" && val !== "0" && val !== false;
+                    {section.rows?.filter((row: any) => {
+                        if (!isPrint) return true;
+                        return row.fields.some((f: any) => {
+                            const fid = typeof f === 'string' ? f : f.id;
+                            const val = answers[fid];
+                            return val !== undefined && val !== '' && val !== null && val !== '0' && val !== 0;
                         });
-                        if (isPrint && !hasRowData) return null;
-
+                    }).map((row: any, rIdx: number) => {
                         return (
                             <tr key={row.id} style={{ borderBottom: '1px solid var(--border)', backgroundColor: rIdx % 2 === 0 ? 'white' : 'var(--bg-secondary)', transition: 'background-color 0.2s' }}>
                                 <td style={{ padding: '0.75rem 1rem', fontWeight: '600', fontSize: '0.85rem', color: 'var(--secondary)', width: '35%' }}>
@@ -742,7 +762,7 @@ const DataTable = memo(({
                                                 const f = r.fields[fIdx];
                                                 const fid = typeof f === 'string' ? f : f.id;
                                                 const val = answers[fid];
-                                                return val && val !== "" && val !== "0" && val !== false && (!Array.isArray(val) || val.length > 0);
+                                                return val !== undefined && val !== '' && val !== null && val !== '0' && val !== 0 && (!Array.isArray(val) || val.length > 0);
                                             });
                                             if (!hasAnyData) return null;
                                         }
@@ -785,7 +805,8 @@ const FormField = memo(({
     patientId, 
     type, 
     assessmentId,
-    router
+    router,
+    isPrint
 }: { 
     field: SectionField, 
     value: any, 
@@ -798,8 +819,11 @@ const FormField = memo(({
     patientId: string,
     type: string,
     assessmentId: string | null,
-    router: any
+    router: any,
+    isPrint: boolean
 }) => {
+    if (isPrint && (!value || value === '' || value === '0' || value === false || (Array.isArray(value) && value.length === 0))) return null;
+
     const commonProps = {
         disabled: !isEditing,
         className: `form-input ${!isEditing ? 'opacity-70 cursor-not-allowed' : ''}`
@@ -822,7 +846,7 @@ const FormField = memo(({
         );
       case 'range':
         return (
-          <div key={field.id} className="form-group">
+          <div key={field.id} className="form-group" style={{ gridColumn: '1 / -1' }}>
             <div style={{ position: 'relative', width: '100%', height: '40px', marginBottom: '1rem' }}>
                 <span style={{ 
                     position: 'absolute', 
@@ -891,15 +915,50 @@ const FormField = memo(({
               placeholder="0"
               style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)' }}
             />
-            {['resist_flexora', 'resist_extensora', 'flexao_60', 'sorensen'].includes(field.id) && (
-                <MuscleEnduranceChart 
-                    fieldId={field.id}
-                    currentValue={Number(value) || 0}
-                    gender={patientGender}
-                    age={patientAge}
-                    history={patientAssessments}
-                />
-            )}
+            {(() => {
+                const isForce = field.id.includes('forca_') || field.id.includes('resist_');
+                const isPerimetry = field.id.includes('perimetria_');
+                const isEndurance = ['flexao_60', 'sorensen'].includes(field.id);
+                const isGeriatriaTest = ['pes_juntos', 'semi_tandem', 'tandem', 'toques_tempo', 'tug', 'vel_marcha', 'sentar_levantar', 'preensao'].includes(field.id) || 
+                                       field.id.startsWith('unipodal_');
+                
+                if (isForce || isPerimetry || isEndurance || isGeriatriaTest) {
+                    let title = field.label.split('(')[0].trim();
+                    let unit = isForce ? 'kgF' : isPerimetry ? 'cm' : 'seg';
+                    if (field.id === 'vel_marcha') unit = 'm/s';
+                    if (field.id === 'preensao') unit = 'kg';
+
+                    let referenceValue: number | undefined;
+                    let referenceLabel = 'Referência';
+
+                    if (field.id === 'pes_juntos') referenceValue = 30;
+                    if (field.id === 'semi_tandem') referenceValue = 30;
+                    if (field.id === 'tandem') referenceValue = 17.56;
+                    if (field.id.startsWith('unipodal_')) referenceValue = 10.43;
+                    if (field.id === 'toques_tempo') referenceValue = 10;
+                    if (field.id === 'tug') referenceValue = 12.47;
+                    if (field.id === 'vel_marcha') referenceValue = 0.8;
+                    if (field.id === 'preensao') {
+                        referenceValue = (patientGender || "").toLowerCase() === 'masculino' ? 27 : 16;
+                        referenceLabel = `Ref (${(patientGender || "").toLowerCase() === 'masculino' ? 'Masc' : 'Fem'})`;
+                    }
+                    
+                    return (
+                        <AssessmentHistoryChart 
+                            fieldId={field.id}
+                            currentValue={Number(value) || 0}
+                            chartTitle={`Evolução: ${title}`}
+                            unit={unit}
+                            history={patientAssessments}
+                            isPrint={isPrint}
+                            referenceValue={referenceValue}
+                            referenceLabel={referenceLabel}
+                            assessmentId={assessmentId}
+                        />
+                    );
+                }
+                return null;
+            })()}
           </div>
         );
       case 'select':
@@ -923,12 +982,22 @@ const FormField = memo(({
         return (
             <div key={field.id} className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
-                <div style={{ pointerEvents: isEditing ? 'auto' : 'none', opacity: isEditing ? 1 : 0.8 }}>
+                <div 
+                    key={field.id}
+                    style={{ 
+                        pointerEvents: isEditing ? 'auto' : 'none',
+                        opacity: isEditing ? 1 : 0.8,
+                        transform: (isPrint && type === 'afGeriatria' && !isEditing) ? 'scale(0.5)' : 'none',
+                        transformOrigin: 'top left',
+                        width: (isPrint && type === 'afGeriatria' && !isEditing) ? '50%' : '100%',
+                        height: (isPrint && type === 'afGeriatria' && !isEditing) ? 'auto' : 'auto',
+                        marginBottom: (isPrint && type === 'afGeriatria' && !isEditing) ? '-250px' : '0' // Offset scale empty space
+                    }}
+                >
                     <BodySchema 
-                        key={field.id}
-                        image={field.image || ""} 
                         value={value} 
                         onChange={(val) => handleInputChange(field.id, val)} 
+                        readOnly={!isEditing}
                     />
                 </div>
             </div>
@@ -957,6 +1026,7 @@ const FormField = memo(({
                         onChange={(val) => handleInputChange(field.id, val)} 
                         colors={field.colors}
                         mode="stamp"
+                        readOnly={!isEditing}
                     />
                 </div>
             </div>
@@ -1068,15 +1138,55 @@ const FormSection = memo(({
                 {section.title}
             </h3>
 
+            {section.id === 'quickdash_integracao' && (
+                <div style={{ marginBottom: '2rem' }}>
+                    <FunctionalHistoryChart 
+                        type="quickdash"
+                        currentScore={Number(String(answers['quickdash_score'] || answers['quickdash_score_previo'] || '0').replace('%', '')) || 0}
+                        history={patientAssessments}
+                        isEmbedded={true}
+                        assessmentId={assessmentId}
+                        isPrint={isPrint}
+                    />
+                </div>
+            )}
+
             {section.type === 'table' ? (
-                <DataTable 
-                    section={section} 
-                    answers={answers} 
-                    isEditing={isEditing} 
-                    handleInputChange={handleInputChange} 
-                    onImageClick={onImageClick}
-                    isPrint={isPrint}
-                />
+                <>
+                    <DataTable 
+                        section={section} 
+                        answers={answers} 
+                        isEditing={isEditing} 
+                        handleInputChange={handleInputChange} 
+                        onImageClick={onImageClick}
+                        isPrint={isPrint}
+                    />
+                    {['perimetria', 'forca'].includes(section.id) && (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '1rem' }}>
+                            {section.rows?.map((row: any) => (
+                                row.fields.map((f: any, fidx: number) => {
+                                    const fid = typeof f === 'string' ? f : f.id;
+                                    const col = section.columns![fidx + 1];
+                                    const colLabel = typeof col === 'string' ? col : col.label;
+                                    if (colLabel.includes('Esquerdo') || colLabel.includes('Direito')) {
+                                        return (
+                                            <AssessmentHistoryChart 
+                                                key={fid}
+                                                fieldId={fid}
+                                                currentValue={Number(answers[fid]) || 0}
+                                                chartTitle={`Evolução: ${row.label} (${colLabel})`}
+                                                unit={section.id === 'forca' ? 'kgF' : 'cm'}
+                                                history={patientAssessments}
+                                                isPrint={isPrint}
+                                            />
+                                        );
+                                    }
+                                    return null;
+                                })
+                            ))}
+                        </div>
+                    )}
+                </>
             ) : section.type === 'multi-table' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                     {section.subsections?.map((sub: any, sidx: number) => (
@@ -1092,7 +1202,7 @@ const FormSection = memo(({
                                     isPrint={isPrint}
                                 />
                             ) : (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: sub.fields?.some((f: any) => f.type === 'image-upload') ? '1fr 1fr' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
                                     {sub.fields?.map((field: any) => (
                                         <FormField 
                                             key={field.id}
@@ -1108,6 +1218,7 @@ const FormSection = memo(({
                                             type={type}
                                             assessmentId={assessmentId}
                                             router={router}
+                                            isPrint={isPrint}
                                         />
                                     ))}
                                 </div>
@@ -1116,8 +1227,13 @@ const FormSection = memo(({
                     ))}
                 </div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                    {section.fields?.map((field: any) => (
+                <div style={{ display: 'grid', gridTemplateColumns: section.fields?.some((f: any) => f.type === 'image-upload') ? '1fr 1fr' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                    {section.fields?.filter(f => {
+                        if (!isPrint) return true;
+                        if (f.type === 'bodyschema' || f.type === 'freecanvas' || f.type === 'angle_measurement') return true;
+                        const val = answers[f.id];
+                        return val !== undefined && val !== '' && val !== null;
+                    }).map((field: any) => (
                         <FormField 
                             key={field.id}
                             field={field}
@@ -1132,6 +1248,7 @@ const FormSection = memo(({
                             type={type}
                             assessmentId={assessmentId}
                             router={router}
+                            isPrint={isPrint}
                         />
                     ))}
                 </div>
@@ -1622,13 +1739,6 @@ function AssessmentContent() {
 
     return (
       <div style={{ minHeight: '100vh', padding: '2rem', backgroundColor: 'white' }}>
-        <div className="no-print print:hidden" style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-            <div style={{ backgroundColor: 'var(--primary-light)', padding: '1.5rem', borderRadius: '1rem', textAlign: 'center', maxWidth: '600px', width: '100%' }}>
-                <CheckCircle size={48} style={{ color: 'var(--primary)', margin: '0 auto 1rem auto' }} />
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '0.5rem' }}>Avaliação Concluída!</h2>
-                <p style={{ color: 'var(--text)' }}>Abaixo estão os dados registrados prontos para conferência ou impressão.</p>
-            </div>
-        </div>
 
         {renderFullPrintView()}
 
@@ -1677,22 +1787,38 @@ function AssessmentContent() {
         </div>
 
         {items.map((item, idx) => (
-            <FormSection 
-                key={idx}
-                section={item as Section}
-                isPrint={true}
-                answers={answers}
-                handleInputChange={handleInputChange}
-                isEditing={false}
-                onImageClick={setSelectedImage}
-                patientGender={patientGender}
-                patientAge={patientAge}
-                patientAssessments={patientAssessments}
-                assessmentId={assessmentId}
-                patientId={patientId}
-                type={type}
-                router={router}
-            />
+            isClinical ? (
+                <FormSection 
+                    key={idx}
+                    section={item as Section}
+                    isPrint={true}
+                    answers={answers}
+                    handleInputChange={handleInputChange}
+                    isEditing={false}
+                    onImageClick={setSelectedImage}
+                    patientGender={patientGender}
+                    patientAge={patientAge}
+                    patientAssessments={patientAssessments}
+                    assessmentId={assessmentId}
+                    patientId={patientId}
+                    type={type}
+                    router={router}
+                />
+            ) : (
+                !(item as any).isInstruction && (
+                <div key={idx} className="print-section" style={{ marginBottom: '1.5rem', padding: '1.5rem', border: '1px solid var(--border)', borderRadius: '1rem', backgroundColor: 'var(--bg-secondary)', pageBreakInside: 'avoid' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--secondary)', marginBottom: '1rem' }}>
+                        {(item as any).text}
+                    </div>
+                    <div style={{ fontSize: '1.1rem', color: 'var(--primary)', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)', fontWeight: '800' }}>
+                        {answers[idx] !== undefined 
+                            ? ((item as any).options?.find((o: any) => o.value === answers[idx])?.label || 'Não respondido')
+                            : 'Não respondido'
+                        }
+                    </div>
+                </div>
+                )
+            )
         ))}
 
         {isFinished && !isClinical && (
@@ -1846,21 +1972,30 @@ function AssessmentContent() {
                             router={router}
                         />
                     ) : (
-                        <FormSection 
-                            section={currentItem as any}
-                            answers={answers}
-                            handleInputChange={handleInputChange}
-                            isEditing={isEditing}
-                            onImageClick={setSelectedImage}
-                            patientGender={patientGender}
-                            patientAge={patientAge}
-                            patientAssessments={patientAssessments}
-                            assessmentId={assessmentId}
-                            patientId={patientId}
-                            isPrint={false}
-                            type={type}
-                            router={router}
-                        />
+                        <div className="section-container" style={{ marginBottom: '2.5rem' }}>
+                            <h3 className="functional-title">
+                                {(currentItem as any).text}
+                            </h3>
+                            {!(currentItem as any).isInstruction && (
+                                <div className="options-grid">
+                                    {(currentItem as any).options?.map((opt: any) => {
+                                        const isSelected = answers[currentIdx] === opt.value;
+                                        return (
+                                            <button
+                                                key={opt.value}
+                                                onClick={() => handleSelect(opt.value)}
+                                                className={`option-button ${isSelected ? 'selected' : ''}`}
+                                            >
+                                                <span className="option-label">{opt.label}</span>
+                                                <div className="radio-circle">
+                                                    {isSelected && <div className="radio-inner" />}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     )}
 
                     <div className="navigation-footer">

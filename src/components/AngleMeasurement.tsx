@@ -1,32 +1,39 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, RotateCcw, Target, Maximize2 } from "lucide-react";
+import { Undo, Trash2, Copy, ImagePlus, RotateCcw, Target, Download } from "lucide-react";
+import { toast } from "sonner";
 
 interface Point {
     x: number;
     y: number;
 }
 
+interface Measurement {
+    id: string;
+    points: Point[];
+    angle: number | null;
+    color: string;
+}
+
 interface AngleMeasurementProps {
-    value?: string; // This will store the base64 of the image WITH drawing or just points? 
-    // Usually better to store points and base image, but let's go with the "screenshot" approach for simplicity in this app's architecture.
+    value?: string;
     onChange: (value: string) => void;
 }
 
 export default function AngleMeasurement({ value, onChange }: AngleMeasurementProps) {
     const [image, setImage] = useState<string | null>(null);
-    const [points, setPoints] = useState<Point[]>([]);
-    const [angle, setAngle] = useState<number | null>(null);
+    const [measurements, setMeasurements] = useState<Measurement[]>([]);
+    const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Initial load
+    // Initial load - only set if we don't have an image loaded already
     useEffect(() => {
-        if (value && value.startsWith("data:image")) {
+        if (value && value.startsWith("data:image") && !image) {
             setImage(value);
         }
-    }, [value]);
+    }, [value, image]);
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -34,33 +41,23 @@ export default function AngleMeasurement({ value, onChange }: AngleMeasurementPr
         const reader = new FileReader();
         reader.onload = () => {
             setImage(reader.result as string);
-            setPoints([]);
-            setAngle(null);
+            setMeasurements([]);
+            setCurrentPoints([]);
+            setTimeout(() => {
+                if (canvasRef.current) {
+                    onChange(canvasRef.current.toDataURL());
+                }
+            }, 100);
         };
         reader.readAsDataURL(file);
-    };
-
-    const handleClick = (e: React.MouseEvent) => {
-        if (!image || points.length >= 3) return;
-
-        const rect = canvasRef.current!.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        const newPoints = [...points, { x, y }];
-        setPoints(newPoints);
-
-        if (newPoints.length === 3) {
-            calculateAngle(newPoints);
-        }
-    };
-
-    const calculateAngle = (pts: Point[]) => {
-        const [p1, p2, p3] = pts;
         
-        // Vector p2 -> p1
+        // Reset the input value so the same file can be uploaded again if needed
+        e.target.value = '';
+    };
+
+    const calculateAngleValue = (pts: Point[]): number => {
+        const [p1, p2, p3] = pts;
         const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
-        // Vector p2 -> p3
         const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
 
         const dotProduct = v1.x * v2.x + v1.y * v2.y;
@@ -68,14 +65,91 @@ export default function AngleMeasurement({ value, onChange }: AngleMeasurementPr
         const mag2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
 
         const cosTheta = dotProduct / (mag1 * mag2);
-        // Clamp to avoid NaN
         const angleRad = Math.acos(Math.max(-1, Math.min(1, cosTheta)));
         const angleDeg = (angleRad * 180) / Math.PI;
-        
-        setAngle(Math.round(angleDeg * 10) / 10);
-        
-        // After a small delay to allow state update/render, we could "save" the result
-        // But for now let's just draw on canvas
+
+        return Math.round(angleDeg * 10) / 10;
+    };
+
+    const handleClick = (e: React.MouseEvent) => {
+        if (!image) return;
+
+        const rect = canvasRef.current!.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const newPoints = [...currentPoints, { x, y }];
+        setCurrentPoints(newPoints);
+
+        if (newPoints.length === 3) {
+            const angle = calculateAngleValue(newPoints);
+            const isRed = measurements.length % 2 === 0;
+            setMeasurements(prev => [...prev, {
+                id: Date.now().toString(),
+                points: newPoints,
+                angle: angle,
+                color: isRed ? "#ff0000" : "#ff8c00" // Red or dark orange
+            }]);
+            setCurrentPoints([]);
+        }
+    };
+
+    const handleUndo = () => {
+        if (currentPoints.length > 0) {
+            // Remove last point from current unfinished angle
+            setCurrentPoints(prev => prev.slice(0, -1));
+        } else if (measurements.length > 0) {
+            // Open up the last finished angle and remove its third point
+            const lastMeasurement = measurements[measurements.length - 1];
+            setMeasurements(prev => prev.slice(0, -1));
+            // Keep the first two points
+            setCurrentPoints([lastMeasurement.points[0], lastMeasurement.points[1]]);
+        }
+    };
+
+    const handleClearMeasurements = () => {
+        if (measurements.length === 0 && currentPoints.length === 0) return;
+        if (window.confirm("Limpar apenas as medidas e manter a imagem?")) {
+            setMeasurements([]);
+            setCurrentPoints([]);
+        }
+    };
+
+    const handleClearImage = () => {
+        if (window.confirm("Deseja realmente limpar a imagem e todas as medidas?")) {
+            setImage(null);
+            setMeasurements([]);
+            setCurrentPoints([]);
+            onChange("");
+        }
+    };
+
+    const handleCopy = async () => {
+        if (!canvasRef.current) return;
+        try {
+            canvasRef.current.toBlob(async (blob) => {
+                if (blob) {
+                    await navigator.clipboard.write([
+                        new ClipboardItem({ 'image/png': blob })
+                    ]);
+                    toast.success("Imagem copiada para a área de transferência!");
+                }
+            }, 'image/png');
+        } catch (error) {
+            toast.error("Erro ao copiar imagem. Verifique as permissões do navegador.");
+        }
+    };
+
+    const handleDownload = () => {
+        if (!canvasRef.current) return;
+        const dataUrl = canvasRef.current.toDataURL("image/png");
+        const link = document.createElement("a");
+        link.download = `analise_angular_${new Date().getTime()}.png`;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Download iniciado!");
     };
 
     useEffect(() => {
@@ -90,94 +164,318 @@ export default function AngleMeasurement({ value, onChange }: AngleMeasurementPr
             canvas.height = img.height;
             ctx.drawImage(img, 0, 0);
 
-            // Draw points and lines
-            ctx.strokeStyle = "#ff0000";
-            ctx.fillStyle = "#ff0000";
-            ctx.lineWidth = 4;
+            const scaleX = img.width / canvas.clientWidth;
+            const scaleY = img.height / canvas.clientHeight;
+            const avgScale = (scaleX + scaleY) / 2;
 
-            points.forEach((p, i) => {
-                ctx.beginPath();
-                ctx.arc(p.x * (img.width / canvas.clientWidth), p.y * (img.height / canvas.clientHeight), 8, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.font = "bold 24px Arial";
-                ctx.fillText(`P${i+1}`, p.x * (img.width / canvas.clientWidth) + 10, p.y * (img.height / canvas.clientHeight) - 10);
-            });
+            const drawMeasurement = (mPts: Point[], mAngle: number | null, color: string, isActive: boolean) => {
+                ctx.strokeStyle = color;
+                ctx.fillStyle = color;
+                ctx.lineWidth = Math.max(3, 4 * avgScale);
 
-            if (points.length >= 2) {
-                ctx.beginPath();
-                ctx.moveTo(points[0].x * (img.width / canvas.clientWidth), points[0].y * (img.height / canvas.clientHeight));
-                ctx.lineTo(points[1].x * (img.width / canvas.clientWidth), points[1].y * (img.height / canvas.clientHeight));
-                ctx.stroke();
+                mPts.forEach((p, i) => {
+                    ctx.beginPath();
+                    ctx.arc(p.x * scaleX, p.y * scaleY, 6 * avgScale, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.lineWidth = Math.max(3, 4 * avgScale);
+                    ctx.strokeStyle = color;
+                });
+
+                if (mPts.length >= 2) {
+                    ctx.beginPath();
+                    ctx.moveTo(mPts[0].x * scaleX, mPts[0].y * scaleY);
+                    ctx.lineTo(mPts[1].x * scaleX, mPts[1].y * scaleY);
+                    ctx.stroke();
+                }
+
+                if (mPts.length === 3) {
+                    ctx.beginPath();
+                    ctx.moveTo(mPts[1].x * scaleX, mPts[1].y * scaleY);
+                    ctx.lineTo(mPts[2].x * scaleX, mPts[2].y * scaleY);
+                    ctx.stroke();
+
+                    if (mAngle !== null) {
+                        const vertex = { x: mPts[1].x * scaleX, y: mPts[1].y * scaleY };
+
+                        const v1 = { x: (mPts[0].x * scaleX) - vertex.x, y: (mPts[0].y * scaleY) - vertex.y };
+                        const v2 = { x: (mPts[2].x * scaleX) - vertex.x, y: (mPts[2].y * scaleY) - vertex.y };
+
+                        const mag1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y) || 1;
+                        const mag2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y) || 1;
+
+                        const norm1 = { x: v1.x / mag1, y: v1.y / mag1 };
+                        const norm2 = { x: v2.x / mag2, y: v2.y / mag2 };
+
+                        let bx = -(norm1.x + norm2.x);
+                        let by = -(norm1.y + norm2.y);
+
+                        const bmag = Math.sqrt(bx * bx + by * by);
+                        if (bmag > 0) {
+                            bx /= bmag;
+                            by /= bmag;
+                        } else {
+                            bx = -norm1.y;
+                            by = norm1.x;
+                        }
+
+                        const dist = Math.max(50, 60 * avgScale);
+                        const textX = vertex.x + bx * dist;
+                        const textY = vertex.y + by * dist;
+
+                        const text = `${mAngle}°`;
+                        ctx.font = `bold ${Math.max(10, 16 * avgScale)}px Arial`;
+                        
+                        const textMetrics = ctx.measureText(text);
+                        const textWidth = textMetrics.width;
+                        const textHeight = Math.max(10, 16 * avgScale);
+                        
+                        const paddingX = 8 * avgScale;
+                        const paddingY = 6 * avgScale;
+
+                        ctx.fillStyle = "rgba(0,0,0,0.75)";
+                        ctx.beginPath();
+                        ctx.roundRect(
+                            textX - (textWidth / 2) - paddingX, 
+                            textY - (textHeight / 2) - paddingY, 
+                            textWidth + (paddingX * 2), 
+                            textHeight + (paddingY * 2), 
+                            8 * avgScale
+                        );
+                        ctx.fill();
+
+                        ctx.fillStyle = "#ffffff";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.fillText(text, textX, textY);
+                    }
+                }
+            };
+
+            measurements.forEach((m) => drawMeasurement(m.points, m.angle, m.color, false));
+
+            if (currentPoints.length > 0) {
+                drawMeasurement(currentPoints, null, "#3b82f6", true);
             }
 
-            if (points.length === 3) {
-                ctx.beginPath();
-                ctx.moveTo(points[1].x * (img.width / canvas.clientWidth), points[1].y * (img.height / canvas.clientHeight));
-                ctx.lineTo(points[2].x * (img.width / canvas.clientWidth), points[2].y * (img.height / canvas.clientHeight));
-                ctx.stroke();
-
-                // Draw result text
-                if (angle !== null) {
-                    ctx.fillStyle = "rgba(0,0,0,0.7)";
-                    ctx.fillRect(10, 10, 200, 50);
-                    ctx.fillStyle = "#ffffff";
-                    ctx.font = "bold 32px Arial";
-                    ctx.fillText(`Ângulo: ${angle}°`, 20, 45);
-                    
-                    // Final save
+            if (currentPoints.length === 0) {
+                setTimeout(() => {
                     onChange(canvas.toDataURL());
-                }
+                }, 0);
             }
         };
         img.src = image;
-    }, [image, points, angle]);
+    }, [image, measurements, currentPoints, onChange]);
 
     return (
-        <div className="flex flex-col gap-4 w-full" ref={containerRef}>
-            <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-200">
-                <div className="flex gap-2">
-                    <label className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg cursor-pointer hover:bg-primary-dark transition-colors font-semibold">
-                        <Camera size={20} />
-                        Carregar Foto
-                        <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+        <div className="am-container" ref={containerRef}>
+            {/* Toolbar Area */}
+            <div className="am-toolbar">
+                <div className="am-toolbar-left">
+                    <label className="am-btn am-btn-primary" title="Carregar Nova Imagem">
+                        <ImagePlus size={20} />
+                        <span className="am-btn-text">Novo</span>
+                        <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} />
                     </label>
-                    <button onClick={() => { setPoints([]); setAngle(null); }} className="p-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors" title="Reiniciar Pontos">
+
+                    <button
+                        onClick={handleUndo}
+                        className="am-btn am-btn-outline"
+                        title="Desfazer último ponto ou medição"
+                        disabled={currentPoints.length === 0 && measurements.length === 0}
+                    >
+                        <Undo size={20} />
+                        <span className="am-btn-text">Desfazer</span>
+                    </button>
+
+                    <button
+                        onClick={handleClearMeasurements}
+                        className="am-btn am-btn-outline"
+                        title="Limpar apenas as medidas"
+                        disabled={currentPoints.length === 0 && measurements.length === 0}
+                    >
                         <RotateCcw size={20} />
+                        <span className="am-btn-text">Limpar</span>
+                    </button>
+
+                    <button
+                        onClick={handleClearImage}
+                        className="am-btn am-btn-danger"
+                        title="Remover imagem e medidas"
+                        disabled={!image}
+                    >
+                        <Trash2 size={20} />
+                        <span className="am-btn-text">Apagar</span>
                     </button>
                 </div>
-                {angle !== null && (
-                    <div className="text-xl font-bold text-primary">
-                        Ângulo: {angle}°
-                    </div>
-                )}
+
+                <div className="am-toolbar-right">
+                    <button
+                        onClick={handleCopy}
+                        className="am-btn am-btn-primary"
+                        title="Copiar imagem"
+                        disabled={!image}
+                    >
+                        <Copy size={20} />
+                        <span className="am-btn-text">Copiar</span>
+                    </button>
+
+                    <button
+                        onClick={handleDownload}
+                        className="am-btn am-btn-primary"
+                        title="Baixar imagem"
+                        disabled={!image}
+                    >
+                        <Download size={20} />
+                        <span className="am-btn-text">Baixar</span>
+                    </button>
+                </div>
             </div>
 
+            {/* Canvas Area */}
             {!image ? (
-                <div className="border-2 border-dashed border-gray-300 rounded-2xl h-64 flex flex-col items-center justify-center text-gray-400 gap-4 bg-gray-50/50">
-                    <Target size={48} className="opacity-20" />
-                    <p>Faça o upload de uma imagem para começar a medição</p>
+                <div className="am-empty-state">
+                    <Target size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                    <p style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Comece fazendo o upload de uma imagem</p>
+                    <label className="am-btn am-btn-primary" style={{ marginTop: '1rem' }}>
+                        <ImagePlus size={20} />
+                        <span>Ver Imagens do Computador</span>
+                        <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} />
+                    </label>
                 </div>
             ) : (
-                <div className="relative group rounded-2xl overflow-hidden border border-gray-200 shadow-lg cursor-crosshair">
-                    <canvas 
-                        ref={canvasRef} 
+                <div className="am-canvas-wrapper">
+                    <canvas
+                        ref={canvasRef}
                         onClick={handleClick}
-                        className="w-full h-auto block"
-                        style={{ maxHeight: '80vh', objectFit: 'contain' }}
+                        className="am-canvas"
                     />
-                    {points.length < 3 && (
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white px-4 py-2 rounded-full text-sm backdrop-blur-md">
-                            {points.length === 0 ? "Clique no primeiro ponto (P1)" : 
-                             points.length === 1 ? "Clique no vértice (P2)" : 
-                             "Clique no terceiro ponto (P3)"}
-                        </div>
-                    )}
                 </div>
             )}
             
-            <div className="text-xs text-gray-500 italic mt-2">
-                * Dica: P2 deve ser o vértice do ângulo que você deseja medir.
-            </div>
+            <style jsx>{`
+                .am-container {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.5rem;
+                    width: 100%;
+                    font-family: inherit;
+                }
+                
+                .am-toolbar {
+                    display: flex;
+                    flex-wrap: wrap;
+                    justify-content: space-between;
+                    align-items: center;
+                    background-color: var(--bg-secondary, #f8fafc);
+                    padding: 1rem;
+                    border-radius: 1rem;
+                    border: 1px solid var(--border, #e2e8f0);
+                    gap: 1rem;
+                }
+                
+                .am-toolbar-left, .am-toolbar-right {
+                    display: flex;
+                    gap: 0.75rem;
+                    align-items: center;
+                    flex-wrap: wrap;
+                }
+
+                .am-btn {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    padding: 0.5rem 0.75rem;
+                    border-radius: 0.5rem;
+                    font-weight: 700;
+                    font-size: 0.85rem;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    outline: none;
+                    white-space: nowrap;
+                }
+
+                .am-btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+                
+                /* Match the "btn-finish" style completely */
+                .am-btn-primary {
+                    background-color: var(--primary, #2563eb);
+                    color: white;
+                    border: 2px solid var(--primary, #2563eb);
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                }
+                
+                .am-btn-primary:hover:not(:disabled) {
+                    transform: translateY(-1px);
+                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                    filter: brightness(1.1);
+                }
+                
+                .am-btn-outline {
+                    background-color: white;
+                    color: var(--secondary, #334155);
+                    border: 2px solid var(--border, #e2e8f0);
+                }
+                
+                .am-btn-outline:hover:not(:disabled) {
+                    background-color: var(--bg-secondary, #f8fafc);
+                    border-color: #cbd5e1;
+                }
+                
+                .am-btn-danger {
+                    background-color: white;
+                    color: #dc2626;
+                    border: 2px solid #fecaca;
+                }
+                
+                .am-btn-danger:hover:not(:disabled) {
+                    background-color: #fef2f2;
+                    border-color: #f87171;
+                }
+
+                .am-empty-state {
+                    border: 2px dashed var(--border, #e2e8f0);
+                    border-radius: 1.5rem;
+                    height: 18rem;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    background-color: var(--bg-secondary, #f8fafc);
+                }
+
+                .am-canvas-wrapper {
+                    position: relative;
+                    border-radius: 1.5rem;
+                    overflow: hidden;
+                    border: 2px solid var(--border, #e2e8f0);
+                    background-color: #e2e8f0;
+                    display: flex;
+                    justify-content: center;
+                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                    cursor: crosshair;
+                }
+
+                .am-canvas {
+                    max-width: 100%;
+                    height: auto;
+                    display: block;
+                    max-height: 75vh;
+                    object-fit: contain;
+                }
+
+                @media (max-width: 768px) {
+                    .am-btn-text {
+                        display: none;
+                    }
+                    .am-btn {
+                        padding: 0.75rem;
+                    }
+                }
+            `}</style>
         </div>
     );
 }

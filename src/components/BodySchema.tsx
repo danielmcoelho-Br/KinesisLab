@@ -9,6 +9,7 @@ interface BodySchemaProps {
   onChange: (value: string) => void;
   colors?: { hex: string, label: string }[];
   mode?: "draw" | "stamp";
+  readOnly?: boolean;
 }
 
 const COLORS = [
@@ -18,7 +19,7 @@ const COLORS = [
   { id: "green", hex: "#00ff00", label: "Parestesia" },
 ];
 
-export default function BodySchema({ image, value, onChange, colors: customColors, mode = "draw" }: BodySchemaProps) {
+export default function BodySchema({ image, value, onChange, colors: customColors, mode = "draw", readOnly = false }: BodySchemaProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -74,7 +75,7 @@ export default function BodySchema({ image, value, onChange, colors: customColor
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
     const ctx = contextRef.current;
-    if (!ctx) return;
+    if (!ctx || readOnly) return;
 
     // Save current state to history BEFORE starting a new stroke
     const canvas = canvasRef.current;
@@ -210,75 +211,69 @@ export default function BodySchema({ image, value, onChange, colors: customColor
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full">
-      {/* Top Part: Canvas and Color Legend */}
-      <div className="flex flex-row flex-nowrap gap-4 md:gap-8 items-start justify-center w-full max-w-[1400px]">
-        
-        {/* Canvas Area */}
-        <div className="flex flex-col gap-4 items-center flex-1 min-w-0">
-            <div 
-                style={{ 
-                position: "relative", 
-                width: "100%",
-                maxWidth: "1000px",  
-                backgroundColor: "white", // Restored white background for visibility of transparent maps
-                borderRadius: "1rem",
-                overflow: "hidden",
-                border: "2px solid var(--border)",
-                cursor: isEraser ? "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"black\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m20 20-7-7 3-3 7 7Z\"/><path d=\"M14 14 6 6l-3 3 8 8Z\"/></svg>') 12 12, auto" : "crosshair",
-                touchAction: "none",
-                boxShadow: "var(--shadow-lg)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center"
-                }}
-            >
-                <img 
-                src={image} 
-                alt="Corpo" 
-                style={{ 
-                    width: "100%", 
-                    height: "auto", 
-                    objectFit: "contain", // Keep proportion
-                    pointerEvents: "none",
-                    opacity: 0.9,
-                    display: "block"
-                }} 
-                />
-                <canvas
-                ref={canvasRef}
-                width={CANVAS_WIDTH}
-                height={CANVAS_HEIGHT}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
-                style={{ 
-                    position: "absolute", 
-                    top: 0, 
-                    left: 0, 
-                    width: "100%", 
-                    height: "100%",
-                    touchAction: "none"
-                }}
-                />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-muted)", fontSize: "0.75rem" }}>
-                <Paintbrush size={14} />
-                Arraste sobre a imagem para realizar a marcação
-            </div>
+    <div className="flex flex-col items-center gap-8 w-full">
+      {/* Drawing Area */}
+      <div className="flex flex-col gap-6 items-center w-full max-w-[1000px]">
+        <div 
+            style={{ 
+            position: "relative", 
+            width: "100%",
+            backgroundColor: "white", 
+            borderRadius: "2rem",
+            overflow: "hidden",
+            border: "2px solid var(--border)",
+            cursor: readOnly ? "default" : (isEraser ? "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"black\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m20 20-7-7 3-3 7 7Z\"/><path d=\"M14 14 6 6l-3 3 8 8Z\"/></svg>') 12 12, auto" : "crosshair"),
+            touchAction: readOnly ? "auto" : "none",
+            boxShadow: "var(--shadow-xl)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+            }}
+        >
+            <img 
+            src={image} 
+            alt="Corpo" 
+            style={{ 
+                width: "100%", 
+                height: "auto", 
+                objectFit: "contain", 
+                pointerEvents: "none",
+                opacity: 0.9,
+                display: "block"
+            }} 
+            />
+            <canvas
+            ref={canvasRef}
+            width={CANVAS_WIDTH}
+            height={CANVAS_HEIGHT}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={stopDrawing}
+            style={{ 
+                position: "absolute", 
+                top: 0, 
+                left: 0, 
+                width: "100%", 
+                height: "100%",
+                touchAction: "none"
+            }}
+            />
         </div>
 
-        {/* Color Legend - Right side on Desktop */}
-        <div className="flex flex-col gap-4 p-6 bg-white border border-border rounded-2xl shadow-sm min-w-[280px]">
-            <h4 style={{ fontSize: "0.85rem", fontWeight: "800", color: "var(--secondary)", marginBottom: "0.5rem", textTransform: 'uppercase', letterSpacing: '0.05em' }}>Legenda de Cores</h4>
-            <div className="flex flex-col gap-2">
+
+
+        {/* Horizontal Legend - Expanded to full width */}
+        {!readOnly && (
+        <div className="w-full flex flex-col items-center gap-6 py-8 border-t border-border mt-4">
+            <div className="flex w-full justify-between items-center px-2">
                 {colors.map((item: any, idx: number) => {
                     const hex = item.hex;
                     const label = item.label;
+                    const isActive = !isEraser && activeColor === hex;
 
                     return (
                         <button
@@ -287,76 +282,80 @@ export default function BodySchema({ image, value, onChange, colors: customColor
                                 setActiveColor(hex);
                                 setIsEraser(false);
                             }}
-                            className="flex items-center gap-3 p-3 rounded-xl transition-all"
+                            className="flex items-center gap-3 px-6 py-3 rounded-xl transition-all"
                             style={{ 
-                                backgroundColor: (!isEraser && activeColor === hex) ? "var(--primary-light)" : "transparent",
-                                border: (!isEraser && activeColor === hex) ? `2.5px solid var(--primary)` : "2.5px solid transparent",
-                                width: "100%",
-                                textAlign: "left",
-                                cursor: "pointer"
+                                backgroundColor: isActive ? "var(--primary-light)" : "white",
+                                border: isActive ? `2px solid var(--primary)` : "2px solid var(--border)",
+                                cursor: "pointer",
+                                boxShadow: isActive ? "var(--shadow-md)" : "none"
                             }}
                         >
-                            <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: hex, border: "2px solid white", boxShadow: "0 0 0 1px rgba(0,0,0,0.1)" }} />
-                            <span style={{ fontSize: "0.95rem", fontWeight: (!isEraser && activeColor === hex) ? "700" : "500", color: (!isEraser && activeColor === hex) ? "var(--primary)" : "var(--text)" }}>{label}</span>
+                            <div style={{ width: "20px", height: "20px", borderRadius: "50%", backgroundColor: hex, border: "2px solid white", boxShadow: "0 0 0 1px rgba(0,0,0,0.1)" }} />
+                            <span style={{ fontSize: "1rem", fontWeight: "700", color: isActive ? "var(--primary)" : "var(--text)" }}>{label}</span>
                         </button>
                     );
                 })}
             </div>
         </div>
+        )}
       </div>
 
-      {/* Tools Section - Bottom */}
-      <div className="flex flex-wrap justify-center gap-4 w-full max-w-4xl py-6 border-t border-border mt-4">
+      {/* Tools Section - Expanded spacing and matching Próxima button */}
+      {!readOnly && (
+      <div className="flex flex-wrap justify-center gap-8 w-full max-w-4xl pt-16 border-t-2 border-border">
             <button
                 type="button"
                 onClick={() => setIsEraser(!isEraser)}
-                className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl transition-all"
+                className="flex items-center gap-3 px-8 py-3 rounded-[0.75rem] transition-all"
                 style={{ 
-                    backgroundColor: isEraser ? "var(--primary-light)" : "white",
-                    color: isEraser ? "var(--primary)" : "var(--text-muted)",
-                    border: isEraser ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
+                    backgroundColor: isEraser ? "var(--primary)" : "var(--primary-light)",
+                    color: isEraser ? "white" : "var(--primary)",
+                    border: "none",
                     cursor: "pointer",
-                    fontWeight: "600",
-                    fontSize: "0.95rem"
+                    fontWeight: "700",
+                    fontSize: "1rem",
+                    boxShadow: isEraser ? "var(--shadow-lg)" : "none"
                 }}
             >
-                <Eraser size={18} /> Borracha
+                <Eraser size={20} /> Borracha
             </button>
 
             <button
                 type="button"
                 onClick={undo}
                 disabled={history.length <= 1}
-                className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl transition-all"
+                className="flex items-center gap-3 px-8 py-3 rounded-[0.75rem] transition-all"
                 style={{ 
-                    backgroundColor: "white",
-                    border: "1.5px solid var(--border)",
+                    backgroundColor: "var(--primary-light)",
+                    color: "var(--primary)",
+                    border: "none",
                     cursor: history.length <= 1 ? "not-allowed" : "pointer",
-                    opacity: history.length <= 1 ? 0.5 : 1,
-                    fontWeight: "600",
-                    color: "var(--text-muted)",
-                    fontSize: "0.95rem"
+                    opacity: history.length <= 1 ? 0.3 : 1,
+                    fontWeight: "700",
+                    fontSize: "1rem",
                 }}
             >
-                <Undo2 size={18} /> Desfazer
+                <Undo2 size={20} /> Desfazer
             </button>
 
             <button
                 type="button"
                 onClick={clear}
-                className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl transition-all hover:bg-red-50"
+                className="flex items-center gap-3 px-8 py-3 rounded-[0.75rem] transition-all hover:opacity-90 active:scale-95"
                 style={{ 
-                    backgroundColor: "white",
-                    border: "1.5px solid #fca5a5",
+                    backgroundColor: "#ef4444",
+                    border: "none",
                     cursor: "pointer",
-                    color: "#ef4444",
-                    fontWeight: "600",
-                    fontSize: "0.95rem"
+                    color: "white",
+                    fontWeight: "700",
+                    fontSize: "1rem",
+                    boxShadow: "var(--shadow-md)"
                 }}
             >
-                <RotateCcw size={18} /> Apagar Tudo
+                <RotateCcw size={20} /> Apagar Tudo
             </button>
       </div>
+      )}
     </div>
   );
 }

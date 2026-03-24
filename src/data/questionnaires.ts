@@ -53,6 +53,7 @@ export type Questionnaire = {
 
 const scores0to5 = ["0", "1", "2", "3", "4", "5"];
 const reflexOptions = ["Normal", "Hiperreflexia", "Hiporeflexia"];
+const sensitivityOptions = ["Normal", "Hipoestesia", "Hiperestesia", "Anestesia"];
 
 export const questionnairesData: Record<string, Questionnaire> = {
   oswestry: {
@@ -142,8 +143,8 @@ export const questionnairesData: Record<string, Questionnaire> = {
         { value: 5, label: 'A dor me impede de viajar, exceto para ir ao médico e hospitais.' }
       ]}
     ],
-    calculateScore: (answers) => {
-      const entries = Object.entries(answers).filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "");
+    calculateScore: (answers: Record<string, any>) => {
+      const entries = Object.entries(answers).filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean');
       if (entries.length === 0) return { percentage: 0, interpretation: 'Pendente', unit: '%' };
       const total = entries.reduce((acc, [_, val]) => acc + Number(val), 0);
       const percentage = Math.round((total / (entries.length * 5)) * 100);
@@ -242,8 +243,8 @@ export const questionnairesData: Record<string, Questionnaire> = {
         { value: 5, label: 'Não consigo participar em nenhuma atividade de lazer de modo algum.' }
       ]}
     ],
-    calculateScore: (answers) => {
-      const entries = Object.entries(answers).filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "");
+    calculateScore: (answers: Record<string, any>) => {
+      const entries = Object.entries(answers).filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean');
       if (entries.length === 0) return { percentage: 0, interpretation: 'Pendente', unit: '%' };
       const total = entries.reduce((acc, [_, val]) => acc + Number(val), 0);
       const percentage = Math.round((total / (entries.length * 5)) * 100);
@@ -272,6 +273,45 @@ export const questionnairesData: Record<string, Questionnaire> = {
                 { id: 'piora', label: 'Atividade de Piora', type: 'textarea' },
                 { id: 'alivio', label: 'Atividade de Alívio', type: 'textarea' },
                 { id: 'doencas', label: 'Doenças Associadas/Cirurgias Realizadas', type: 'textarea' }
+            ]
+        },
+        {
+            id: 'exame_neurologico',
+            title: 'Exame Neurológico',
+            type: 'multi-table',
+            subsections: [
+                {
+                    id: 'miotomos',
+                    title: 'Miótomos (Força 0-5)',
+                    type: 'table',
+                    columns: [
+                        'Nível / Movimento', 
+                        { label: 'Esquerdo', action: { type: 'fill', value: '5' } }, 
+                        { label: 'Direito', action: { type: 'fill', value: '5' } }
+                    ],
+                    rows: [
+                        { id: 'c5_mio', label: 'C5 (Abdução Ombro)', fields: [{ id: 'forca_c5_esq', type: 'select', options: scores0to5 }, { id: 'forca_c5_dir', type: 'select', options: scores0to5 }] },
+                        { id: 'c6_mio', label: 'C6 (Flex. Cotovelo / Ext. Punho)', fields: [{ id: 'forca_c6_esq', type: 'select', options: scores0to5 }, { id: 'forca_c6_dir', type: 'select', options: scores0to5 }] },
+                        { id: 'c7_mio', label: 'C7 (Ext. Cotovelo / Flex. Punho)', fields: [{ id: 'forca_c7_esq', type: 'select', options: scores0to5 }, { id: 'forca_c7_dir', type: 'select', options: scores0to5 }] },
+                        { id: 'c8_mio', label: 'C8 (Ext. Polegar / Ulnarização)', fields: [{ id: 'forca_c8_esq', type: 'select', options: scores0to5 }, { id: 'forca_c8_dir', type: 'select', options: scores0to5 }] },
+                        { id: 't1_mio', label: 'T1 (Abdução Dedos)', fields: [{ id: 'forca_t1_esq', type: 'select', options: scores0to5 }, { id: 'forca_t1_dir', type: 'select', options: scores0to5 }] }
+                    ]
+                },
+                {
+                    id: 'reflexos',
+                    title: 'Reflexos Profundos',
+                    type: 'table',
+                    columns: [
+                        'Reflexo', 
+                        { label: 'Esquerdo', action: { type: 'fill', value: 'Normal' } }, 
+                        { label: 'Direito', action: { type: 'fill', value: 'Normal' } }
+                    ],
+                    rows: [
+                        { id: 'ref_biciptal', label: 'Biciptal (C5)', fields: [{ id: 'ref_bic_esq', type: 'select', options: reflexOptions }, { id: 'ref_bic_dir', type: 'select', options: reflexOptions }] },
+                        { id: 'ref_estilorradial', label: 'Estilorradial (C6)', fields: [{ id: 'ref_est_esq', type: 'select', options: reflexOptions }, { id: 'ref_est_dir', type: 'select', options: reflexOptions }] },
+                        { id: 'ref_triciptal', label: 'Triciptal (C7)', fields: [{ id: 'ref_tri_esq', type: 'select', options: reflexOptions }, { id: 'ref_tri_dir', type: 'select', options: reflexOptions }] }
+                    ]
+                }
             ]
         },
 
@@ -320,12 +360,12 @@ export const questionnairesData: Record<string, Questionnaire> = {
             fields: [{ id: 'irritabilidade_obs', label: 'Observações de Irritabilidade Articular', type: 'textarea' }]
         },
         {
-            id: 'miofascial_neural_geral',
-            title: 'Palpação Miofascial e Testes Neurais',
+            id: 'miofascial_neural',
+            title: 'Palpação Miofascial e Tensão Neural',
             type: 'multi-table',
             subsections: [
                 {
-                    id: 'miofascial',
+                    id: 'miofascial_sub',
                     title: 'Palpação Miofascial',
                     type: 'table',
                     columns: ['Estrutura', 'Esquerdo', 'Direito'],
@@ -339,10 +379,23 @@ export const questionnairesData: Record<string, Questionnaire> = {
                         { id: 'romboides', label: 'M. Romboides', fields: [{ id: 'mio_romboides_esq', type: 'checkbox' }, { id: 'mio_romboides_dir', type: 'checkbox' }] },
                         { id: 'grande_dorsal', label: 'M. Grande Dorsal', fields: [{ id: 'mio_grande_dorsal_esq', type: 'checkbox' }, { id: 'mio_grande_dorsal_dir', type: 'checkbox' }] },
                         { id: 'peitorais', label: 'M. Peitorais', fields: [{ id: 'mio_peitorais_esq', type: 'checkbox' }, { id: 'mio_peitorais_dir', type: 'checkbox' }] }
-                    ],
-                    fields: [{ id: 'mio_obs', label: 'Observações Miofasciais', type: 'textarea' }]
+                    ]
                 },
-
+                {
+                    id: 'tensao_neural_sub',
+                    title: 'Teste de Tensão Neural',
+                    type: 'table',
+                    columns: ['Nervo', 'Esquerdo', 'Direito'],
+                    rows: [
+                        { id: 'nervo_mediano', label: 'Nervo Mediano', fields: [{ id: 'tensao_mediano_esq', type: 'checkbox' }, { id: 'tensao_mediano_dir', type: 'checkbox' }] },
+                        { id: 'nervo_ulnar', label: 'Nervo Ulnar', fields: [{ id: 'tensao_ulnar_esq', type: 'checkbox' }, { id: 'tensao_ulnar_dir', type: 'checkbox' }] },
+                        { id: 'nervo_radial', label: 'Nervo Radial', fields: [{ id: 'tensao_radial_esq', type: 'checkbox' }, { id: 'tensao_radial_dir', type: 'checkbox' }] }
+                    ]
+                }
+            ],
+            fields: [
+                { id: 'mio_obs', label: 'Observações Miofasciais', type: 'textarea' },
+                { id: 'tensao_obs', label: 'Observações de Tensão Neural', type: 'textarea' }
             ]
         },
         {
@@ -358,9 +411,6 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'ndi_integracao',
             title: 'NDI (Neck Disability Index)',
             fields: [
-                { id: 'ndi_score_previo', label: 'Score Questionário Prévio', type: 'text' },
-                { id: 'ndi_data_previo', label: 'Data da Avaliação Prévia', type: 'date' },
-                { id: 'ndi_obs_previo', label: 'Observações Básicas', type: 'textarea' },
                 { id: 'ndi_novo', label: 'Preencher novo Questionário NDI', type: 'button' },
                 { id: 'ndi_score', label: 'Resultado/Score NDI Atual', type: 'text' }
             ]
@@ -374,7 +424,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         }
     ],
-    calculateScore: (answers) => {
+    calculateScore: (answers: Record<string, any>) => {
       // For clinical assessments, we just return a "Finished" state for now
       return { score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' };
     }
@@ -396,6 +446,44 @@ export const questionnairesData: Record<string, Questionnaire> = {
                 { id: 'piora', label: 'Atividade de Piora', type: 'textarea' },
                 { id: 'alivio', label: 'Atividade de Alívio', type: 'textarea' },
                 { id: 'doencas', label: 'Doenças Associadas/Cirurgias Realizadas', type: 'textarea' }
+            ]
+        },
+        {
+            id: 'exame_neurologico',
+            title: 'Exame Neurológico',
+            type: 'multi-table',
+            subsections: [
+                {
+                    id: 'miotomos',
+                    title: 'Miótomos (Força 0-5)',
+                    type: 'table',
+                    columns: [
+                        'Nível / Movimento', 
+                        { label: 'Esquerdo', action: { type: 'fill', value: '5' } }, 
+                        { label: 'Direito', action: { type: 'fill', value: '5' } }
+                    ],
+                    rows: [
+                        { id: 'l2_mio', label: 'L2 (Flexão Quadril)', fields: [{ id: 'forca_l2_esq', type: 'select', options: scores0to5 }, { id: 'forca_l2_dir', type: 'select', options: scores0to5 }] },
+                        { id: 'l3_mio', label: 'L3 (Extensão Joelho)', fields: [{ id: 'forca_l3_esq', type: 'select', options: scores0to5 }, { id: 'forca_l3_dir', type: 'select', options: scores0to5 }] },
+                        { id: 'l4_mio', label: 'L4 (Dorsiflexão)', fields: [{ id: 'forca_l4_esq', type: 'select', options: scores0to5 }, { id: 'forca_l4_dir', type: 'select', options: scores0to5 }] },
+                        { id: 'l5_mio', label: 'L5 (Extensão Hálux)', fields: [{ id: 'forca_l5_esq', type: 'select', options: scores0to5 }, { id: 'forca_l5_dir', type: 'select', options: scores0to5 }] },
+                        { id: 's1_mio', label: 'S1 (Flexão Plantar)', fields: [{ id: 'forca_s1_esq', type: 'select', options: scores0to5 }, { id: 'forca_s1_dir', type: 'select', options: scores0to5 }] }
+                    ]
+                },
+                {
+                    id: 'reflexos',
+                    title: 'Reflexos Profundos',
+                    type: 'table',
+                    columns: [
+                        'Reflexo', 
+                        { label: 'Esquerdo', action: { type: 'fill', value: 'Normal' } }, 
+                        { label: 'Direito', action: { type: 'fill', value: 'Normal' } }
+                    ],
+                    rows: [
+                        { id: 'ref_patelar', label: 'Patelar (L4)', fields: [{ id: 'ref_pat_esq', type: 'select', options: reflexOptions }, { id: 'ref_pat_dir', type: 'select', options: reflexOptions }] },
+                        { id: 'ref_aquileu', label: 'Aquileu (S1)', fields: [{ id: 'ref_aqui_esq', type: 'select', options: reflexOptions }, { id: 'ref_aqui_dir', type: 'select', options: reflexOptions }] }
+                    ]
+                }
             ]
         },
 
@@ -461,12 +549,12 @@ export const questionnairesData: Record<string, Questionnaire> = {
             fields: [{ id: 'palp_art_l_obs', label: 'Observações de Irritabilidade Articular', type: 'textarea' }]
         },
         {
-            id: 'miofascial_neural_geral',
-            title: 'Palpação Miofascial e Testes Neurais',
+            id: 'miofascial_neural',
+            title: 'Palpação Miofascial e Tensão Neural',
             type: 'multi-table',
             subsections: [
                 {
-                    id: 'miofascial',
+                    id: 'miofascial_sub',
                     title: 'Palpação Miofascial',
                     type: 'table',
                     columns: ['Estrutura', 'Esquerdo', 'Direito'],
@@ -479,10 +567,23 @@ export const questionnairesData: Record<string, Questionnaire> = {
                         { id: 'tfl', label: 'M. Tensor da Fáscia Lata', fields: [{ id: 'mio_tfl_esq', type: 'checkbox' }, { id: 'mio_tfl_dir', type: 'checkbox' }] },
                         { id: 'iliopsoas', label: 'M. Iliopsoas', fields: [{ id: 'mio_iliopsoas_esq', type: 'checkbox' }, { id: 'mio_iliopsoas_dir', type: 'checkbox' }] },
                         { id: 'outro', label: 'M. Outro', fields: [{ id: 'mio_outro_esq', type: 'checkbox' }, { id: 'mio_outro_dir', type: 'checkbox' }] }
-                    ],
-                    fields: [{ id: 'mio_obs', label: 'Observações Miofasciais', type: 'textarea' }]
+                    ]
                 },
-
+                {
+                    id: 'tensao_neural_sub',
+                    title: 'Teste de Tensão Neural',
+                    type: 'table',
+                    columns: ['Teste / Nervo', 'Esquerdo', 'Direito'],
+                    rows: [
+                        { id: 'lasegue', label: 'Teste de Lasegue', fields: [{ id: 'tensao_lasegue_esq', type: 'checkbox' }, { id: 'tensao_lasegue_dir', type: 'checkbox' }] },
+                        { id: 'slump', label: 'SLUMP', fields: [{ id: 'tensao_slump_esq', type: 'checkbox' }, { id: 'tensao_slump_dir', type: 'checkbox' }] },
+                        { id: 'nervo_femoral', label: 'Nervo Femoral', fields: [{ id: 'tensao_femoral_esq', type: 'checkbox' }, { id: 'tensao_femoral_dir', type: 'checkbox' }] }
+                    ]
+                }
+            ],
+            fields: [
+                { id: 'mio_obs', label: 'Observações Miofasciais', type: 'textarea' },
+                { id: 'tensao_obs', label: 'Observações de Tensão Neural', type: 'textarea' }
             ]
         },
         {
@@ -498,9 +599,6 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'oswestry_integracao',
             title: 'ODI (Índice de Incapacidade de Oswestry)',
             fields: [
-                { id: 'oswestry_score_previo', label: 'Score Questionário Prévio', type: 'text' },
-                { id: 'oswestry_data_previo', label: 'Data da Avaliação Prévia', type: 'date' },
-                { id: 'oswestry_obs_previo', label: 'Observações Básicas', type: 'textarea' },
                 { id: 'oswestry_novo', label: 'Preencher novo Questionário ODI', type: 'button' },
                 { id: 'oswestry_score', label: 'Resultado/Score ODI Atual', type: 'text' }
             ]
@@ -514,7 +612,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         }
     ],
-    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
+    calculateScore: (answers: Record<string, any>) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
   },
   quickdash: {
     id: 'quickdash',
@@ -536,8 +634,12 @@ export const questionnairesData: Record<string, Questionnaire> = {
         { id: 'q10', text: '10. Sensação de formigamento ou dormência no seu braço, ombro ou mão.', options: [{ value: 1, label: 'Nenhum sintoma' }, { value: 2, label: 'De Leve intensidade' }, { value: 3, label: 'De Média intensidade' }, { value: 4, label: 'De Muita intensidade' }, { value: 5, label: 'Extremo' }] },
         { id: 'q11', text: '11. dificuldade para dormir por causa de dor no seu braço, ombro ou mão?', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Moderada' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Extrema' }] }
     ],
-    calculateScore: (answers) => {
-        const values = Object.values(answers).filter(v => typeof v === 'number');
+    calculateScore: (answers: Record<string, any>) => {
+        const values = Object.entries(answers)
+            .filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean')
+            .map(([_, v]) => Number(v))
+            .filter(v => !isNaN(v));
+            
         if (values.length < 10) return { score: 0, percentage: 0, interpretation: 'Mínimo de 10 respostas obrigatórias', unit: '%' };
         const sum = values.reduce((a, b) => a + b, 0);
         const finalScore = ((sum / values.length) - 1) * 25;
@@ -676,9 +778,6 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'quickdash_integracao',
             title: 'QuickDASH (Disabilities of the Arm, Shoulder and Hand)',
             fields: [
-                { id: 'quickdash_score_previo', label: 'Score Questionário Prévio', type: 'text' },
-                { id: 'quickdash_data_previo', label: 'Data da Avaliação Prévia', type: 'date' },
-                { id: 'quickdash_obs_previo', label: 'Observações Básicas', type: 'textarea' },
                 { id: 'quickdash_novo', label: 'Preencher novo QuickDASH', type: 'button' },
                 { id: 'quickdash_score', label: 'Resultado QuickDASH Atual', type: 'text' }
             ]
@@ -956,8 +1055,12 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         }
     ],
-    calculateScore: (answers) => {
-        const values = Object.values(answers);
+    calculateScore: (answers: Record<string, any>) => {
+        const values = Object.entries(answers)
+            .filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean')
+            .map(([_, v]) => Number(v))
+            .filter(v => !isNaN(v));
+            
         if (values.length === 0) return { score: 0, percentage: 0, interpretation: 'Nenhuma resposta' };
         const totalScore = values.reduce((a, b) => a + b, 0);
         let interpretation = '';
@@ -1057,19 +1160,29 @@ export const questionnairesData: Record<string, Questionnaire> = {
             options: [ { value: 0, label: 'Não' }, { value: 4, label: 'Sim' } ]
         }
     ],
-    calculateScore: (answers) => {
+    calculateScore: (answers: Record<string, any>) => {
+        const getVal = (idx: any) => {
+            const val = answers[idx];
+            return (val !== undefined && val !== "" && typeof val !== 'boolean') ? Number(val) : undefined;
+        };
+
         let score = 0;
-        if (answers[1] !== undefined) score += answers[1]; // Q1 age
-        if (answers[2] !== undefined) score += answers[2]; // Q2 health
+        const q1 = getVal(1);
+        if (q1 !== undefined) score += q1; // Q1 age
+        const q2 = getVal(2);
+        if (q2 !== undefined) score += q2; // Q2 health
         
-        // Q3a-3f (physical limitations) - indicies 4 to 9 in the current questionnaire template
+        // Q3a-3f (physical limitations) - indicies 4 to 9
         let physLimitScore = 0;
-        [4,5,6,7,8,9].forEach(idx => { if (answers[idx]) physLimitScore += answers[idx]; });
+        [4,5,6,7,8,9].forEach(idx => { 
+            const val = getVal(idx);
+            if (val !== undefined) physLimitScore += val; 
+        });
         score += Math.min(physLimitScore, 2);
 
         // Q4a-4e (disabilities) - indicies 11 to 15
         let hasDisability = false;
-        [11,12,13,14,15].forEach(idx => { if (answers[idx] === 4) hasDisability = true; });
+        [11,12,13,14,15].forEach(idx => { if (getVal(idx) === 4) hasDisability = true; });
         if (hasDisability) score += 4;
 
         let interpretation = score >= 3 ? 'Idoso Vulnerável' : 'Idoso Robusto';
@@ -1108,8 +1221,12 @@ export const questionnairesData: Record<string, Questionnaire> = {
         { text: '23. Por causa das minhas costas, subo escadas mais vagarosamente do que o habitual.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
         { text: '24. Fico na cama deitado ou sentado a maior parte do tempo por causa das dores nas costas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] }
     ],
-    calculateScore: (answers) => {
-        const total = Object.values(answers).reduce((a, b) => a + b, 0);
+    calculateScore: (answers: Record<string, any>) => {
+        const values = Object.entries(answers)
+            .filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean')
+            .map(([_, v]) => Number(v))
+            .filter(v => !isNaN(v));
+        const total = values.reduce((a, b) => a + b, 0);
         let interpretation = total <= 4 ? 'Mínima' : total <= 8 ? 'Leve' : total <= 14 ? 'Moderada' : 'Severa';
         return { score: total, max: 24, percentage: Math.round((total/24)*100), interpretation: `Incapacidade: ${interpretation}`, unit: 'pontos' };
     }
@@ -1134,11 +1251,15 @@ export const questionnairesData: Record<string, Questionnaire> = {
         { text: '10. Sono.', options: scores0to5.concat(["6", "7", "8", "9", "10"]).map(v => ({ value: parseInt(v), label: v })) },
         { text: '11. Aproveitamento da vida.', options: scores0to5.concat(["6", "7", "8", "9", "10"]).map(v => ({ value: parseInt(v), label: v })) }
     ],
-    calculateScore: (answers) => {
+    calculateScore: (answers: Record<string, any>) => {
+        const getVal = (idx: any) => {
+            const val = answers[idx];
+            return (val !== undefined && val !== "" && typeof val !== 'boolean') ? Number(val) : undefined;
+        };
         const severityIndices = [1, 2, 3, 4];
         const interferenceIndices = [6, 7, 8, 9, 10, 11, 12];
-        const sevValues = severityIndices.filter(i => (answers[i] || answers[i] === 0) && typeof answers[i] === 'number').map(i => answers[i]);
-        const intValues = interferenceIndices.filter(i => (answers[i] || answers[i] === 0) && typeof answers[i] === 'number').map(i => answers[i]);
+        const sevValues = severityIndices.map(getVal).filter(v => v !== undefined) as number[];
+        const intValues = interferenceIndices.map(getVal).filter(v => v !== undefined) as number[];
         const sevAvg = sevValues.length ? (sevValues.reduce((a,b) => a+b, 0) / sevValues.length) : 0;
         const intAvg = intValues.length ? (intValues.reduce((a,b) => a+b, 0) / intValues.length) : 0;
         return { score: sevAvg, max: 10, percentage: sevAvg*10, interpretation: `Severidade: ${sevAvg.toFixed(1)}/10 | Interferência: ${intAvg.toFixed(1)}/10`, unit: 'média' };
@@ -1159,8 +1280,11 @@ export const questionnairesData: Record<string, Questionnaire> = {
         { text: '7. Subir Escadas', options: [{ value: 10, label: 'Sem problemas' }, { value: 6, label: 'Levemente prejudicado' }, { value: 2, label: 'Um degrau de cada vez' }, { value: 0, label: 'Impossível' }] },
         { text: '8. Agachar', options: [{ value: 5, label: 'Sem problemas' }, { value: 4, label: 'Levemente prejudicado' }, { value: 2, label: 'Não além de 90 graus' }, { value: 0, label: 'Impossível' }] }
     ],
-    calculateScore: (answers) => {
-        const values = Object.values(answers).filter(v => typeof v === 'number');
+    calculateScore: (answers: Record<string, any>) => {
+        const values = Object.entries(answers)
+            .filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean')
+            .map(([_, v]) => Number(v))
+            .filter(v => !isNaN(v));
         const sum = values.reduce((a, b) => a + b, 0);
         return { score: sum, max: 100, percentage: sum, interpretation: sum >= 95 ? 'Excelente' : sum >= 84 ? 'Bom' : sum >= 65 ? 'Regular' : 'Ruim', unit: 'pontos' };
     }
@@ -1474,7 +1598,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         }
     ],
-    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
+    calculateScore: (answers: Record<string, any>) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
   },
   afSensibilidade: {
     id: 'afSensibilidade',
@@ -1508,7 +1632,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         }
     ],
-    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
+    calculateScore: (answers: Record<string, any>) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
   },
   afAnaliseAngular: {
     id: 'afAnaliseAngular',
@@ -1531,7 +1655,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         }
     ],
-    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Análise Concluída', unit: '%' })
+    calculateScore: (answers: Record<string, any>) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Análise Concluída', unit: '%' })
   },
   afOrientacao: {
     id: 'afOrientacao',
@@ -1553,7 +1677,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         }
     ],
-    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Orientação Registrada', unit: '%' })
+    calculateScore: (answers: Record<string, any>) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Orientação Registrada', unit: '%' })
   }
 };
 

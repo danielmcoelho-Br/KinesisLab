@@ -19,7 +19,12 @@ import {
     Image as ImageIcon,
     Printer,
     X,
-    Maximize2
+    Maximize2,
+    Calculator,
+    ArrowUp,
+    ArrowDownLeft,
+    ArrowDownRight,
+    Ruler
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { questionnairesData, Section, SectionField } from "@/data/questionnaires";
@@ -31,7 +36,9 @@ import FreeCanvas from "@/components/FreeCanvas";
 import AngleMeasurement from "@/components/AngleMeasurement";
 import Header from "@/components/Header";
 import PatientInfoBanner from "@/components/PatientInfoBanner";
+import PosturalAnalysisModal from "@/components/PosturalAnalysisModal";
 import { calculateAssessmentScore, CalculationType } from "@/lib/calculations";
+import { compressImage } from "@/lib/image-compressor";
 
 // Normative data for Muscle Endurance (seconds)
 const NORMATIVE_DATA: Record<string, any> = {
@@ -81,7 +88,7 @@ const Bar = ({ value, maxValue, label, color, subLabel, unit = 's', isPrint = fa
     }
     
     return (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
             <div style={{ 
                 height: '150px', 
                 width: '100%', 
@@ -144,7 +151,9 @@ const AssessmentHistoryChart = ({
     isPrint = false,
     referenceValue,
     referenceLabel,
-    assessmentId
+    assessmentId,
+    assessmentDate = new Date().toLocaleDateString('pt-BR'),
+    isEndurance = false
 }: { 
     currentValue: number, 
     fieldId: string,
@@ -154,12 +163,14 @@ const AssessmentHistoryChart = ({
     isPrint?: boolean,
     referenceValue?: number,
     referenceLabel?: string,
-    assessmentId?: string | null
+    assessmentId?: string | null,
+    assessmentDate?: string,
+    isEndurance?: boolean
 }) => {
     // Filter history for the specific field, score > 0, and NOT the current assessment being viewed
     const validHistory = history.filter(h => Number(h.answers?.[fieldId]) > 0 && h.id !== assessmentId);
 
-    if (!currentValue && validHistory.length === 0) return null;
+    if (!currentValue && validHistory.length === 0 && !isPrint) return null;
 
     const maxValue = Math.max(
         currentValue || 0,
@@ -175,7 +186,7 @@ const AssessmentHistoryChart = ({
     })).sort((a, b) => a.timestamp - b.timestamp);
 
     const totalBars = validHistoryData.length + (currentValue ? 1 : 0) + (referenceValue ? 1 : 0);
-    const chartMaxWidth = isPrint ? `${Math.min(100, Math.max(33, totalBars * 12))}%` : '100%';
+    const chartMaxWidth = isPrint ? (isEndurance ? '100%' : `${Math.min(50, Math.max(25, totalBars * 12))}%`) : '100%';
 
 
 
@@ -257,7 +268,7 @@ const AssessmentHistoryChart = ({
                     <Bar 
                         value={Number(currentValue) || 0} 
                         maxValue={maxValue}
-                        label={new Date().toLocaleDateString('pt-BR')} 
+                        label={assessmentId ? assessmentDate : new Date().toLocaleDateString('pt-BR')} 
                         unit={unit}
                         color={isPrint ? "#8B0000" : "var(--primary)"} 
                         isPrint={isPrint}
@@ -268,12 +279,13 @@ const AssessmentHistoryChart = ({
                 .chart-container {
                     margin-top: 1rem;
                     margin-bottom: 1.5rem;
-                    padding: 1.25rem;
                     background-color: white;
                     border-radius: 1rem;
                     border: 1px solid var(--border);
                     box-shadow: ${isPrint ? 'none' : 'var(--shadow-sm)'};
-                    max-width: ${chartMaxWidth};
+                    max-width: ${isPrint ? chartMaxWidth : '100%'};
+                    overflow-x: ${isPrint ? 'hidden' : 'auto'};
+                    -webkit-overflow-scrolling: touch;
                 }
                 .chart-title {
                     font-size: 0.85rem;
@@ -285,15 +297,16 @@ const AssessmentHistoryChart = ({
                     gap: 0.5rem;
                 }
                 .chart-scroll-wrapper {
-                    overflow-x: auto;
+                    overflow-x: ${isPrint ? 'hidden' : 'auto'};
                     padding-bottom: 0.5rem;
                 }
                 .chart-bars-container {
                     display: flex;
-                    gap: 0.75rem;
+                    gap: ${isPrint ? '0.5rem' : '0.75rem'};
                     align-items: flex-end;
                     min-height: 180px;
-                    min-width: 250px;
+                    min-width: ${isPrint ? 'auto' : '250px'};
+                    width: ${isPrint ? '100%' : 'auto'};
                 }
                 @media (max-width: 600px) {
                     .chart-container {
@@ -305,8 +318,8 @@ const AssessmentHistoryChart = ({
     );
 };
 
-const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded = false, isPrint = false, assessmentId }: { history: any[], currentScore: number, type: string, isEmbedded?: boolean, isPrint?: boolean, assessmentId?: string | null }) => {
-    if (history.length === 0 && !currentScore) return null;
+const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded = false, isPrint = false, assessmentId, assessmentDate = new Date().toLocaleDateString('pt-BR') }: { history: any[], currentScore: number, type: string, isEmbedded?: boolean, isPrint?: boolean, assessmentId?: string | null, assessmentDate?: string }) => {
+    if (history.length === 0 && !currentScore && !isPrint) return null;
 
     // Filter history for the specific type, which has score, and is NOT the current assessment being viewed (to avoid duplication)
     const validHistory = history.filter(h => h.assessment_type === type && h.scoreData?.percentage > 0 && h.id !== assessmentId);
@@ -343,13 +356,12 @@ const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded =
 
     const currentCounts = new Map();
     const processedData = rawData.map(item => {
-        const dKey = item.date === 'Hoje' ? todayStr : item.date;
+        const dKey = item.date === 'Hoje' ? (assessmentId ? assessmentDate : todayStr) : item.date;
         const count = (currentCounts.get(dKey) || 0) + 1;
         currentCounts.set(dKey, count);
         const hasMultiple = dateCounts.get(dKey) > 1;
         
-        // Remove "Hoje" - show the actual date
-        let displayLabel = item.date === 'Hoje' ? todayStr : item.date;
+        let displayLabel = item.date === 'Hoje' ? (assessmentId ? assessmentDate : todayStr) : item.date;
         if (hasMultiple) {
             displayLabel = `${displayLabel} (${count})`;
         }
@@ -360,7 +372,7 @@ const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded =
         };
     });
 
-    if (processedData.length === 0) return null;
+    if (processedData.length === 0 && !isPrint) return null;
 
     const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
 
@@ -370,7 +382,7 @@ const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded =
                 Evolução Funcional (% Incapacidade - {type.toUpperCase()})
             </h4>
             <div className="history-chart-scroll">
-                <div className="history-chart-bars" style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', minHeight: '180px' }}>
+                <div className="history-chart-bars" style={{ display: 'flex', gap: isPrint ? '0.6rem' : '1rem', alignItems: 'flex-end', minHeight: '180px' }}>
                     {processedData.map((d, i) => {
                         const isCurrent = d.id === 'current' || d.id === assessmentId;
                         return (
@@ -401,8 +413,8 @@ const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded =
                     background-color: var(--bg);
                     border: 1px solid var(--border);
                     transform-origin: top left;
-                    transform: scale(0.9);
-                    width: 111%;
+                    transform: ${isPrint ? 'none' : 'scale(0.9)'};
+                    width: ${isPrint ? '100%' : '111%'};
                     max-width: 600px;
                 }
                 .history-chart-title {
@@ -415,15 +427,16 @@ const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded =
                     font-size: 0.85rem;
                 }
                 .history-chart-scroll {
-                    overflow-x: auto;
+                    overflow-x: ${isPrint ? 'hidden' : 'auto'};
                     padding-bottom: 0.5rem;
                 }
                 .history-chart-bars {
                     display: flex;
-                    gap: 1rem;
+                    gap: ${isPrint ? '0.6rem' : '1rem'};
                     align-items: flex-end;
                     height: 200px;
-                    min-width: 300px;
+                    min-width: ${isPrint ? 'auto' : '300px'};
+                    width: ${isPrint ? '100%' : 'auto'};
                 }
                 .history-chart-bar-item {
                     flex: 1;
@@ -473,6 +486,10 @@ const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded =
                     text-align: center;
                 }
                 @media (max-width: 600px) {
+                    .history-chart-container {
+                        padding: 1rem;
+                        overflow-x: auto;
+                    }
                     .history-chart-bars {
                         min-width: 400px;
                     }
@@ -483,48 +500,156 @@ const FunctionalHistoryChart = ({ history = [], currentScore, type, isEmbedded =
 };
 
 
+const AssessmentComparisonChart = memo(({ 
+    label, 
+    leftValue, 
+    rightValue,
+    unit = "kgF",
+    isPrint = false
+}: { 
+    label: string, 
+    leftValue: number, 
+    rightValue: number,
+    unit?: string,
+    isPrint?: boolean
+}) => {
+    const maxValue = Math.max(leftValue, rightValue, 1);
+    const leftHeight = (leftValue / maxValue) * 100;
+    const rightHeight = (rightValue / maxValue) * 100;
+
+    return (
+        <div className="comparison-chart-container" style={{ 
+            backgroundColor: 'white', 
+            padding: isPrint ? '0.75rem' : '1.5rem', 
+            borderRadius: '1rem', 
+            border: '1px solid var(--border)',
+            boxShadow: isPrint ? 'none' : 'var(--shadow-sm)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+            width: isPrint ? '100%' : 'auto',
+            pageBreakInside: 'avoid',
+            breakInside: 'avoid'
+        }}>
+            <h5 style={{ margin: 0, fontSize: '0.85rem', color: 'var(--secondary)', textAlign: 'center', fontWeight: '800' }}>{label}</h5>
+            <div style={{ display: 'flex', height: isPrint ? '120px' : '150px', alignItems: 'flex-end', justifyContent: 'center', gap: '1.5rem', padding: '0.5rem' }}>
+                {/* Left Bar */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, height: '100%' }}>
+                     <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', width: '100%', minWidth: '40px' }}>
+                        <div 
+                            style={{ 
+                                height: `${leftHeight}%`,
+                                width: '100%', 
+                                backgroundColor: 'var(--primary-light)', 
+                                borderRadius: '6px 6px 0 0',
+                                position: 'relative',
+                                display: 'flex',
+                                justifyContent: 'center'
+                            }}
+                        >
+                            <span style={{ position: 'absolute', top: '-22px', fontSize: '0.75rem', fontWeight: '800', color: 'var(--primary)' }}>{leftValue}{unit}</span>
+                        </div>
+                     </div>
+                     <span style={{ fontSize: '0.7rem', marginTop: '0.5rem', fontWeight: '700', color: 'var(--text-muted)' }}>ESQUERDO</span>
+                </div>
+
+                {/* Right Bar */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, height: '100%' }}>
+                     <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', width: '100%', minWidth: '40px' }}>
+                        <div 
+                            style={{ 
+                                height: `${rightHeight}%`,
+                                width: '100%', 
+                                backgroundColor: 'var(--primary)', 
+                                borderRadius: '6px 6px 0 0',
+                                position: 'relative',
+                                display: 'flex',
+                                justifyContent: 'center'
+                            }}
+                        >
+                            <span style={{ position: 'absolute', top: '-22px', fontSize: '0.75rem', fontWeight: '800', color: 'var(--primary)' }}>{rightValue}{unit}</span>
+                        </div>
+                     </div>
+                     <span style={{ fontSize: '0.7rem', marginTop: '0.5rem', fontWeight: '700', color: 'var(--text-muted)' }}>DIREITO</span>
+                </div>
+            </div>
+        </div>
+    );
+});
+
+
 const ImageUpload = memo(({ 
     value, 
     isEditing, 
     onChange, 
     onImageClick,
-    isTable = false 
+    onAnalyzeImage,
+    isTable = false,
+    isPrint = false 
 }: { 
     value: any, 
     isEditing: boolean, 
     onChange: (val: any) => void,
     onImageClick: (img: string) => void,
-    isTable?: boolean 
+    onAnalyzeImage?: (img: string, index: number) => void,
+    isTable?: boolean,
+    isPrint?: boolean 
 }) => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedImageForAnalysis, setSelectedImageForAnalysis] = useState<string | null>(null);
+    const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+
     const images: string[] = Array.isArray(value) ? value : (value ? [value] : []);
     
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: isTable ? 'center' : 'flex-start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: (isTable || isPrint) ? 'center' : 'flex-start', width: '100%' }}>
             {images.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: isTable ? 'center' : 'flex-start' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: (isTable || isPrint) ? 'center' : 'flex-start', width: '100%' }}>
                     {images.map((img, idx) => (
                         <div 
                             key={idx}
-                            style={{ position: 'relative', width: isTable ? '60px' : '360px', height: isTable ? '60px' : '270px', cursor: 'zoom-in' }}
+                            style={{ 
+                                position: 'relative', 
+                                width: isPrint ? '100%' : (isTable ? '60px' : '360px'), 
+                                maxWidth: isPrint ? '700px' : '100%',
+                                height: isPrint ? 'auto' : (isTable ? '60px' : '270px'), 
+                                minHeight: isPrint ? '500px' : '0',
+                                cursor: 'zoom-in',
+                                margin: isPrint ? '0 auto 2rem' : '0'
+                            }}
                             onClick={() => onImageClick(img)}
                         >
                             <img 
                                 src={img} 
-                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} 
+                                style={{ width: '100%', height: '100%', objectFit: isPrint ? 'contain' : 'cover', borderRadius: '8px', border: '1px solid var(--border)' }} 
                                 alt="Upload" 
                             />
                             {isEditing && (
-                                <button 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        const newImages = [...images];
-                                        newImages.splice(idx, 1);
-                                        onChange(newImages);
-                                    }}
-                                    style={{ position: 'absolute', top: '-6px', right: '-6px', backgroundColor: 'var(--primary)', color: 'white', border: 'none', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
-                                >
-                                    <X size={12} />
-                                </button>
+                                <div style={{ position: 'absolute', top: '4px', right: '4px', display: 'flex', gap: '4px' }}>
+                                    {onAnalyzeImage && (
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onAnalyzeImage(img, idx);
+                                            }}
+                                            title="Análise Postural"
+                                            style={{ backgroundColor: 'var(--primary)', color: 'white', border: 'none', borderRadius: '4px', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                                        >
+                                            <Maximize2 size={12} />
+                                        </button>
+                                    )}
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const newImages = [...images];
+                                            newImages.splice(idx, 1);
+                                            onChange(newImages);
+                                        }}
+                                        style={{ backgroundColor: 'rgba(255,255,255,0.9)', color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </div>
                             )}
                         </div>
                     ))}
@@ -532,25 +657,44 @@ const ImageUpload = memo(({
             )}
             
             {isEditing && (
-                <div style={{ position: 'relative' }}>
-                    <input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                                const newImage = reader.result as string;
-                                onChange([...images, newImage]);
-                            };
-                            reader.readAsDataURL(file);
-                        }}
-                        style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
-                    />
-                    <button type="button" className="btn-action-outline" style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}>
-                        <Upload size={14} /> Upload
-                    </button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div style={{ position: 'relative' }}>
+                        <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                    const compressed = await compressImage(file);
+                                    onChange([...images, compressed]);
+                                } catch (err) {
+                                    console.error("Compression error:", err);
+                                    // Fallback to original via reader if compressor fails somehow
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                        onChange([...images, reader.result as string]);
+                                    };
+                                    reader.readAsDataURL(file);
+                                }
+                            }}
+                            style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                        />
+                        <button type="button" className="btn-action-outline" style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}>
+                            <Upload size={14} /> Upload
+                        </button>
+                    </div>
+
+                    {onAnalyzeImage && (
+                        <button 
+                            type="button" 
+                            className="btn-action" 
+                            onClick={() => onAnalyzeImage('', images.length)}
+                            style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                            <Maximize2 size={14} /> Análise Postural
+                        </button>
+                    )}
                 </div>
             )}
         </div>
@@ -566,7 +710,11 @@ const DataTableCell = memo(({
     handleInputChange, 
     onImageClick,
     isPrint,
-    reflexOptions
+    reflexOptions,
+    onOpenDynamo,
+    onAnalyzeImage,
+    rowLabel,
+    isCalculated = false
 }: { 
     fieldId: string, 
     fieldType: string, 
@@ -575,9 +723,30 @@ const DataTableCell = memo(({
     isEditing: boolean, 
     handleInputChange: (id: string, val: any) => void,
     onImageClick: (img: string) => void,
+    onAnalyzeImage?: (img: string, fieldId: string, index: number) => void,
     isPrint: boolean,
-    reflexOptions: string[]
+    reflexOptions: string[],
+    onOpenDynamo?: (fieldId: string, label: string) => void,
+    rowLabel?: string,
+    isCalculated?: boolean
 }) => {
+    if (isCalculated) {
+        return (
+            <div style={{ 
+                textAlign: 'center', 
+                padding: '0.4rem', 
+                backgroundColor: 'var(--bg-secondary)', 
+                borderRadius: '0.4rem',
+                border: '1px solid var(--border)',
+                fontWeight: '700',
+                color: 'var(--primary)',
+                fontSize: '0.85rem'
+            }}>
+                {value || "0%"}
+            </div>
+        );
+    }
+
     if (fieldType === 'checkbox') {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -612,11 +781,11 @@ const DataTableCell = memo(({
                 disabled={!isEditing}
                 style={{ 
                     width: '100%', 
-                    padding: '0.4rem', 
+                    padding: '0.3rem 0.4rem', 
                     borderRadius: '0.4rem', 
                     border: '1px solid var(--border)',
                     backgroundColor: isEditing ? 'white' : 'transparent',
-                    fontSize: '0.85rem',
+                    fontSize: '0.82rem',
                     textAlign: 'center'
                 }}
             >
@@ -642,7 +811,9 @@ const DataTableCell = memo(({
                         isEditing={isEditing}
                         onChange={(val: any) => handleInputChange(fieldId, val)}
                         onImageClick={onImageClick}
+                        onAnalyzeImage={onAnalyzeImage ? (img, idx) => onAnalyzeImage(img, fieldId, idx) : undefined}
                         isTable={true}
+                        isPrint={isPrint}
                     />
                 )}
             </div>
@@ -654,22 +825,44 @@ const DataTableCell = memo(({
             <span style={{ fontWeight: '600' }}>{value || "-"}</span>
         </div>
     ) : (
-        <input 
-            type={fieldType === 'number' ? 'number' : 'text'}
-            value={value || ""}
-            onChange={(e) => handleInputChange(fieldId, e.target.value)}
-            disabled={!isEditing}
-            placeholder="-"
-            style={{ 
-                width: '100%', 
-                padding: '0.4rem', 
-                borderRadius: '0.4rem', 
-                border: isEditing ? '1px solid var(--border)' : '1px solid transparent',
-                backgroundColor: isEditing ? 'white' : 'transparent',
-                fontSize: '0.85rem',
-                textAlign: 'center'
-            }}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+            <input 
+                type={fieldType === 'number' ? 'number' : 'text'}
+                value={value || ""}
+                onChange={(e) => handleInputChange(fieldId, e.target.value)}
+                disabled={!isEditing}
+                placeholder="-"
+                style={{ 
+                    flex: 1, 
+                    padding: '0.3rem 0.4rem', 
+                    borderRadius: '0.4rem', 
+                    border: isEditing ? '1px solid var(--border)' : '1px solid transparent',
+                    backgroundColor: isEditing ? 'white' : 'transparent',
+                    fontSize: '0.82rem',
+                    textAlign: 'center'
+                }}
+            />
+            {isEditing && fieldType === 'number' && (fieldId.includes('forca') || fieldId.startsWith('f_') || fieldId.includes('preensao') || fieldId.includes('resist')) && onOpenDynamo && (
+                <button
+                    type="button"
+                    onClick={() => onOpenDynamo(fieldId, rowLabel || "")}
+                    title="Inserir medidas"
+                    style={{ 
+                        padding: '4px', 
+                        borderRadius: '4px', 
+                        border: '1px solid var(--border)', 
+                        background: 'var(--bg-secondary)', 
+                        color: 'var(--primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer'
+                    }}
+                >
+                    <Calculator size={14} />
+                </button>
+            )}
+        </div>
     );
 });
 
@@ -680,19 +873,27 @@ const DataTable = memo(({
     isEditing, 
     handleInputChange, 
     onImageClick,
-    isPrint 
+    onOpenDynamo,
+    onAnalyzeImage,
+    isPrint,
+    assessmentDate
 }: { 
     section: any, 
     answers: Record<string, any>, 
     isEditing: boolean, 
     handleInputChange: (id: string, val: any) => void,
     onImageClick: (img: string) => void,
-    isPrint: boolean
+    onOpenDynamo?: (fieldId: string, label: string) => void,
+    onAnalyzeImage?: (img: string, fieldId: string, index: number) => void,
+    isPrint: boolean,
+    assessmentDate: string
 }) => {
     const reflexOptions = ['Normal', 'Aumentado', 'Diminuído', 'Abolido'];
     
+    const isNarrowTable = isPrint && ['movimento', 'irritabilidade', 'teste_fadiga'].some(id => section.id?.includes(id));
+    
     return (
-        <div className="table-wrapper print-avoid-break" style={{ overflowX: 'auto', marginBottom: '2rem', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+        <div className="table-wrapper print-avoid-break" style={{ overflowX: 'auto', marginBottom: '2rem', pageBreakInside: 'avoid', breakInside: 'avoid', maxWidth: isNarrowTable ? '50%' : '100%' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--border)', borderRadius: '1rem', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
                 <thead>
                     <tr style={{ backgroundColor: 'var(--primary)', color: 'white' }}>
@@ -711,7 +912,7 @@ const DataTable = memo(({
                             }
 
                             return (
-                                <th key={idx} style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.85rem' }}>
+                                <th key={idx} style={{ padding: '0.75rem 0.6rem', textAlign: 'center', fontSize: '0.85rem' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
                                         <span>{label}</span>
                                         {isEditing && action?.type === 'fill' && (
@@ -746,14 +947,70 @@ const DataTable = memo(({
                     }).map((row: any, rIdx: number) => {
                         return (
                             <tr key={row.id} style={{ borderBottom: '1px solid var(--border)', backgroundColor: rIdx % 2 === 0 ? 'white' : 'var(--bg-secondary)', transition: 'background-color 0.2s' }}>
-                                <td style={{ padding: '0.75rem 1rem', fontWeight: '600', fontSize: '0.85rem', color: 'var(--secondary)', width: '35%' }}>
+                                <td style={{ padding: '0.75rem 0.6rem', fontWeight: '600', fontSize: '0.82rem', color: 'var(--secondary)', width: '30%' }}>
                                     {row.label}
                                 </td>
                                 {row.fields.map((field: any, fIdx: number) => {
                                     const fieldId = typeof field === 'string' ? field : field.id;
-                                    const fieldType = typeof field === 'string' ? 'text' : field.type;
+                                    const col = section.columns![fIdx + 1];
+                                    const colLabel = (typeof col === 'string' ? col : col.label) || "";
+                                    
+                                    let fieldType = typeof field === 'string' ? 'text' : field.type;
+                                    
+                                    // Infer number type for string-based IDs in clinical assessments
+                                    if (typeof field === 'string') {
+                                        const lowerId = fieldId.toLowerCase();
+                                        const lowerCol = colLabel.toLowerCase();
+                                        
+                                        if (
+                                            lowerId.includes('forca') || 
+                                            lowerId.startsWith('f_') || 
+                                            lowerId.includes('preensao') || 
+                                            lowerId.includes('resist') || 
+                                            lowerId.includes('peri') || 
+                                            lowerId.includes('graus') ||
+                                            lowerId.includes('int') ||
+                                            lowerCol.includes('graus') ||
+                                            lowerCol.includes('kgf') ||
+                                            lowerCol.includes('cm') ||
+                                            lowerCol.includes('segundos')
+                                        ) {
+                                            fieldType = 'number';
+                                        }
+                                    }
+                                    
                                     const fieldOptions = typeof field === 'string' ? [] : (field.options || []);
                                     
+                                    // Automatic deficit calculation
+                                    const isDeficitField = fieldId.toLowerCase().includes('deficit') || fieldId.toLowerCase().includes('_def');
+                                    let calculatedValue = answers[fieldId];
+                                    
+                                    if (isDeficitField) {
+                                        const esqFieldId = row.fields.find((f: any) => {
+                                            const id = typeof f === 'string' ? f : f.id;
+                                            return id.toLowerCase().includes('_esq') || id.toLowerCase().includes('esquerdo');
+                                        });
+                                        const dirFieldId = row.fields.find((f: any) => {
+                                            const id = typeof f === 'string' ? f : f.id;
+                                            return id.toLowerCase().includes('_dir') || id.toLowerCase().includes('direito');
+                                        });
+                                        
+                                        if (esqFieldId && dirFieldId) {
+                                            const esqFid = typeof esqFieldId === 'string' ? esqFieldId : esqFieldId.id;
+                                            const dirFid = typeof dirFieldId === 'string' ? dirFieldId : dirFieldId.id;
+                                            const esqVal = Number(String(answers[esqFid] || '0').replace(',', '.')) || 0;
+                                            const dirVal = Number(String(answers[dirFid] || '0').replace(',', '.')) || 0;
+                                            
+                                            if (esqVal > 0 || dirVal > 0) {
+                                                const maxVal = Math.max(esqVal, dirVal);
+                                                const diff = Math.abs(esqVal - dirVal);
+                                                calculatedValue = ((diff / maxVal) * 100).toFixed(1) + '%';
+                                            } else {
+                                                calculatedValue = '0%';
+                                            }
+                                        }
+                                    }
+
                                     if (isPrint) {
                                         const col = section.columns![fIdx + 1];
                                         const colLabel = typeof col === 'string' ? col : col.label;
@@ -769,17 +1026,21 @@ const DataTable = memo(({
                                     }
 
                                     return (
-                                        <td key={fIdx} style={{ padding: '0.5rem 1rem' }}>
+                                        <td key={fIdx} style={{ padding: '0.5rem 0.6rem' }}>
                                             <DataTableCell 
                                                 fieldId={fieldId}
                                                 fieldType={fieldType}
                                                 fieldOptions={fieldOptions}
-                                                value={answers[fieldId]}
+                                                value={calculatedValue}
                                                 isEditing={isEditing}
                                                 handleInputChange={handleInputChange}
                                                 onImageClick={onImageClick}
                                                 isPrint={isPrint}
                                                 reflexOptions={reflexOptions}
+                                                onOpenDynamo={onOpenDynamo}
+                                                onAnalyzeImage={onAnalyzeImage}
+                                                rowLabel={row.label}
+                                                isCalculated={isDeficitField}
                                             />
                                         </td>
                                     );
@@ -793,7 +1054,240 @@ const DataTable = memo(({
     );
 });
 
-const FormField = memo(({ 
+const FunctionalQuestionnaireBlock = ({ 
+    questType, 
+    title, 
+    history, 
+    answers, 
+    isEditing, 
+    patientId, 
+    type, 
+    router,
+    assessmentId,
+    assessmentDate,
+    isPrint
+}: { 
+    questType: string, 
+    title: string, 
+    history: any[], 
+    answers: any, 
+    isEditing: boolean, 
+    patientId: string, 
+    type: string, 
+    router: any,
+    assessmentId: string | null,
+    assessmentDate: string,
+    isPrint: boolean
+}) => {
+    const scoreKey = `${questType}_score`;
+    const currentScoreRaw = answers[scoreKey];
+    const currentScore = typeof currentScoreRaw === 'string' 
+        ? parseFloat(currentScoreRaw.replace(',', '.').replace('%', '').replace(' pts', '')) 
+        : (typeof currentScoreRaw === 'number' ? currentScoreRaw : 0);
+    
+    // Filter history for THIS specific questionnaire type
+    const validHistory = history.filter(h => h.assessment_type === questType).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const handleNavigate = () => {
+        // Explicitly save draft before redirecting to sub-questionnaire
+        const draftKey = `assessment_draft_${patientId}_${type}`;
+        
+        // Smart Storage: Filter out heavy base64 images to avoid QuotaExceededError
+        const cleanAnswers: Record<string, any> = {};
+        Object.keys(answers).forEach(k => {
+            const val = answers[k];
+            if (typeof val === 'string' && val.startsWith('data:image')) return;
+            if (Array.isArray(val)) {
+                cleanAnswers[k] = val.filter(v => typeof v !== 'string' || !v.startsWith('data:image'));
+                if (cleanAnswers[k].length === 0) delete cleanAnswers[k];
+                return;
+            }
+            cleanAnswers[k] = val;
+        });
+
+        localStorage.setItem(draftKey, JSON.stringify(cleanAnswers));
+        router.push(`/dashboard/assessment/${patientId}/${questType}?returnTo=${type}${assessmentId ? `&id=${assessmentId}` : ''}`);
+    };
+
+    return (
+        <div className="functional-block">
+            <div className="functional-block-header">
+                <h3 className="functional-block-title">{title}</h3>
+            </div>
+            
+            <div style={{ 
+                display: isPrint ? 'grid' : 'block', 
+                gridTemplateColumns: isPrint ? '1fr 1fr' : 'none', 
+                gap: isPrint ? '2rem' : '0' 
+            }}>
+                <div className="functional-history-section">
+                    <h4 className="section-subtitle">Histórico de Avaliações</h4>
+                    {validHistory.length > 0 ? (
+                        <div className="history-table-wrapper">
+                            <table className="history-table">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Pontuação</th>
+                                        <th>Classificação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {validHistory.map((h, i) => (
+                                        <tr key={i}>
+                                            <td>{new Date(h.created_at).toLocaleDateString('pt-BR')}</td>
+                                            <td>{h.scoreData?.percentage !== undefined ? `${h.scoreData.percentage}%` : `${h.scoreData?.score || 0} pts`}</td>
+                                            <td>
+                                                <span className="status-badge" style={{ 
+                                                    backgroundColor: 'var(--primary-light)', 
+                                                    color: 'var(--primary)',
+                                                    padding: '4px 10px',
+                                                    borderRadius: '20px',
+                                                    fontWeight: '600',
+                                                    fontSize: '0.75rem'
+                                                }}>
+                                                    {h.scoreData?.interpretation || 'Concluído'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <p className="no-history" style={{ color: '#94a3b8', fontStyle: 'italic', margin: '1rem 0' }}>Sem avaliação prévia</p>
+                    )}
+
+                    {!isEditing && (
+                        <div className="current-results-section" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed var(--border)' }}>
+                            <div className="result-main" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                    <span className="result-label" style={{ fontWeight: 700, color: 'var(--secondary)', fontSize: '0.85rem' }}>RESULTADO ATUAL:</span>
+                                    <span className="result-value" style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--primary)' }}>{currentScoreRaw || '0%'}</span>
+                                </div>
+                                {(() => {
+                                    const latest = history.find(h => h.assessment_type === questType);
+                                    if (latest?.scoreData?.interpretation) {
+                                        return (
+                                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                                                Classificação: <span style={{ color: 'var(--primary)' }}>{latest.scoreData.interpretation}</span>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="history-chart-wrapper-print">
+                    {(currentScore > 0 || !isEditing) && (
+                        <div style={{ height: '100%' }}>
+                            {!isPrint && isEditing && (
+                                <div className="current-results-section" style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px dashed var(--border)' }}>
+                                    <div className="result-main" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+                                        <span className="result-label" style={{ fontWeight: 700, color: 'var(--secondary)' }}>Resultado Atual:</span>
+                                        <span className="result-value" style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--primary)' }}>{currentScoreRaw || '0%'}</span>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="history-chart-container-wrapper" style={{ marginTop: isPrint ? '1rem' : '0' }}>
+                                <FunctionalHistoryChart 
+                                    history={history}
+                                    currentScore={currentScore}
+                                    type={questType}
+                                    isEmbedded={true}
+                                    assessmentId={assessmentId}
+                                    assessmentDate={assessmentDate}
+                                    isPrint={!isEditing}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {isEditing && (
+                <button 
+                    type="button"
+                    onClick={handleNavigate}
+                    className="btn-premium-red"
+                    style={{ marginTop: '1.5rem' }}
+                >
+                    Preencher Novo Questionário
+                </button>
+            )}
+
+            <style jsx>{`
+                .functional-block {
+                    background: white;
+                    border-radius: 1.25rem;
+                    padding: 1.5rem;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+                    margin-bottom: 2rem;
+                    border: 1px solid var(--border);
+                    grid-column: 1 / -1;
+                }
+                .functional-block-title {
+                    font-size: 1.15rem;
+                    font-weight: 800;
+                    color: var(--secondary);
+                    margin-bottom: 1.25rem;
+                    padding-bottom: 0.75rem;
+                    border-bottom: 2px solid var(--primary-light);
+                }
+                .section-subtitle {
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    color: #64748b;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    margin-bottom: 0.75rem;
+                }
+                .history-table-wrapper {
+                    overflow-x: auto;
+                    margin-bottom: 1.25rem;
+                }
+                .history-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 0.85rem;
+                }
+                .history-table th {
+                    text-align: left;
+                    padding: 0.6rem;
+                    background: var(--bg-secondary);
+                    color: var(--secondary);
+                    font-weight: 700;
+                }
+                .history-table td {
+                    padding: 0.6rem;
+                    border-bottom: 1px solid var(--border);
+                }
+                .btn-premium-red {
+                    width: 100%;
+                    padding: 0.85rem;
+                    background-color: var(--primary);
+                    color: white;
+                    border: none;
+                    border-radius: 0.75rem;
+                    font-weight: 700;
+                    font-size: 1rem;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .btn-premium-red:hover {
+                    background-color: #720000;
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(139,0,0,0.2);
+                }
+            `}</style>
+        </div>
+    );
+};
+
+const FormField = memo(function FormField({ 
     field, 
     value, 
     isEditing, 
@@ -806,13 +1300,18 @@ const FormField = memo(({
     type, 
     assessmentId,
     router,
-    isPrint
+    isPrint,
+    answers,
+    assessmentDate,
+    onAnalyzeImage,
+    onOpenYbt
 }: { 
     field: SectionField, 
     value: any, 
     isEditing: boolean, 
-    handleInputChange: (id: string, val: any) => void,
+    handleInputChange: (fieldId: string, value: any) => void,
     onImageClick: (img: string) => void,
+    onAnalyzeImage?: (img: string, fieldId: string, index: number) => void,
     patientGender: string,
     patientAge: number,
     patientAssessments: any[],
@@ -820,9 +1319,13 @@ const FormField = memo(({
     type: string,
     assessmentId: string | null,
     router: any,
-    isPrint: boolean
-}) => {
-    if (isPrint && (!value || value === '' || value === '0' || value === false || (Array.isArray(value) && value.length === 0))) return null;
+    isPrint: boolean,
+    answers: Record<string, any>,
+    assessmentDate: string,
+    onOpenYbt?: () => void
+}) {
+    const isQuestButton = field.type === 'button' && field.id.endsWith('_novo');
+    if (isPrint && !isQuestButton && (!value || value === '' || value === '0' || value === false || (Array.isArray(value) && value.length === 0))) return null;
 
     const commonProps = {
         disabled: !isEditing,
@@ -832,11 +1335,11 @@ const FormField = memo(({
     switch (field.type) {
       case 'textarea':
         return (
-          <div key={field.id} className="form-group" style={{ gridColumn: '1 / -1' }}>
+          <div key={field.id} className="form-group">
             <label className="form-label">{field.label}</label>
             <textarea 
               {...commonProps}
-              rows={3} 
+              rows={field.rows || 3} 
               value={value || ""} 
               onChange={(e) => handleInputChange(field.id, e.target.value)}
               placeholder="Descreva aqui..."
@@ -844,52 +1347,121 @@ const FormField = memo(({
             />
           </div>
         );
-      case 'range':
+      case 'range': {
+        const isEVA = field.id === 'intensidade_dor';
+        
+        const isAreaDor = field.id === 'area_dor';
+        
+        // MODO FORMULÁRIO (EDIÇÃO)
+        if (isEditing && !isPrint) {
+            return (
+                <div key={field.id} className="form-group">
+                    <label className="form-label">{field.label}</label>
+                    <div style={{ position: 'relative', width: '100%', paddingTop: '1rem' }}>
+                        <input 
+                            type="range" 
+                            min={field.min} 
+                            max={field.max} 
+                            step={field.step} 
+                            value={value || 0} 
+                            onChange={(e) => handleInputChange(field.id, e.target.value)}
+                            className="custom-range"
+                            style={{ 
+                                width: '100%', 
+                                cursor: 'pointer', 
+                                accentColor: '#8B0000'
+                            }}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#666', fontWeight: 'bold', marginTop: '0.5rem' }}>
+                            <span>0 — {isEVA ? 'SEM DOR' : 'MÍNIMO'}</span>
+                            <span style={{ 
+                                backgroundColor: '#8B0000', 
+                                color: 'white', 
+                                width: '24px', 
+                                height: '24px', 
+                                borderRadius: '50%', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                fontSize: '0.85rem',
+                                position: 'absolute',
+                                left: `${(Number(value) || 0) * 10}%`,
+                                transform: 'translateX(-50%)',
+                                top: '-4px',
+                                pointerEvents: 'none',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                            }}>
+                                {value || 0}
+                            </span>
+                            <span>10 — {isEVA ? 'DOR INSURPORTÁVEL' : 'MÁXIMO'}</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // MODO RESUMO / IMPRESSÃO (NUMERO APENAS NO MARKER)
         return (
-          <div key={field.id} className="form-group" style={{ gridColumn: '1 / -1' }}>
-            <div style={{ position: 'relative', width: '100%', height: '40px', marginBottom: '1rem' }}>
-                <span style={{ 
-                    position: 'absolute', 
-                    left: `${(Number(value) || 0) * 10}%`, 
-                    transform: 'translateX(-50%)',
-                    top: '0',
-                    fontWeight: 'bold', 
-                    fontSize: '1.25rem', 
-                    color: 'var(--primary)',
-                    transition: 'left 0.2s ease-out'
-                }}>{value || 0}</span>
+            <div key={field.id} className="form-group" style={{ 
+                maxWidth: '100%',
+                alignSelf: 'center'
+            }}>
+                <label className="form-label" style={{ fontWeight: '800', marginBottom: '2.5rem', display: 'block' }}>
+                    {isEVA ? 'Intensidade de Dor (EVA)' : field.label}
+                </label>
+                
+                <div style={{ position: 'relative', width: '100%', paddingTop: '0.5rem' }}>
+                    <div style={{ 
+                        height: '6px', 
+                        width: '100%', 
+                        backgroundColor: '#e5e7eb', 
+                        borderRadius: '3px',
+                        position: 'relative'
+                    }}>
+                        <div style={{ 
+                            height: '100%', 
+                            width: `${(Number(value) || 0) * 10}%`, 
+                            backgroundColor: '#8B0000', 
+                            borderRadius: '3px'
+                        }} />
+                        
+                        {/* Marcador com o valor embutido (Sem numero acima) */}
+                        <div style={{ 
+                            position: 'absolute', 
+                            left: `${(Number(value) || 0) * 10}%`, 
+                            top: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            width: '28px', 
+                            height: '28px', 
+                            borderRadius: '50%', 
+                            backgroundColor: '#8B0000',
+                            color: 'white',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.85rem',
+                            fontWeight: 'bold',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                            border: '3px solid white',
+                            zIndex: 2
+                        }}>
+                            {value || 0}
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#666', marginTop: '0.8rem', fontWeight: '600' }}>
+                        <span>0 — {isEVA ? 'SEM DOR' : 'MÍNIMO'}</span>
+                        <span>10 — {isEVA ? 'DOR INSUPORTÁVEL' : 'MÁXIMO'}</span>
+                    </div>
+                </div>
             </div>
-            <input 
-              type="range" 
-              min={field.min} 
-              max={field.max} 
-              step={field.step} 
-              value={value || 0} 
-              onChange={(e) => handleInputChange(field.id, e.target.value)}
-              disabled={!isEditing}
-              style={{ width: '100%', cursor: isEditing ? 'pointer' : 'not-allowed', accentColor: 'var(--primary)' }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                <span>{field.min}</span>
-                <span>{field.max}</span>
-            </div>
-          </div>
         );
+      }
       case 'text':
         if (field.id.endsWith('_score') && value && field.id !== 'sorensen') {
             return null; 
         }
         if (field.id.endsWith('_data_previo')) return null;
-
-        if (field.id.endsWith('_score_previo')) {
-            return (
-                <div key={field.id} className="form-group" style={{ backgroundColor: 'var(--bg-secondary)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem', border: '1px solid var(--border)' }}>
-                    <div style={{ fontWeight: '700', color: 'var(--text)', fontSize: '0.95rem' }}>
-                        Histórico Prévio Identificado: <span style={{ color: 'var(--primary)' }}>{value}</span>
-                    </div>
-                </div>
-            );
-        }
+        if (field.id.endsWith('_score_previo')) return null;
         return (
           <div key={field.id} className="form-group">
             <label className="form-label">{field.label}</label>
@@ -903,10 +1475,52 @@ const FormField = memo(({
             />
           </div>
         );
-      case 'number':
+      case 'number': {
+        const isForce = field.id.includes('forca_') || field.id.includes('resist_');
+        const isPerimetry = field.id.includes('perimetria_');
+        const isEndurance = ['flexao_60', 'sorensen'].includes(field.id);
+        const isGeriatriaTest = ['pes_juntos', 'semi_tandem', 'tandem', 'toques_tempo', 'tug', 'vel_marcha', 'sentar_levantar', 'preensao'].includes(field.id) || 
+                               field.id.startsWith('unipodal_');
+        
+        let referenceValue: number | undefined;
+        let referenceLabel = 'Referência';
+        let unit = isForce ? 'kgF' : isPerimetry ? 'cm' : 'seg';
+        if (field.id === 'vel_marcha') unit = 'm/s';
+        if (field.id === 'preensao') unit = 'kg';
+
+        if (isForce || isPerimetry || isEndurance || isGeriatriaTest) {
+            if (field.id === 'pes_juntos') referenceValue = 30;
+            if (field.id === 'semi_tandem') referenceValue = 30;
+            if (field.id === 'tandem') referenceValue = 17.56;
+            if (field.id.startsWith('unipodal_')) referenceValue = 10.43;
+            if (field.id === 'toques_tempo') referenceValue = 10;
+            if (field.id === 'tug') referenceValue = 12.47;
+            if (field.id === 'vel_marcha') referenceValue = 0.8;
+            if (field.id === 'preensao') {
+                referenceValue = (patientGender || "").toLowerCase() === 'masculino' ? 27 : 16;
+                referenceLabel = `Ref (${(patientGender || "").toLowerCase() === 'masculino' ? 'Masc' : 'Fem'})`;
+            }
+            if (field.id === 'resist_flexora') {
+                referenceValue = (patientGender || "").toLowerCase() === 'masculino' ? 38 : 29;
+                referenceLabel = `Ref (${(patientGender || "").toLowerCase() === 'masculino' ? 'Masc' : 'Fem'})`;
+            }
+            if (field.id === 'resist_extensora' || field.id === 'sorensen') {
+                referenceValue = (patientGender || "").toLowerCase() === 'masculino' ? 120 : 120;
+                referenceLabel = 'Ref';
+            }
+            if (field.id === 'flexao_60') referenceValue = 60;
+        }
+
         return (
-          <div key={field.id} className="form-group">
-            <label className="form-label">{field.label}</label>
+          <div key={field.id} className="form-group" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <label className="form-label">
+                {field.label}
+                {referenceValue !== undefined && (
+                    <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isPrint ? '#666' : 'var(--text-muted)', marginLeft: '0.5rem' }}>
+                        ({referenceLabel}: {referenceValue}{unit})
+                    </span>
+                )}
+            </label>
             <input 
               type="number" 
               {...commonProps}
@@ -916,51 +1530,33 @@ const FormField = memo(({
               style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)' }}
             />
             {(() => {
-                const isForce = field.id.includes('forca_') || field.id.includes('resist_');
-                const isPerimetry = field.id.includes('perimetria_');
-                const isEndurance = ['flexao_60', 'sorensen'].includes(field.id);
-                const isGeriatriaTest = ['pes_juntos', 'semi_tandem', 'tandem', 'toques_tempo', 'tug', 'vel_marcha', 'sentar_levantar', 'preensao'].includes(field.id) || 
-                                       field.id.startsWith('unipodal_');
-                
                 if (isForce || isPerimetry || isEndurance || isGeriatriaTest) {
                     let title = field.label.split('(')[0].trim();
-                    let unit = isForce ? 'kgF' : isPerimetry ? 'cm' : 'seg';
-                    if (field.id === 'vel_marcha') unit = 'm/s';
-                    if (field.id === 'preensao') unit = 'kg';
-
-                    let referenceValue: number | undefined;
-                    let referenceLabel = 'Referência';
-
-                    if (field.id === 'pes_juntos') referenceValue = 30;
-                    if (field.id === 'semi_tandem') referenceValue = 30;
-                    if (field.id === 'tandem') referenceValue = 17.56;
-                    if (field.id.startsWith('unipodal_')) referenceValue = 10.43;
-                    if (field.id === 'toques_tempo') referenceValue = 10;
-                    if (field.id === 'tug') referenceValue = 12.47;
-                    if (field.id === 'vel_marcha') referenceValue = 0.8;
-                    if (field.id === 'preensao') {
-                        referenceValue = (patientGender || "").toLowerCase() === 'masculino' ? 27 : 16;
-                        referenceLabel = `Ref (${(patientGender || "").toLowerCase() === 'masculino' ? 'Masc' : 'Fem'})`;
-                    }
+                    const isResistencia = ['flexao_60', 'sorensen', 'resist_flexora', 'resist_extensora'].includes(field.id);
                     
                     return (
-                        <AssessmentHistoryChart 
-                            fieldId={field.id}
-                            currentValue={Number(value) || 0}
-                            chartTitle={`Evolução: ${title}`}
-                            unit={unit}
-                            history={patientAssessments}
-                            isPrint={isPrint}
-                            referenceValue={referenceValue}
-                            referenceLabel={referenceLabel}
-                            assessmentId={assessmentId}
-                        />
+                        <div key={`chart-${field.id}`} style={{ marginTop: 'auto', width: isPrint ? (isResistencia ? '100%' : '50%') : '100%', margin: isPrint ? '0 auto' : '0' }}>
+                            <AssessmentHistoryChart 
+                                fieldId={field.id}
+                                currentValue={Number(value) || 0}
+                                chartTitle={`Evolução: ${title}`}
+                                unit={unit}
+                                history={patientAssessments}
+                                isPrint={isPrint}
+                                referenceValue={referenceValue}
+                                referenceLabel={referenceLabel}
+                                assessmentId={assessmentId}
+                                assessmentDate={assessmentDate}
+                                isEndurance={isResistencia}
+                            />
+                        </div>
                     );
                 }
                 return null;
             })()}
           </div>
         );
+      }
       case 'select':
         return (
           <div key={field.id} className="form-group">
@@ -978,30 +1574,62 @@ const FormField = memo(({
             </select>
           </div>
         );
-      case 'bodyschema':
-        return (
-            <div key={field.id} className="form-group" style={{ gridColumn: '1 / -1' }}>
-                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
-                <div 
-                    key={field.id}
-                    style={{ 
-                        pointerEvents: isEditing ? 'auto' : 'none',
-                        opacity: isEditing ? 1 : 0.8,
-                        transform: (isPrint && type === 'afGeriatria' && !isEditing) ? 'scale(0.5)' : 'none',
-                        transformOrigin: 'top left',
-                        width: (isPrint && type === 'afGeriatria' && !isEditing) ? '50%' : '100%',
-                        height: (isPrint && type === 'afGeriatria' && !isEditing) ? 'auto' : 'auto',
-                        marginBottom: (isPrint && type === 'afGeriatria' && !isEditing) ? '-250px' : '0' // Offset scale empty space
-                    }}
-                >
+      case 'bodyschema': {
+        const isAreaDor = field.id === 'area_dor';
+
+        const isImageUrl = value && (typeof value === 'string') && (value.startsWith('data:image') || value.startsWith('http'));
+
+        // MODO FORMULÁRIO (ADIÇÃO/EDIÇÃO)
+        if (isEditing && !isPrint) {
+            return (
+                <div key={field.id} className="form-group">
+                    <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
                     <BodySchema 
+                        image={field.image || "/img/esquema_corpo_inteiro.png"}
                         value={value} 
                         onChange={(val) => handleInputChange(field.id, val)} 
-                        readOnly={!isEditing}
+                        readOnly={false}
                     />
+                </div>
+            );
+        }
+
+        // MODO RESUMO / IMPRESSÃO
+        return (
+            <div key={field.id} className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label" style={{ marginBottom: '1rem', display: 'block', fontWeight: '800', color: isPrint ? '#8b0000' : 'var(--secondary)' }}>
+                    {(isPrint || !isEditing) ? field.label.split('(')[0].trim() : field.label}
+                </label>
+                <div style={{ width: '100%', display: 'flex', justifyContent: 'center', backgroundColor: isPrint ? 'transparent' : 'white', borderRadius: '1rem', padding: isPrint ? '0' : '1rem', border: isPrint ? 'none' : '1px solid var(--border)' }}>
+                    {isImageUrl ? (
+                        <img 
+                            src={value} 
+                            alt="Esquema Corporal" 
+                            style={{ 
+                                width: 'auto', 
+                                height: 'auto', 
+                                maxWidth: '100%', 
+                                maxHeight: isPrint ? '450px' : '550px', 
+                                objectFit: 'contain',
+                                display: 'block',
+                                borderRadius: '0.5rem'
+                            }} 
+                        />
+                    ) : (value ? (
+                        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', transform: isPrint ? 'scale(0.9)' : 'none', transformOrigin: 'center top' }}>
+                            <BodySchema 
+                                image={field.image || "/img/esquema_corpo_inteiro.png"}
+                                value={value} 
+                                readOnly={true}
+                            />
+                        </div>
+                    ) : (
+                        <div style={{ color: '#ccc', fontSize: '0.9rem', padding: '2rem', fontStyle: 'italic' }}>Nenhuma marcação realizada</div>
+                    ))}
                 </div>
             </div>
         );
+      }
       case 'image-upload':
         return (
           <div key={field.id} className="form-group">
@@ -1011,64 +1639,134 @@ const FormField = memo(({
                 isEditing={isEditing}
                 onChange={(val) => handleInputChange(field.id, val)}
                 onImageClick={onImageClick}
+                onAnalyzeImage={onAnalyzeImage ? (img, idx) => onAnalyzeImage(img, field.id, idx) : undefined}
+                isPrint={isPrint}
             />
           </div>
         );
       case 'paintmap':
+        const isDataUrl = typeof value === 'string' && (value.startsWith('data:image') || value.startsWith('http'));
         return (
-            <div key={field.id} className="form-group" style={{ gridColumn: '1 / -1' }}>
-                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
-                <div style={{ pointerEvents: isEditing ? 'auto' : 'none', opacity: isEditing ? 1 : 0.8 }}>
-                    <BodySchema 
-                        key={field.id}
-                        image={field.image || ""} 
-                        value={value} 
-                        onChange={(val) => handleInputChange(field.id, val)} 
-                        colors={field.colors}
-                        mode="stamp"
-                        readOnly={!isEditing}
-                    />
+            <div key={field.id} className="form-group">
+                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block', fontWeight: (isPrint || !isEditing) ? '800' : 'inherit' }}>{field.label}</label>
+                <div style={{ pointerEvents: isEditing ? 'auto' : 'none', opacity: 1 }}>
+                    {(isPrint || !isEditing) && isDataUrl ? (
+                        <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
+                            <img 
+                                src={value} 
+                                style={{ 
+                                    width: '100%', 
+                                    maxWidth: '600px', 
+                                    borderRadius: '1rem', 
+                                    border: '1px solid var(--border)',
+                                    boxShadow: 'var(--shadow-md)',
+                                    display: 'block'
+                                }} 
+                                alt="Esquema Corporal" 
+                            />
+                        </div>
+                    ) : (
+                        <BodySchema 
+                            key={field.id}
+                            image={field.image || ""} 
+                            value={value} 
+                            onChange={(val) => handleInputChange(field.id, val)} 
+                            colors={field.colors}
+                            mode="stamp"
+                            readOnly={!isEditing}
+                        />
+                    )}
                 </div>
             </div>
         );
       case 'angle_measurement':
+        const isAngleDataUrl = typeof value === 'string' && (value.startsWith('data:image') || value.startsWith('http'));
         return (
-            <div key={field.id} className="form-group" style={{ gridColumn: '1 / -1' }}>
-                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
-                <div style={{ pointerEvents: isEditing ? 'auto' : 'none' }}>
+            <div key={field.id} className="form-group">
+                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block', fontWeight: (isPrint || !isEditing) ? '800' : 'inherit' }}>{field.label}</label>
+                {(isPrint || !isEditing) && isAngleDataUrl ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                         <img 
+                            src={value} 
+                            style={{ 
+                                width: 'auto', 
+                                height: 'auto', 
+                                maxWidth: '100%', 
+                                maxHeight: '650px',
+                                borderRadius: '1.5rem', 
+                                border: '2px solid #eee',
+                                boxShadow: 'var(--shadow-lg)',
+                                objectFit: 'contain'
+                            }} 
+                            alt="Análise Angular" 
+                        />
+                    </div>
+                ) : (
                     <AngleMeasurement 
-                        key={field.id}
                         value={value} 
-                        onChange={(val) => handleInputChange(field.id, val)} 
+                        onChange={(val) => handleInputChange(field.id, val)}
+                        isEditing={isEditing}
                     />
-                </div>
+                )}
             </div>
         );
       case 'freecanvas':
         return (
-            <div key={field.id} className="form-group" style={{ gridColumn: '1 / -1' }}>
-                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block' }}>{field.label}</label>
-                <div style={{ pointerEvents: isEditing ? 'auto' : 'none' }}>
+            <div key={field.id} className="form-group">
+                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block', fontWeight: (isPrint || !isEditing) ? '800' : 'inherit' }}>{field.label}</label>
+                {(isPrint || !isEditing) && value && (value.startsWith('data:image') || value.startsWith('http')) ? (
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                         <img 
+                            src={value} 
+                            style={{ 
+                                width: 'auto', 
+                                height: 'auto', 
+                                maxWidth: '100%', 
+                                maxHeight: '500px',
+                                borderRadius: '1rem', 
+                                border: '1px solid var(--border)',
+                                objectFit: 'contain'
+                            }} 
+                            alt="Canvas Desenho" 
+                        />
+                    </div>
+                ) : (
                     <FreeCanvas 
-                        key={field.id}
                         value={value} 
-                        onChange={(val) => handleInputChange(field.id, val)} 
+                        onChange={(val) => handleInputChange(field.id, val)}
+                        isEditing={isEditing}
                     />
-                </div>
+                )}
             </div>
         );
-      case 'button':
+      case 'button': {
         const isQuestButton = field.id.endsWith('_novo');
-        const questType = field.id.split('_')[0];
-        const scoreKey = field.id.replace('_novo', '_score');
+        if (isQuestButton) {
+            const questPrefix = field.id.split('_')[0];
+            return (
+                <FunctionalQuestionnaireBlock 
+                    questType={questPrefix}
+                    title={field.label.replace('Preencher ', '').replace('novo ', '').replace('Novo ', '')}
+                    history={patientAssessments}
+                    answers={answers}
+                    isEditing={isEditing}
+                    patientId={patientId}
+                    type={type}
+                    router={router}
+                    assessmentId={assessmentId}
+                    assessmentDate={assessmentDate}
+                    isPrint={isPrint}
+                />
+            );
+        }
         
         return (
-            <div key={field.id} className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div key={field.id} className="form-group">
                 <button 
                     type="button"
                     onClick={() => {
-                        if (isQuestButton) {
-                            router.push(`/dashboard/assessment/${patientId}/${questType}?returnTo=${type}`);
+                        if (field.id === 'ybt_calc' && onOpenYbt) {
+                            onOpenYbt();
                         }
                     }}
                     className="btn-secondary"
@@ -1076,23 +1774,9 @@ const FormField = memo(({
                 >
                     {field.label}
                 </button>
-
-                {scoreKey && value && (
-                    <div style={{ marginTop: '1.5rem', padding: '1.5rem', backgroundColor: 'white', borderRadius: '1rem', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-                        <div style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--primary)', marginBottom: '1.5rem', textAlign: 'center' }}>
-                            Score Identificado: {value}
-                        </div>
-                        <FunctionalHistoryChart 
-                            type={questType}
-                            currentScore={Number(String(value).replace('%', '')) || 0}
-                            history={patientAssessments}
-                            isEmbedded={true}
-                            assessmentId={assessmentId}
-                        />
-                    </div>
-                )}
             </div>
         );
+      }
       default:
         return null;
     }
@@ -1111,7 +1795,11 @@ const FormSection = memo(({
     type, 
     assessmentId,
     router,
-    isPrint 
+    isPrint,
+    assessmentDate,
+    onOpenDynamo,
+    onOpenYbt,
+    onAnalyzeImage
 }: { 
     section: Section, 
     answers: Record<string, any>, 
@@ -1125,33 +1813,139 @@ const FormSection = memo(({
     type: string,
     assessmentId: string | null,
     router: any,
-    isPrint: boolean
+    isPrint: boolean,
+    assessmentDate: string,
+    onOpenDynamo?: (fieldId: string, label: string) => void,
+    onOpenYbt?: () => void,
+    onAnalyzeImage?: (img: string, fieldId: string, index: number) => void
 }) => {
+    // Helpers for visibility
+    const hasVal = (val: any) => val !== undefined && val !== null && val !== '' && val !== 'null' && (Array.isArray(val) ? val.length > 0 : true);
+    
+    // Check if section as a whole has any data
+    const sectionHasData = () => {
+        if (isEditing) return true;
+        if (['anamnese', 'diagnostico_conclusoes'].includes(section.id)) return true;
+        
+        const checkFields = (fs?: any[]) => fs?.some(f => hasVal(answers[typeof f === 'string' ? f : f.id]));
+        const checkRows = (rs?: any[]) => rs?.some(r => r.fields.some((f: any) => hasVal(answers[typeof f === 'string' ? f : f.id])));
+        
+        if (section.type === 'table') return checkRows(section.rows);
+        if (section.type === 'multi-table') return section.subsections?.some(sub => 
+            checkFields(sub.fields) || (sub.type === 'table' && checkRows(sub.rows))
+        );
+        return checkFields(section.fields);
+    };
+
+    if (!sectionHasData()) return null;
+
     return (
         <motion.div
             initial={isPrint ? {} : { opacity: 0, x: 20 }}
             animate={isPrint ? {} : { opacity: 1, x: 0 }}
             className="section-container"
-            style={{ marginBottom: '2.5rem' }}
+            style={{ marginBottom: '2.5rem', pageBreakInside: 'avoid' }}
         >
             <h3 style={{ fontSize: '1.25rem', fontWeight: '800', marginBottom: '1.5rem', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {section.title}
             </h3>
 
-            {section.id === 'quickdash_integracao' && (
-                <div style={{ marginBottom: '2rem' }}>
-                    <FunctionalHistoryChart 
-                        type="quickdash"
-                        currentScore={Number(String(answers['quickdash_score'] || answers['quickdash_score_previo'] || '0').replace('%', '')) || 0}
-                        history={patientAssessments}
-                        isEmbedded={true}
-                        assessmentId={assessmentId}
-                        isPrint={isPrint}
-                    />
-                </div>
-            )}
+            {section.id === 'ybt' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                        <div style={{ 
+                            padding: '1.5rem', 
+                            borderRadius: '1.25rem', 
+                            backgroundColor: 'white', 
+                            border: '1px solid var(--border)', 
+                            boxShadow: 'var(--shadow-sm)',
+                            textAlign: 'center',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.5rem'
+                        }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Membro Esquerdo</span>
+                            <div style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--primary)' }}>
+                                {answers.ybt_esq ? `${answers.ybt_esq}%` : '---'}
+                            </div>
+                        </div>
 
-            {section.type === 'table' ? (
+                        <div style={{ 
+                            padding: '1.5rem', 
+                            borderRadius: '1.25rem', 
+                            backgroundColor: 'white', 
+                            border: '1px solid var(--border)', 
+                            boxShadow: 'var(--shadow-sm)',
+                            textAlign: 'center',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.5rem'
+                        }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Membro Direito</span>
+                            <div style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--primary)' }}>
+                                {answers.ybt_dir ? `${answers.ybt_dir}%` : '---'}
+                            </div>
+                        </div>
+
+                        <div style={{ 
+                            padding: '1.5rem', 
+                            borderRadius: '1.25rem', 
+                            backgroundColor: 'var(--bg-secondary)', 
+                            border: '2px dashed var(--border)', 
+                            textAlign: 'center',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.5rem',
+                            justifyContent: 'center'
+                        }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--secondary)', textTransform: 'uppercase' }}>Assimetria</span>
+                            <div style={{ fontSize: '2rem', fontWeight: '900', color: (parseFloat(answers.ybt_diff) > 4) ? 'var(--danger)' : 'var(--success)' }}>
+                                {answers.ybt_diff || '0.0%'}
+                            </div>
+                        </div>
+                    </div>
+
+                    {isEditing && (
+                        <button 
+                            onClick={onOpenYbt}
+                            className="btn-primary"
+                            style={{ 
+                                padding: '1rem', 
+                                borderRadius: '1rem', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                gap: '0.75rem',
+                                fontWeight: '800',
+                                boxShadow: 'var(--shadow-md)'
+                            }}
+                        >
+                            <Calculator size={20} />
+                            Abrir Calculadora YBT
+                        </button>
+                    )}
+
+                    {/* Observations field */}
+                    <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                        <label className="form-label" style={{ fontWeight: '700' }}>OBSERVAÇÕES</label>
+                        <textarea 
+                            value={answers.ybt_obs || ''}
+                            onChange={(e) => handleInputChange('ybt_obs', e.target.value)}
+                            disabled={!isEditing}
+                            rows={3}
+                            placeholder="Notas clínicas sobre a execução do teste..."
+                            className="form-control"
+                            style={{ 
+                                width: '100%', 
+                                padding: '1rem', 
+                                borderRadius: '0.75rem', 
+                                border: '1px solid var(--border)', 
+                                resize: 'vertical' 
+                            }}
+                        />
+                    </div>
+                </div>
+            ) : section.type === 'table' ? (
                 <>
                     <DataTable 
                         section={section} 
@@ -1159,38 +1953,86 @@ const FormSection = memo(({
                         isEditing={isEditing} 
                         handleInputChange={handleInputChange} 
                         onImageClick={onImageClick}
+                        onOpenDynamo={onOpenDynamo}
+                        onAnalyzeImage={onAnalyzeImage}
                         isPrint={isPrint}
+                        assessmentDate={assessmentDate}
                     />
-                    {['perimetria', 'forca'].includes(section.id) && (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '1rem' }}>
-                            {section.rows?.map((row: any) => (
-                                row.fields.map((f: any, fidx: number) => {
-                                    const fid = typeof f === 'string' ? f : f.id;
-                                    const col = section.columns![fidx + 1];
-                                    const colLabel = typeof col === 'string' ? col : col.label;
-                                    if (colLabel.includes('Esquerdo') || colLabel.includes('Direito')) {
-                                        return (
-                                            <AssessmentHistoryChart 
-                                                key={fid}
-                                                fieldId={fid}
-                                                currentValue={Number(answers[fid]) || 0}
-                                                chartTitle={`Evolução: ${row.label} (${colLabel})`}
-                                                unit={section.id === 'forca' ? 'kgF' : 'cm'}
-                                                history={patientAssessments}
-                                                isPrint={isPrint}
-                                            />
-                                        );
-                                    }
-                                    return null;
-                                })
-                            ))}
+                    {['perimetria', 'forca', 'dinamometria', 'ndi_integracao', 'oswestry_integracao', 'quickdash_integracao', 'testes_especiais_resistidos'].includes(section.id) && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginTop: '1rem' }}>
+                            {section.rows?.map((row: any) => row.fields.map((f: any, fidx: number) => {
+                                const fid = typeof f === 'string' ? f : f.id;
+                                const col = section.columns?.[fidx + 1];
+                                const colLabel = typeof col === 'string' ? col : (col?.label || "");
+                                if (colLabel.includes('Esquerdo') || colLabel.includes('Direito') || fid.endsWith('_score')) {
+                                    return (
+                                        <AssessmentHistoryChart 
+                                            key={`hist-${fid}`}
+                                            fieldId={fid}
+                                            currentValue={Number(String(answers[fid] || '0').replace('%', '').replace(',', '.')) || 0}
+                                            chartTitle={`Evolução: ${row.label} (${colLabel})`}
+                                            unit={fid.endsWith('_score') ? '%' : (section.id.includes('forca') ? 'kgF' : 'cm')}
+                                            history={patientAssessments}
+                                            isPrint={isPrint}
+                                            assessmentId={assessmentId}
+                                            assessmentDate={assessmentDate}
+                                        />
+                                    );
+                                }
+                                return null;
+                            }))}
                         </div>
                     )}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+                        {section.fields?.filter(f => {
+                            if (isEditing) return true;
+                            if (f.type === 'button') return false;
+                            return hasVal(answers[f.id]);
+                        }).map((field: any) => (
+                            <FormField 
+                                key={field.id}
+                                field={field}
+                                value={answers[field.id]}
+                                isEditing={isEditing}
+                                handleInputChange={handleInputChange}
+                                onImageClick={onImageClick}
+                                patientGender={patientGender}
+                                patientAge={patientAge}
+                                patientAssessments={patientAssessments}
+                                patientId={patientId}
+                                type={type}
+                                assessmentId={assessmentId}
+                                router={router}
+                                isPrint={isPrint}
+                                answers={answers}
+                                assessmentDate={assessmentDate}
+                                onAnalyzeImage={onAnalyzeImage}
+                                onOpenYbt={onOpenYbt}
+                            />
+                        ))}
+                    </div>
                 </>
             ) : section.type === 'multi-table' ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    {section.subsections?.map((sub: any, sidx: number) => (
-                        <div key={sidx} style={{ padding: '1.5rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '1rem', border: '1px solid var(--border)' }}>
+                <div style={{ 
+                    display: (isPrint || !isEditing) && ['exame_neurologico', 'avaliacao_do_movimento', 'miofascial_neural', 'irritabilidade'].some(id => section.id.includes(id)) ? 'grid' : 'flex', 
+                    gridTemplateColumns: (isPrint || !isEditing) && ['exame_neurologico', 'avaliacao_do_movimento', 'miofascial_neural', 'irritabilidade'].some(id => section.id.includes(id)) ? '1fr 1fr' : 'none',
+                    flexDirection: 'column', 
+                    gap: isPrint ? '0.75rem' : '1.5rem' 
+                }}>
+                    {section.subsections?.filter(sub => {
+                        if (isEditing) return true;
+                        const checkFields = (fs?: any[]) => fs?.some(f => hasVal(answers[typeof f === 'string' ? f : f.id]));
+                        const checkRows = (rs?: any[]) => rs?.some(r => r.fields.some((f: any) => hasVal(answers[typeof f === 'string' ? f : f.id])));
+                        return checkFields(sub.fields) || (sub.type === 'table' && checkRows(sub.rows));
+                    }).map((sub: any, sidx: number) => (
+                        <div key={sidx} style={{ 
+                            padding: isPrint ? '0.75rem' : '1.5rem', 
+                            backgroundColor: 'white', 
+                            borderRadius: '0.75rem', 
+                            border: '1px solid var(--border)',
+                            pageBreakInside: 'avoid',
+                            boxShadow: isPrint ? 'none' : '0 1px 3px rgba(0,0,0,0.05)'
+                        }}>
                             <h4 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', color: 'var(--secondary)' }}>{sub.title}</h4>
                             {sub.type === 'table' ? (
                                 <DataTable 
@@ -1199,7 +2041,10 @@ const FormSection = memo(({
                                     isEditing={isEditing} 
                                     handleInputChange={handleInputChange} 
                                     onImageClick={onImageClick}
+                                    onOpenDynamo={onOpenDynamo}
+                                    onAnalyzeImage={onAnalyzeImage}
                                     isPrint={isPrint}
+                                    assessmentDate={assessmentDate}
                                 />
                             ) : (
                                 <div style={{ display: 'grid', gridTemplateColumns: sub.fields?.some((f: any) => f.type === 'image-upload') ? '1fr 1fr' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
@@ -1219,20 +2064,82 @@ const FormSection = memo(({
                                             assessmentId={assessmentId}
                                             router={router}
                                             isPrint={isPrint}
+                                            answers={answers}
+                                            assessmentDate={assessmentDate}
+                                            onAnalyzeImage={onAnalyzeImage}
+                                            onOpenYbt={onOpenYbt}
                                         />
                                     ))}
                                 </div>
                             )}
+
+                            {/* Subsection Comparison Charts */}
+                            {['forca', 'dinamometria'].includes(sub.id) && sub.type === 'table' && (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+                                    {sub.rows?.map((row: any) => {
+                                        const esq = row.fields.find((f: any) => (typeof f === 'string' ? f : f.id).toLowerCase().includes('esq'));
+                                        const dir = row.fields.find((f: any) => (typeof f === 'string' ? f : f.id).toLowerCase().includes('dir'));
+                                        if (esq && dir) {
+                                            const vE = Number(String(answers[typeof esq === 'string' ? esq : esq.id] || '0').replace(',', '.')) || 0;
+                                            const vD = Number(String(answers[typeof dir === 'string' ? dir : dir.id] || '0').replace(',', '.')) || 0;
+                                            if (vE > 0 || vD > 0) return (
+                                                <AssessmentComparisonChart 
+                                                    key={`comp-sub-${row.id}`}
+                                                    label={`Comparativo: ${row.label}`}
+                                                    leftValue={vE}
+                                                    rightValue={vD}
+                                                    unit="kgF"
+                                                    isPrint={isPrint}
+                                                />
+                                            );
+                                        }
+                                        return null;
+                                    })}
+                                </div>
+                            )}
                         </div>
                     ))}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+                        {section.fields?.filter(f => {
+                            if (isEditing) return true;
+                            if (f.type === 'button') return false;
+                            return hasVal(answers[f.id]);
+                        }).map((field: any) => (
+                            <FormField 
+                                key={field.id}
+                                field={field}
+                                value={answers[field.id]}
+                                isEditing={isEditing}
+                                handleInputChange={handleInputChange}
+                                onImageClick={onImageClick}
+                                patientGender={patientGender}
+                                patientAge={patientAge}
+                                patientAssessments={patientAssessments}
+                                patientId={patientId}
+                                type={type}
+                                assessmentId={assessmentId}
+                                router={router}
+                                isPrint={isPrint}
+                                answers={answers}
+                                assessmentDate={assessmentDate}
+                                onAnalyzeImage={onAnalyzeImage}
+                                onOpenYbt={onOpenYbt}
+                            />
+                        ))}
+                    </div>
                 </div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: section.fields?.some((f: any) => f.type === 'image-upload') ? '1fr 1fr' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: (isPrint || !isEditing) 
+                        ? ((section.id === 'anamnese' || section.id === 'testes_resistencia') ? '1fr 1fr' : (section.fields?.some((f: any) => f.type === 'image-upload') ? '1fr 1fr' : 'repeat(auto-fit, minmax(300px, 1fr))')) 
+                        : '1fr', 
+                    gap: '1.5rem' 
+                }}>
                     {section.fields?.filter(f => {
-                        if (!isPrint) return true;
-                        if (f.type === 'bodyschema' || f.type === 'freecanvas' || f.type === 'angle_measurement') return true;
-                        const val = answers[f.id];
-                        return val !== undefined && val !== '' && val !== null;
+                        if (isEditing) return true;
+                        if (f.type === 'button') return false;
+                        return hasVal(answers[f.id]);
                     }).map((field: any) => (
                         <FormField 
                             key={field.id}
@@ -1249,6 +2156,10 @@ const FormSection = memo(({
                             assessmentId={assessmentId}
                             router={router}
                             isPrint={isPrint}
+                            answers={answers}
+                            assessmentDate={assessmentDate}
+                            onAnalyzeImage={onAnalyzeImage}
+                            onOpenYbt={onOpenYbt}
                         />
                     ))}
                 </div>
@@ -1284,6 +2195,32 @@ function AssessmentContent() {
   const [patientAge, setPatientAge] = useState<number>(0);
   const [patientAssessments, setPatientAssessments] = useState<any[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [showDraftModal, setShowDraftModal] = useState(false);
+  const [pendingDraft, setPendingDraft] = useState<Record<string, any> | null>(null);
+  const [dynamoModal, setDynamoModal] = useState<{ fieldId: string, label: string } | null>(null);
+  const [dynamoValues, setDynamoValues] = useState<[string, string, string]>(['', '', '']);
+  const [ybtModal, setYbtModal] = useState<boolean>(false);
+  const [ybtValues, setYbtValues] = useState<{ anterior: string, postMedial: string, postLateral: string, limbLength: string, side: 'esq' | 'dir' }>({ anterior: '', postMedial: '', postLateral: '', limbLength: '', side: 'esq' });
+  const [posturalModal, setPosturalModal] = useState<{ isOpen: boolean, image: string, fieldId: string, index: number }>({ isOpen: false, image: '', fieldId: '', index: 0 });
+
+  const handleRecoverDraft = () => {
+    if (pendingDraft) {
+      setAnswers(pendingDraft);
+      toast.success("Rascunho recuperado!");
+    }
+    setShowDraftModal(false);
+    setPendingDraft(null);
+  };
+
+  const handleDiscardDraft = () => {
+    const draftKey = `assessment_draft_${patientId}_${type}`;
+    const checkpointKey = `checkpoint_${patientId}_${type}`;
+    localStorage.removeItem(draftKey);
+    localStorage.removeItem(checkpointKey);
+    setShowDraftModal(false);
+    setPendingDraft(null);
+    toast.info("Rascunho descartado.");
+  };
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -1398,14 +2335,36 @@ function AssessmentContent() {
                 localStorage.removeItem(`checkpoint_${patientId}_${type}`);
             } else if (draft) {
                 try {
-                    currentAnswers = JSON.parse(draft);
+                    const parsedDraft = JSON.parse(draft);
+                    const draftKeys = Object.keys(parsedDraft);
+                    const currentKeys = Object.keys(answers);
+                    
+                    // Only offer draft recovery if the current session hasn't already collected significant data
+                    // and we're not already in the middle of a question (currentIdx > 0)
+                    const hasActiveSessionData = currentKeys.some(k => !k.endsWith('_score_previo') && !k.endsWith('_data_previo')) || currentIdx > 0;
+
+                    if (draftKeys.length > 0 && !hasActiveSessionData) {
+                        // Check both searchParams hook and window.location as fallback for reliability
+                        const isReturning = searchParams.get('returnTo') || 
+                                           (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('returnTo') : null);
+                        
+                        if (isReturning) {
+                            currentAnswers = parsedDraft;
+                            setOriginalAnswers(parsedDraft);
+                            toast.success("Dados restaurados automaticamente.");
+                        } else {
+                            // Offer recovery regardless of time limit as per requirement
+                            setPendingDraft(parsedDraft);
+                            setShowDraftModal(true);
+                        }
+                    }
                 } catch (e) {
                     console.error("Erro ao carregar rascunho:", e);
                 }
             }
 
-            // If no draft but we have a latest quest, populate previous fields
-            if (Object.keys(currentAnswers).length === 0 && latestQuest) {
+            // If no draft and no pending draft, but we have a latest quest, populate previous fields
+            if (Object.keys(currentAnswers).length === 0 && !pendingDraft && latestQuest) {
                 const prefix = type === 'afLombar' ? 'oswestry' : type === 'afCervical' ? 'ndi' : 'quickdash';
                 const score = (latestQuest as any).scoreData?.percentage || (latestQuest as any).clinical_data?.percentage || 0;
                 if (score > 0) {
@@ -1416,7 +2375,6 @@ function AssessmentContent() {
                 }
             }
             setAnswers(currentAnswers);
-            if (draft && !checkpointStr) toast.info("Rascunho detectado e restaurado.");
         }
 
         // GLOBAL RETURN SCORE CHECK (applies to both NEW and EDITED assessments)
@@ -1473,13 +2431,42 @@ function AssessmentContent() {
         }
     }
     load();
-  }, [assessmentId, patientId, type]);
+  }, [assessmentId, patientId, type, searchParams]);
 
-  // Save draft to localStorage
+  // Save draft to localStorage (Smart Storage: filter out heavy base64 images to avoid QuotaExceededError)
   useEffect(() => {
     if (!assessmentId && Object.keys(answers).length > 0) {
-        const draftKey = `assessment_draft_${patientId}_${type}`;
-        localStorage.setItem(draftKey, JSON.stringify(answers));
+        // Only save if answers contains more than just historical reference fields
+        const keys = Object.keys(answers);
+        const hasRealData = keys.some(k => !k.endsWith('_score_previo') && !k.endsWith('_data_previo'));
+        
+        if (hasRealData) {
+            const draftKey = `assessment_draft_${patientId}_${type}`;
+            
+            // Filter answers to remove base64 strings (starting with data:image)
+            const cleanAnswers: Record<string, any> = {};
+            Object.keys(answers).forEach(k => {
+                const val = answers[k];
+                if (typeof val === 'string' && val.startsWith('data:image')) {
+                    // Do not save the image data to localStorage to save quota
+                    return;
+                }
+                if (Array.isArray(val)) {
+                    // Filter arrays of images too
+                    cleanAnswers[k] = val.filter(v => typeof v !== 'string' || !v.startsWith('data:image'));
+                    if (cleanAnswers[k].length === 0) delete cleanAnswers[k];
+                    return;
+                }
+                cleanAnswers[k] = val;
+            });
+
+            try {
+                localStorage.setItem(draftKey, JSON.stringify(cleanAnswers));
+            } catch (e) {
+                console.warn("Could not save full draft to localStorage (quota exceeded), clearing and trying again.");
+                localStorage.removeItem(draftKey);
+            }
+        }
     }
   }, [answers, patientId, type, assessmentId]);
 
@@ -1496,14 +2483,38 @@ function AssessmentContent() {
     if (!isEditing) return;
     setAnswers({ ...answers, [currentIdx]: value });
     if (currentIdx < items.length - 1) {
-      setTimeout(() => setCurrentIdx(currentIdx + 1), 300);
+      setTimeout(() => {
+        setCurrentIdx(currentIdx + 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 300);
     }
   };
+
+  const handleAnalyzeImage = useCallback((img: string, fieldId: string, index: number) => {
+    setPosturalModal({ isOpen: true, image: img, fieldId, index });
+  }, []);
+
+  const handleSavePosturalAnalysis = useCallback(async (processedImage: string) => {
+    const compressed = await compressImage(processedImage);
+    const { fieldId, index } = posturalModal;
+    setAnswers(prev => {
+        const currentVal = prev[fieldId];
+        let newVal;
+        if (Array.isArray(currentVal)) {
+            newVal = [...currentVal];
+            newVal[index] = compressed;
+        } else {
+            newVal = compressed;
+        }
+        return { ...prev, [fieldId]: newVal, _lastModified: Date.now() };
+    });
+    toast.success("Análise postural salva e inserida no formulário!");
+  }, [posturalModal]);
 
   const handleInputChange = useCallback((fieldId: string, value: any) => {
     if (!isEditing) return;
     setAnswers(prev => {
-        const newAnswers = { ...prev, [fieldId]: value };
+        const newAnswers = { ...prev, [fieldId]: value, _lastModified: Date.now() };
         
         // Auto-calculate RL/RM ratio for Shoulder
         if (type === 'afOmbro' && (fieldId === 'forca_rl' || fieldId === 'forca_rm')) {
@@ -1562,6 +2573,53 @@ function AssessmentContent() {
             const re = Number(newAnswers['mmii_re_dir']);
             if (ri && re) newAnswers['mmii_ri_re_ratio_dir'] = `${Math.round((ri / re) * 100)}%`;
             else newAnswers['mmii_ri_re_ratio_dir'] = '';
+        }
+
+        // Auto-calculate MMII (afMmii) Muscle Strength Deficits and Ratios
+        if (type === 'afMmii') {
+            const mmiiMovements = ['f_abd_q', 'f_ext_q', 'f_ext_j', 'f_flex_j', 'f_flex_j_p'];
+            mmiiMovements.forEach(mId => {
+                if (fieldId === `${mId}_esq` || fieldId === `${mId}_dir`) {
+                    const esq = Number(newAnswers[`${mId}_esq`]);
+                    const dir = Number(newAnswers[`${mId}_dir`]);
+                    if (esq > 0 || dir > 0) {
+                        const max = Math.max(esq, dir);
+                        const min = Math.min(esq, dir);
+                        const deficit = Math.round(((max - min) / max) * 100);
+                        newAnswers[`${mId}_def`] = `${deficit}%`;
+                    } else {
+                        newAnswers[`${mId}_def`] = '';
+                    }
+                }
+            });
+
+            // Knee Ratios (I/Q)
+            const sides = ['esq', 'dir'];
+            sides.forEach(side => {
+                const ext = Number(newAnswers[`f_ext_j_${side}`]);
+                const flex_sentado = Number(newAnswers[`f_flex_j_${side}`]);
+                const flex_prono = Number(newAnswers[`f_flex_j_p_${side}`]);
+                const flexValue = flex_sentado || flex_prono;
+
+                if (ext && flexValue) {
+                    const ratio = Math.round((flexValue / ext) * 100);
+                    newAnswers[`rel_iq_${side}`] = `${ratio}%`;
+                } else {
+                    newAnswers[`rel_iq_${side}`] = '';
+                }
+            });
+
+            // YBT Asymmetry
+            if (fieldId === 'ybt_esq' || fieldId === 'ybt_dir') {
+                const esq = parseFloat(String(newAnswers['ybt_esq']).replace(',', '.'));
+                const dir = parseFloat(String(newAnswers['ybt_dir']).replace(',', '.'));
+                if (!isNaN(esq) && !isNaN(dir)) {
+                    const diff = Math.abs(esq - dir).toFixed(1);
+                    newAnswers['ybt_diff'] = `${diff}%`;
+                } else {
+                    newAnswers['ybt_diff'] = '';
+                }
+            }
         }
 
         return newAnswers;
@@ -1663,6 +2721,31 @@ function AssessmentContent() {
         if (response.success) {
             setIsFinished(true);
             toast.success("Avaliação salva com sucesso!");
+            
+            const returnTo = searchParams.get('returnTo');
+            
+            // Update URL with the new ID and preserve returnTo for the summary screen buttons
+            if ((response as any).id && !assessmentId) {
+                router.replace(`/dashboard/assessment/${patientId}/${type}?id=${(response as any).id}${returnTo ? `&returnTo=${returnTo}` : ''}`, { scroll: false });
+            }
+            
+            if (returnTo) {
+                const score = calculateAssessmentScore((questionnaire as any).structure?.calculationType || (type as CalculationType), answers);
+                const scoreValue = score.percentage !== undefined ? `${score.percentage}%` : `${score.score} pts`;
+                
+                // Save score to localStorage for the parent assessment to pick up
+                let scoreKey = 'score';
+                if (type === 'ndi' || type === 'oswestry' || type === 'quickdash') {
+                    scoreKey = `${type}_score`;
+                }
+                
+                localStorage.setItem(`return_score_${patientId}_${returnTo}_${scoreKey}`, scoreValue);
+                // Also set the main key for simpler recovery
+                localStorage.setItem(`return_score_${patientId}_${returnTo}`, scoreValue);
+                
+                // router.push(`/dashboard/assessment/${patientId}/${returnTo}?returnTo=${type}`); // Removed for summary screen review
+            }
+
             // Clear draft
             const draftKey = `assessment_draft_${patientId}_${type}`;
             localStorage.removeItem(draftKey);
@@ -1733,7 +2816,7 @@ function AssessmentContent() {
             } else {
                 localStorage.setItem(`return_score_${patientId}_${returnTo}`, String(result.percentage));
             }
-            router.push(`/dashboard/assessment/${patientId}/${returnTo}`);
+            router.push(`/dashboard/assessment/${patientId}/${returnTo}?returnTo=${type}`);
         }
     };
 
@@ -1756,7 +2839,7 @@ function AssessmentContent() {
                     onClick={handleReturn}
                     style={{ padding: '1rem 2rem', fontSize: '1.1rem', borderRadius: '0.75rem', cursor: 'pointer' }}
                 >
-                    Retornar ao Questionário
+                    Concluir e Voltar para Avaliação
                 </button>
             )}
             <button 
@@ -1774,52 +2857,223 @@ function AssessmentContent() {
   function renderFullPrintView() {
     return (
       <div className="print-all-content">
-        <div style={{ textAlign: 'center', marginBottom: '2rem', borderBottom: '2px solid #333', paddingBottom: '1rem' }}>
-            <h1 style={{ fontSize: '2rem', color: '#000', marginBottom: '0.5rem' }}>{questionnaire.title}</h1>
-            <p style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>Paciente: {patientName || patientId}</p>
-            <p style={{ fontSize: '0.9rem', color: '#666' }}>Data da Avaliação: {assessmentDate}</p>
-            {(user || assessmentOwner) && (
-                <p style={{ fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: '600' }}>
-                    Avaliador: {(assessmentOwner?.name || user?.name)} 
-                    {((assessmentOwner?.crefito || user?.crefito)) ? ` (CREFITO: ${assessmentOwner?.crefito || user?.crefito})` : ""}
-                </p>
-            )}
+        <div style={{ textAlign: 'center', marginBottom: '2rem', borderBottom: '2px solid #8b0000', paddingBottom: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+            <img src="/logo-kinesis.png" alt="KinesisLab Logo" style={{ width: '200px', height: 'auto', display: 'inline-block', marginBottom: '1rem' }} />
+            <h1 style={{ fontSize: '1.8rem', color: '#8b0000', marginBottom: '0.25rem', textTransform: 'uppercase', fontWeight: 900 }}>{questionnaire.title}</h1>
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '0.5rem' }}>
+                <div style={{ textAlign: 'left' }}>
+                    <p style={{ fontWeight: '800', fontSize: '1.1rem', margin: 0 }}>Paciente: {patientName || patientId}</p>
+                    <p style={{ fontSize: '0.85rem', color: '#444', margin: '2px 0 0' }}>Data da Avaliação: {assessmentDate}</p>
+                </div>
+                {(user || assessmentOwner) && (
+                    <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '0.9rem', fontWeight: '700', margin: 0, color: '#333' }}>
+                            Avaliador: {(assessmentOwner?.name || user?.name)}
+                        </p>
+                        {((assessmentOwner?.crefito || user?.crefito)) && (
+                            <p style={{ fontSize: '0.8rem', color: '#555', margin: 0 }}>CREFITO: {assessmentOwner?.crefito || user?.crefito}</p>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
 
-        {items.map((item, idx) => (
-            isClinical ? (
-                <FormSection 
-                    key={idx}
-                    section={item as Section}
-                    isPrint={true}
-                    answers={answers}
-                    handleInputChange={handleInputChange}
-                    isEditing={false}
-                    onImageClick={setSelectedImage}
-                    patientGender={patientGender}
-                    patientAge={patientAge}
-                    patientAssessments={patientAssessments}
-                    assessmentId={assessmentId}
-                    patientId={patientId}
-                    type={type}
-                    router={router}
-                />
-            ) : (
-                !(item as any).isInstruction && (
-                <div key={idx} className="print-section" style={{ marginBottom: '1.5rem', padding: '1.5rem', border: '1px solid var(--border)', borderRadius: '1rem', backgroundColor: 'var(--bg-secondary)', pageBreakInside: 'avoid' }}>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--secondary)', marginBottom: '1rem' }}>
-                        {(item as any).text}
-                    </div>
-                    <div style={{ fontSize: '1.1rem', color: 'var(--primary)', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)', fontWeight: '800' }}>
-                        {answers[idx] !== undefined 
-                            ? ((item as any).options?.find((o: any) => o.value === answers[idx])?.label || 'Não respondido')
-                            : 'Não respondido'
+        {/* RESUMO VISUAL - DESTAQUE DAS PRINCIPAIS IMAGENS */}
+        {(() => {
+            // New strategy: Search questionnaire definition for fields that might have images
+            const visualFields: any[] = [];
+            const collectVisualData = (sections: Section[]) => {
+                sections.forEach(s => {
+                    s.fields?.forEach(f => {
+                        if (['bodyschema', 'paintmap', 'angle_measurement', 'image-upload'].includes(f.type)) {
+                            const val = answers[f.id];
+                            if (val && ((typeof val === 'string' && val.startsWith('data:image')) || Array.isArray(val))) {
+                                visualFields.push({ ...f, value: val });
+                            }
                         }
+                    });
+                    if (s.subsections) collectVisualData(s.subsections);
+                });
+            };
+            collectVisualData(questionnaire.sections || []);
+
+            // Identify primary images for the summary
+            const areaDorField = visualFields.find(f => f.id.includes('area_dor') || f.type === 'bodyschema' || f.type === 'paintmap');
+            const posturalField = visualFields.find(f => (f.id.includes('postura') || f.type === 'angle_measurement' || f.type === 'image-upload') && f.id !== areaDorField?.id);
+
+            const areaDor = areaDorField?.value;
+            let posturalImg = posturalField?.value;
+            if (Array.isArray(posturalImg)) posturalImg = posturalImg.find(v => typeof v === 'string' && v.startsWith('data:image')) || posturalImg[0];
+
+            if (areaDor || posturalImg) {
+                return (
+                    <div className="visual-summary-section" style={{ 
+                        marginBottom: '3rem', 
+                        pageBreakInside: 'avoid', 
+                        padding: '1.5rem', 
+                        backgroundColor: '#fffafb', 
+                        borderRadius: '1.5rem', 
+                        border: '2px solid #8b000033' 
+                    }}>
+                        <h2 style={{ fontSize: '1.4rem', color: '#8b0000', borderBottom: '2px solid #8b0000', paddingBottom: '0.5rem', marginBottom: '1.5rem', fontWeight: 900, textTransform: 'uppercase' }}>
+                            Resumo Visual da Avaliação ({questionnaire.title})
+                        </h2>
+                        <div style={{ display: 'grid', gridTemplateColumns: (areaDor && posturalImg) ? '1fr 1fr' : '1fr', gap: '2rem' }}>
+                            {areaDor && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#333' }}>Esquema Corporal / Mapa de Dor</h3>
+                                    <div style={{ backgroundColor: '#fff', borderRadius: '1rem', border: '1px solid #eee', padding: '0.5rem', display: 'flex', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                                        <img src={areaDor} style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain' }} alt="Esquema Corporal" />
+                                    </div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1rem', fontSize: '0.7rem', fontWeight: '800' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ff0000' }}/> Dor</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#0000ff' }}/> Formigamento</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ffff00' }}/> Queimação</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#00ff00' }}/> Parestesia</div>
+                                    </div>
+                                </div>
+                            )}
+                            {posturalImg && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#333' }}>Análise Postural / Fotográfica</h3>
+                                    <div style={{ backgroundColor: '#fff', borderRadius: '1rem', border: '1px solid #eee', padding: '0.5rem', display: 'flex', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                                        <img src={posturalImg} style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain', borderRadius: '0.5rem' }} alt="Postura" />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                );
+            }
+            return null;
+        })()}
+
+        {items.filter(item => {
+            if (!isClinical) return true;
+            const section = item as Section;
+            
+            // Mandatory sections to show (titles mostly)
+            if (section.id === 'anamnese' || section.id === 'diagnostico_conclusoes') return true;
+            
+            const hasValue = (val: any) => {
+                if (val === undefined || val === null || val === '' || val === 'null') return false;
+                if (Array.isArray(val)) return val.length > 0;
+                // Allow 0 for range (EVA) as per user feedback
+                return true;
+            };
+
+            const checkFieldsData = (fields?: any[]) => fields?.some(f => {
+                const fid = typeof f === 'string' ? f : f?.id;
+                return hasValue(answers[fid]);
+            });
+
+            const checkRowsData = (rows?: any[]) => rows?.some((r: any) => r.fields.some((f: any) => {
+                const fid = typeof f === 'string' ? f : f.id;
+                return hasValue(answers[fid]);
+            }));
+
+            const hasTableData = section.type === 'table' && checkRowsData(section.rows);
+            // check subsections for multi-table
+            const hasSubData = section.subsections?.some(sub => 
+                checkFieldsData(sub.fields) || (sub.type === 'table' && checkRowsData(sub.rows))
+            );
+
+            return checkFieldsData(section.fields) || hasTableData || hasSubData;
+        }).reduce((acc: any[], item, idx, arr) => {
+            // Group movimento_cervical and irritabilidade side-by-side in print mode
+            if (isClinical) {
+                const section = item as Section;
+                const nextSection = arr[idx + 1] as Section;
+                
+                if (section.id === 'movimento_cervical' && nextSection?.id === 'irritabilidade') {
+                    acc.push(
+                        <div key={`group-${section.id}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', width: '100%' }}>
+                            <FormSection 
+                                section={section}
+                                isPrint={true}
+                                answers={answers}
+                                handleInputChange={handleInputChange}
+                                isEditing={false}
+                                onImageClick={setSelectedImage}
+                                onAnalyzeImage={handleAnalyzeImage}
+                                patientGender={patientGender}
+                                patientAge={patientAge}
+                                patientAssessments={patientAssessments}
+                                assessmentId={assessmentId}
+                                patientId={patientId}
+                                type={type}
+                                router={router}
+                                assessmentDate={assessmentDate}
+                                onOpenDynamo={undefined}
+                            />
+                            <FormSection 
+                                section={nextSection}
+                                isPrint={true}
+                                answers={answers}
+                                handleInputChange={handleInputChange}
+                                isEditing={false}
+                                onImageClick={setSelectedImage}
+                                onAnalyzeImage={handleAnalyzeImage}
+                                patientGender={patientGender}
+                                patientAge={patientAge}
+                                patientAssessments={patientAssessments}
+                                assessmentId={assessmentId}
+                                patientId={patientId}
+                                type={type}
+                                router={router}
+                                assessmentDate={assessmentDate}
+                                onOpenDynamo={undefined}
+                            />
+                        </div>
+                    );
+                    return acc;
+                }
+                
+                // Skip 'irritabilidade' because it was handled in the 'movimento_cervical' block
+                if (section.id === 'irritabilidade' && arr[idx - 1] && (arr[idx - 1] as Section).id === 'movimento_cervical') {
+                    return acc;
+                }
+            }
+
+            acc.push(
+                isClinical ? (
+                        <FormSection 
+                            key={idx}
+                            section={item as Section}
+                            isPrint={true}
+                            answers={answers}
+                            handleInputChange={handleInputChange}
+                            isEditing={false}
+                            onImageClick={setSelectedImage}
+                            onAnalyzeImage={handleAnalyzeImage}
+                            patientGender={patientGender}
+                            patientAge={patientAge}
+                            patientAssessments={patientAssessments}
+                            assessmentId={assessmentId}
+                            patientId={patientId}
+                            type={type}
+                            router={router}
+                            assessmentDate={assessmentDate}
+                            onOpenDynamo={undefined}
+                        />
+                ) : (
+                    !(item as any).isInstruction && (
+                    <div key={idx} className="print-section" style={{ marginBottom: '1.5rem', padding: '1.5rem', border: '1px solid var(--border)', borderRadius: '1rem', backgroundColor: 'var(--bg-secondary)', pageBreakInside: 'avoid' }}>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--secondary)', marginBottom: '1rem' }}>
+                            {(item as any).text}
+                        </div>
+                        <div style={{ fontSize: '1.1rem', color: 'var(--primary)', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)', fontWeight: '800' }}>
+                            {answers[idx] !== undefined 
+                                ? ((item as any).options?.find((o: any) => o.value === answers[idx])?.label || 'Não respondido')
+                                : 'Não respondido'
+                            }
+                        </div>
+                    </div>
+                    )
                 )
-            )
-        ))}
+            );
+            return acc;
+        }, [])}
 
         {isFinished && !isClinical && (
             <div style={{ marginTop: '2rem', padding: '1rem', border: '2px solid #8B0000', borderRadius: '0.5rem' }}>
@@ -1838,36 +3092,8 @@ function AssessmentContent() {
             </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', marginTop: '2rem' }}>
-            {['ndi', 'oswestry', 'quickdash', 'man', 'ves13', 'lbpq', 'brief', 'lysholm', 'womac', 'ikdc', 'aofas'].map(questType => {
-                const scoreKey = `${questType}_score`;
-                const scoreValue = answers[scoreKey] || answers[`${questType}_score_previo`];
-                if (!scoreValue) return null;
-                
-                const numScore = Number(String(scoreValue).split('%')[0].trim()) || 0;
-                const labels: Record<string, string> = {
-                    ndi: "Neck Disability Index (NDI)", oswestry: "Índice de Oswestry (ODI)", quickdash: "QuickDASH",
-                    man: "Mini Avaliação Nutricional (MAN)", ves13: "Vulnerabilidade (VES-13)",
-                    lbpq: "Questionário de Dor Lombar (LBPQ)", brief: "Inventário Breve de Dor (BPI-SF)",
-                    lysholm: "Questionário de Lysholm", womac: "WOMAC", ikdc: "IKDC", aofas: "AOFAS"
-                };
-
-                return (
-                    <div key={`print-functional-chart-${questType}`} className="print-chart-container" style={{ width: '100%', maxWidth: '600px', pageBreakInside: 'avoid', margin: '0 auto' }}>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#8B0000', marginBottom: '0.5rem', textAlign: 'center' }}>
-                            Evolução: {labels[questType]}
-                        </div>
-                        <FunctionalHistoryChart 
-                            type={questType}
-                            currentScore={numScore}
-                            history={patientAssessments}
-                            isEmbedded={true}
-                            isPrint={true}
-                            assessmentId={assessmentId}
-                        />
-                    </div>
-                );
-            })}
+        {/* Functional Charts moved inline to sections */}
+        <div style={{ display: 'none' }}>
         </div>
       </div>
     );
@@ -1876,10 +3102,16 @@ function AssessmentContent() {
   return (
     <div className="assessment-page">
       <div className="background-gradient" />
-      
-      <Header />
+            <Header />
+        
+        <PosturalAnalysisModal 
+            isOpen={posturalModal.isOpen}
+            onClose={() => setPosturalModal(prev => ({ ...prev, isOpen: false }))}
+            imageSrc={posturalModal.image}
+            onSave={handleSavePosturalAnalysis}
+        />
 
-      <main className="no-print container main-content">
+        <main className="no-print container main-content">
         <header className="assessment-header">
             <div className="header-top stack-on-mobile">
                 <div className="header-left">
@@ -1970,6 +3202,13 @@ function AssessmentContent() {
                             isPrint={false}
                             type={type}
                             router={router}
+                            assessmentDate={assessmentDate}
+                            onOpenDynamo={(fieldId, label) => {
+                                setDynamoModal({ fieldId, label });
+                                setDynamoValues(['', '', '']);
+                            }}
+                            onOpenYbt={() => setYbtModal(true)}
+                            onAnalyzeImage={handleAnalyzeImage}
                         />
                     ) : (
                         <div className="section-container" style={{ marginBottom: '2.5rem' }}>
@@ -2083,6 +3322,311 @@ function AssessmentContent() {
       <div className="print-restricted-wrapper">
          {renderFullPrintView()}
       </div>
+
+      <AnimatePresence>
+                {dynamoModal && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', padding: '1rem' }}>
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className="modal-content"
+                            style={{ 
+                                backgroundColor: 'white', 
+                                padding: '2rem', 
+                                borderRadius: '1.5rem', 
+                                width: '100%', 
+                                maxWidth: '400px', 
+                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '1.5rem',
+                                border: '1px solid var(--border)'
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1rem', marginBottom: '0.5rem' }}>
+                                <div style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Calculator size={24} className="text-primary" />
+                                    <span>Inserir Medidas</span>
+                                </div>
+                                <button onClick={() => setDynamoModal(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.5rem' }}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                                Calculando média para: <span style={{ fontWeight: '700', color: 'var(--primary)' }}>{dynamoModal.label}</span>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                {dynamoValues.map((val, i) => (
+                                    <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--secondary)' }}>Medida {i + 1} (kgF)</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.01"
+                                            value={val}
+                                            onChange={(e) => {
+                                                const newVals: [string, string, string] = [...dynamoValues];
+                                                newVals[i] = e.target.value;
+                                                setDynamoValues(newVals);
+                                            }}
+                                            placeholder="0.00"
+                                            autoFocus={i === 0}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    const next = (e.target as HTMLElement).parentElement?.nextElementSibling?.querySelector('input');
+                                                    if (next) next.focus();
+                                                }
+                                            }}
+                                            style={{ 
+                                                width: '100%', 
+                                                padding: '0.85rem', 
+                                                borderRadius: '0.75rem', 
+                                                border: '2px solid var(--border)',
+                                                fontSize: '1.1rem',
+                                                fontWeight: '700',
+                                                textAlign: 'center',
+                                                color: 'var(--secondary)',
+                                                outline: 'none',
+                                                transition: 'border-color 0.2s'
+                                            }}
+                                            onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
+                                            onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                <button 
+                                    onClick={() => {
+                                        const values = dynamoValues.filter(v => v !== '' && !isNaN(Number(v))).map(Number);
+                                        if (values.length > 0) {
+                                            const avg = values.reduce((a, b) => a + b, 0) / values.length;
+                                            handleInputChange(dynamoModal.fieldId, avg.toFixed(2));
+                                            setDynamoModal(null);
+                                            setDynamoValues(['', '', '']);
+                                            toast.success("Média calculada e inserida!");
+                                        } else {
+                                            toast.error("Insira ao menos uma medida válida.");
+                                        }
+                                    }}
+                                    className="btn-primary"
+                                    style={{ width: '100%', padding: '1rem', borderRadius: '1rem', fontWeight: '800', fontSize: '1rem', boxShadow: 'var(--shadow-md)' }}
+                                >
+                                    Calcular Média e Inserir
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        setDynamoModal(null);
+                                        setDynamoValues(['', '', '']);
+                                    }}
+                                    className="btn-action-outline"
+                                    style={{ width: '100%', padding: '1rem', borderRadius: '1rem', fontWeight: '600' }}
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+                {ybtModal && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', padding: '1rem' }}>
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className="modal-content"
+                            style={{ 
+                                backgroundColor: 'white', 
+                                padding: '2rem', 
+                                borderRadius: '1.5rem', 
+                                width: '100%', 
+                                maxWidth: '500px', 
+                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '1.5rem',
+                                border: '1px solid var(--border)'
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
+                                <div style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Calculator size={24} className="text-primary" />
+                                    <span>Calculadora Y-Balance Test</span>
+                                </div>
+                                <button onClick={() => setYbtModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.5rem' }}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div style={{ display: 'flex', backgroundColor: 'var(--bg-secondary)', padding: '4px', borderRadius: '1rem', marginBottom: '0.5rem' }}>
+                                <button 
+                                    onClick={() => setYbtValues(prev => ({ ...prev, side: 'esq' }))}
+                                    style={{ flex: 1, padding: '0.75rem', borderRadius: '0.75rem', border: 'none', backgroundColor: ybtValues.side === 'esq' ? 'white' : 'transparent', color: ybtValues.side === 'esq' ? 'var(--primary)' : 'var(--text-muted)', fontWeight: '700', boxShadow: ybtValues.side === 'esq' ? 'var(--shadow-sm)' : 'none', transition: 'all 0.2s' }}
+                                >
+                                    Membro Esquerdo
+                                </button>
+                                <button 
+                                    onClick={() => setYbtValues(prev => ({ ...prev, side: 'dir' }))}
+                                    style={{ flex: 1, padding: '0.75rem', borderRadius: '0.75rem', border: 'none', backgroundColor: ybtValues.side === 'dir' ? 'white' : 'transparent', color: ybtValues.side === 'dir' ? 'var(--primary)' : 'var(--text-muted)', fontWeight: '700', boxShadow: ybtValues.side === 'dir' ? 'white' : 'none', transition: 'all 0.2s' }}
+                                >
+                                    Membro Direito
+                                </button>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative', padding: '1rem 0' }}>
+                                {/* Y Layout Visualization */}
+                                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                    <div style={{ width: '120px', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                                            <ArrowUp size={16} className="text-primary" />
+                                            <label style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--secondary)' }}>Anterior</label>
+                                        </div>
+                                        <input 
+                                            type="number" 
+                                            value={ybtValues.anterior}
+                                            onChange={(e) => setYbtValues(prev => ({ ...prev, anterior: e.target.value }))}
+                                            placeholder="0.0"
+                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '0.75rem', border: '2px solid var(--border)', fontSize: '1.1rem', textAlign: 'center', fontWeight: '800' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
+                                    <div style={{ width: '140px', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                                            <ArrowDownLeft size={16} className="text-primary" />
+                                            <label style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--secondary)' }}>Post-Lateral</label>
+                                        </div>
+                                        <input 
+                                            type="number" 
+                                            value={ybtValues.postLateral}
+                                            onChange={(e) => setYbtValues(prev => ({ ...prev, postLateral: e.target.value }))}
+                                            placeholder="0.0"
+                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '0.75rem', border: '2px solid var(--border)', fontSize: '1.1rem', textAlign: 'center', fontWeight: '800' }}
+                                        />
+                                    </div>
+                                    <div style={{ width: '140px', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                                            <ArrowDownRight size={16} className="text-primary" />
+                                            <label style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--secondary)' }}>Post-Medial</label>
+                                        </div>
+                                        <input 
+                                            type="number" 
+                                            value={ybtValues.postMedial}
+                                            onChange={(e) => setYbtValues(prev => ({ ...prev, postMedial: e.target.value }))}
+                                            placeholder="0.0"
+                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '0.75rem', border: '2px solid var(--border)', fontSize: '1.1rem', textAlign: 'center', fontWeight: '800' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', border: '1px solid var(--border)' }}>
+                                    <Ruler size={20} className="text-muted" />
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)' }}>Tamanho do Membro (cm)</label>
+                                        <input 
+                                            type="number" 
+                                            value={ybtValues.limbLength}
+                                            onChange={(e) => setYbtValues(prev => ({ ...prev, limbLength: e.target.value }))}
+                                            placeholder="Ex: 85.0"
+                                            style={{ width: '100%', padding: '0.5rem 0', background: 'transparent', border: 'none', borderBottom: '2px solid var(--primary)', fontSize: '1.25rem', fontWeight: '800', outline: 'none' }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ padding: '1.25rem', backgroundColor: 'var(--primary-light)', borderRadius: '1.5rem', textAlign: 'center', border: '2px solid var(--primary)' }}>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--primary)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '800' }}>Resultado Final YBT</div>
+                                <div style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--primary)', letterSpacing: '-1px' }}>
+                                    {(() => {
+                                        const { anterior, postMedial, postLateral, limbLength } = ybtValues;
+                                        const sum = Number(anterior) + Number(postMedial) + Number(postLateral);
+                                        const len = Number(limbLength);
+                                        if (sum > 0 && len > 0) {
+                                            return ((sum / (3 * len)) * 100).toFixed(1) + '%';
+                                        }
+                                        return '0.0%';
+                                    })()}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                <button 
+                                    onClick={() => {
+                                        const { anterior, postMedial, postLateral, limbLength, side } = ybtValues;
+                                        const sum = Number(anterior) + Number(postMedial) + Number(postLateral);
+                                        const len = Number(limbLength);
+                                        if (sum > 0 && len > 0) {
+                                            const result = ((sum / (3 * len)) * 100).toFixed(1);
+                                            handleInputChange(`ybt_${side}`, result);
+                                            setYbtModal(false);
+                                            toast.success(`Resultado ${side === 'esq' ? 'Esquerdo' : 'Direito'} inserido!`);
+                                        } else {
+                                            toast.error("Preencha todos os valores para calcular.");
+                                        }
+                                    }}
+                                    className="btn-primary"
+                                    style={{ width: '100%', padding: '1.1rem', borderRadius: '1.25rem', fontWeight: '900', fontSize: '1.1rem', boxShadow: '0 10px 20px -5px rgba(var(--primary-rgb), 0.3)' }}
+                                >
+                                    Confirmar e Salvar
+                                </button>
+                                <button onClick={() => setYbtModal(false)} className="btn-action-outline" style={{ width: '100%', padding: '1rem', borderRadius: '1.25rem', fontWeight: '700' }}>
+                                    Cancelar
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+            </AnimatePresence>
+
+      {/* Draft Recovery Modal */}
+      <AnimatePresence>
+        {showDraftModal && (
+            <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}
+            >
+                <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="modal-content" 
+                    style={{ maxWidth: '450px', width: '90%', padding: '2rem', textAlign: 'center', backgroundColor: 'white', borderRadius: '1.5rem', boxShadow: 'var(--shadow-lg)' }}
+                >
+                    <div style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary)', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                        <HistoryIcon size={30} />
+                    </div>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--secondary)' }}>Rascunho Detectado</h2>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', lineHeight: '1.6' }}>
+                        Identificamos um rascunho de avaliação que não foi finalizado. Como deseja prosseguir?
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <button 
+                            onClick={handleRecoverDraft}
+                            className="btn-primary"
+                            style={{ width: '100%', padding: '0.85rem' }}
+                        >
+                            Recuperar Dados Salvos
+                        </button>
+                        <button 
+                            onClick={handleDiscardDraft}
+                            className="btn-action-outline"
+                            style={{ width: '100%', padding: '0.85rem', color: '#ef4444', borderColor: '#ef4444' }}
+                        >
+                            Iniciar Novo Formulário
+                        </button>
+                    </div>
+                </motion.div>
+            </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Image Zoom Modal */}
       <AnimatePresence>
@@ -2523,16 +4067,17 @@ function AssessmentContent() {
                 border: none !important; 
                 padding: 0 !important; 
                 margin: 0 !important; 
-                background: none !important;
             }
             main { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
             table { font-size: 8pt !important; width: 100% !important; border-collapse: collapse !important; table-layout: fixed !important; }
             th, td { border: 1px solid #333 !important; padding: 3px 6px !important; word-wrap: break-word !important; }
             .btn-primary, button, .no-print-element { display: none !important; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+            .no-print { display: none !important; }
             img, canvas { max-width: 100% !important; height: auto !important; }
             .print-section { page-break-inside: auto; margin-bottom: 0.75rem; }
             footer, .footer, #footer { display: none !important; }
-            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
             /* Chart fixes for print */
             .chart-container { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; padding: 0.75rem !important; }
             .chart-bars-container { min-height: 140px !important; }

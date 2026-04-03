@@ -187,10 +187,13 @@ export default function DashboardPage() {
       // Optimistic update
       setPatients(prev => prev.filter(p => p.id !== id));
       toast.success("Paciente excluído com sucesso!");
+      setShowNewPatientModal(false);
+      setEditingPatient(null);
     } else {
       toast.error(result.error);
     }
     setPatientToDelete(null);
+    setIsConfirmModalOpen(false);
   };
 
   const openEditModal = (patient: any) => {
@@ -339,15 +342,13 @@ export default function DashboardPage() {
                           <MessageCircle size={18} />
                         </button>
 
-                        {(user?.role === 'ADMINISTRADOR' || patient.created_by_id === user?.id) && (
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); openEditModal(patient); }}
-                            className="btn-action edit-btn"
-                            title="Editar"
-                          >
-                            <Edit size={18} />
-                          </button>
-                        )}
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); openEditModal(patient); }}
+                          className="btn-action edit-btn"
+                          title="Editar"
+                        >
+                          <Edit size={18} />
+                        </button>
 
                         {user?.role !== 'Secretaria' && (
                           <button 

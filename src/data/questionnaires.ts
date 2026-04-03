@@ -21,6 +21,7 @@ export type SectionField = {
   image?: string;
   options?: string[]; // for simple select
   colors?: { hex: string, label: string }[]; // for paintmap
+  rows?: number; // for textarea height
 };
 
 export type TableRow = {
@@ -53,6 +54,7 @@ export type Questionnaire = {
 
 const scores0to5 = ["0", "1", "2", "3", "4", "5"];
 const reflexOptions = ["Normal", "Hiperreflexia", "Hiporeflexia"];
+const sensitivityOptions = ["Normal", "Hipoestesia", "Hiperestesia", "Anestesia"];
 
 export const questionnairesData: Record<string, Questionnaire> = {
   oswestry: {
@@ -142,8 +144,8 @@ export const questionnairesData: Record<string, Questionnaire> = {
         { value: 5, label: 'A dor me impede de viajar, exceto para ir ao médico e hospitais.' }
       ]}
     ],
-    calculateScore: (answers) => {
-      const entries = Object.entries(answers).filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "");
+    calculateScore: (answers: Record<string, any>) => {
+      const entries = Object.entries(answers).filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean');
       if (entries.length === 0) return { percentage: 0, interpretation: 'Pendente', unit: '%' };
       const total = entries.reduce((acc, [_, val]) => acc + Number(val), 0);
       const percentage = Math.round((total / (entries.length * 5)) * 100);
@@ -242,8 +244,8 @@ export const questionnairesData: Record<string, Questionnaire> = {
         { value: 5, label: 'Não consigo participar em nenhuma atividade de lazer de modo algum.' }
       ]}
     ],
-    calculateScore: (answers) => {
-      const entries = Object.entries(answers).filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "");
+    calculateScore: (answers: Record<string, any>) => {
+      const entries = Object.entries(answers).filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean');
       if (entries.length === 0) return { percentage: 0, interpretation: 'Pendente', unit: '%' };
       const total = entries.reduce((acc, [_, val]) => acc + Number(val), 0);
       const percentage = Math.round((total / (entries.length * 5)) * 100);
@@ -265,13 +267,52 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'anamnese',
             title: 'Características da Disfunção',
             fields: [
-                { id: 'queixa', label: 'Queixa Principal', type: 'textarea' },
+                { id: 'anamnese_texto', label: 'Anamnese', type: 'textarea', rows: 6 },
                 { id: 'intensidade_dor', label: 'Intensidade da Dor', type: 'range', min: 0, max: 10, step: 1 },
                 { id: 'area_dor', label: 'Área da Dor (Pinte as áreas afetadas)', type: 'bodyschema', image: '/img/esquema_corpo_inteiro.png' },
-                { id: 'historia', label: 'História Pregressa', type: 'textarea' },
-                { id: 'piora', label: 'Atividade de Piora', type: 'textarea' },
-                { id: 'alivio', label: 'Atividade de Alívio', type: 'textarea' },
-                { id: 'doencas', label: 'Doenças Associadas/Cirurgias Realizadas', type: 'textarea' }
+                { id: 'anamnese_obs', label: 'OBSERVAÇÕES', type: 'textarea' }
+            ]
+        },
+        {
+            id: 'exame_neurologico',
+            title: 'Exame Neurológico',
+            type: 'multi-table',
+            subsections: [
+                {
+                    id: 'miotomos',
+                    title: 'Miótomos (Força 0-5)',
+                    type: 'table',
+                    columns: [
+                        'Nível / Movimento', 
+                        { label: 'Esquerdo', action: { type: 'fill', value: '5' } }, 
+                        { label: 'Direito', action: { type: 'fill', value: '5' } }
+                    ],
+                    rows: [
+                        { id: 'c5_mio', label: 'C5 (Abdução Ombro)', fields: [{ id: 'forca_c5_esq', type: 'select', options: scores0to5 }, { id: 'forca_c5_dir', type: 'select', options: scores0to5 }] },
+                        { id: 'c6_mio', label: 'C6 (Flex. Cotovelo / Ext. Punho)', fields: [{ id: 'forca_c6_esq', type: 'select', options: scores0to5 }, { id: 'forca_c6_dir', type: 'select', options: scores0to5 }] },
+                        { id: 'c7_mio', label: 'C7 (Ext. Cotovelo / Flex. Punho)', fields: [{ id: 'forca_c7_esq', type: 'select', options: scores0to5 }, { id: 'forca_c7_dir', type: 'select', options: scores0to5 }] },
+                        { id: 'c8_mio', label: 'C8 (Ext. Polegar / Ulnarização)', fields: [{ id: 'forca_c8_esq', type: 'select', options: scores0to5 }, { id: 'forca_c8_dir', type: 'select', options: scores0to5 }] },
+                        { id: 't1_mio', label: 'T1 (Abdução Dedos)', fields: [{ id: 'forca_t1_esq', type: 'select', options: scores0to5 }, { id: 'forca_t1_dir', type: 'select', options: scores0to5 }] }
+                    ]
+                },
+                {
+                    id: 'reflexos',
+                    title: 'Reflexos Profundos',
+                    type: 'table',
+                    columns: [
+                        'Reflexo', 
+                        { label: 'Esquerdo', action: { type: 'fill', value: 'Normal' } }, 
+                        { label: 'Direito', action: { type: 'fill', value: 'Normal' } }
+                    ],
+                    rows: [
+                        { id: 'ref_biciptal', label: 'Biciptal (C5)', fields: [{ id: 'ref_bic_esq', type: 'select', options: reflexOptions }, { id: 'ref_bic_dir', type: 'select', options: reflexOptions }] },
+                        { id: 'ref_estilorradial', label: 'Estilorradial (C6)', fields: [{ id: 'ref_est_esq', type: 'select', options: reflexOptions }, { id: 'ref_est_dir', type: 'select', options: reflexOptions }] },
+                        { id: 'ref_triciptal', label: 'Triciptal (C7)', fields: [{ id: 'ref_tri_esq', type: 'select', options: reflexOptions }, { id: 'ref_tri_dir', type: 'select', options: reflexOptions }] }
+                    ]
+                }
+            ],
+            fields: [
+                { id: 'neuro_cervical_obs', label: 'OBSERVAÇÕES', type: 'textarea' }
             ]
         },
 
@@ -279,53 +320,69 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'postural',
             title: 'Avaliação Postural',
             fields: [
-                { id: 'postura_obs', label: 'Vista Posterior / Anterior / Laterais (Observações)', type: 'textarea' },
-                { id: 'postura_img', label: 'Registros Fotográficos', type: 'image-upload' }
+                { id: 'postura_img', label: 'Registros Fotográficos', type: 'image-upload' },
+                { id: 'postura_obs', label: 'Vista Posterior / Anterior / Laterais (Observações)', type: 'textarea' }
             ]
         },
         {
             id: 'movimento_cervical',
             title: 'Avaliação do Movimento (Graus)',
             type: 'table',
-            columns: ['Movimento', 'Graus', 'Padrão / Observações', { label: 'Imagem', type: 'image-upload' }],
+            columns: ['Movimento', 'Graus'],
             rows: [
-                { id: 'flexao', label: 'Flexão', fields: ['flexao_graus', 'flexao_obs', { id: 'flexao_img', type: 'image-upload' }] },
-                { id: 'extensao', label: 'Extensão', fields: ['extensao_graus', 'extensao_obs', { id: 'extensao_img', type: 'image-upload' }] },
-                { id: 'rot_esq', label: 'Rotação Esquerda', fields: ['rot_esq_graus', 'rot_esq_obs', { id: 'rot_esq_img', type: 'image-upload' }] },
-                { id: 'rot_dir', label: 'Rotação Direita', fields: ['rot_dir_graus', 'rot_dir_obs', { id: 'rot_dir_img', type: 'image-upload' }] },
-                { id: 'incl_esq', label: 'Inclinação Esquerda', fields: ['incl_esq_graus', 'incl_esq_obs', { id: 'incl_esq_img', type: 'image-upload' }] },
-                { id: 'incl_dir', label: 'Inclinação Direita', fields: ['incl_dir_graus', 'incl_dir_obs', { id: 'incl_dir_img', type: 'image-upload' }] }
-            ]
+                { id: 'flexao', label: 'Flexão', fields: ['flexao_graus'] },
+                { id: 'extensao', label: 'Extensão', fields: ['extensao_graus'] },
+                { id: 'rot_esq', label: 'Rotação Esquerda', fields: ['rot_esq_graus'] },
+                { id: 'rot_dir', label: 'Rotação Direita', fields: ['rot_dir_graus'] },
+                { id: 'incl_esq', label: 'Inclinação Esquerda', fields: ['incl_esq_graus'] },
+                { id: 'incl_dir', label: 'Inclinação Direita', fields: ['incl_dir_graus'] }
+            ],
+            fields: [{ id: 'movimento_cervical_obs', label: 'OBSERVAÇÕES', type: 'textarea' }]
         },
         {
             id: 'irritabilidade',
             title: 'Teste de Irritabilidade',
-            type: 'table',
-            columns: ['Nível Vertebral', 'Presença de Dor', 'Intensidade (0-10)'],
-            rows: [
-                { id: 'c2', label: 'C2', fields: [{ id: 'palp_c2_dor', type: 'checkbox' }, { id: 'palp_c2_int', type: 'number' }] },
-                { id: 'c3', label: 'C3', fields: [{ id: 'palp_c3_dor', type: 'checkbox' }, { id: 'palp_c3_int', type: 'number' }] },
-                { id: 'c4', label: 'C4', fields: [{ id: 'palp_c4_dor', type: 'checkbox' }, { id: 'palp_c4_int', type: 'number' }] },
-                { id: 'c5p', label: 'C5', fields: [{ id: 'palp_c5_dor', type: 'checkbox' }, { id: 'palp_c5_int', type: 'number' }] },
-                { id: 'c6p', label: 'C6', fields: [{ id: 'palp_c6_dor', type: 'checkbox' }, { id: 'palp_c6_int', type: 'number' }] },
-                { id: 'c7p', label: 'C7', fields: [{ id: 'palp_c7_dor', type: 'checkbox' }, { id: 'palp_c7_int', type: 'number' }] },
-                { id: 't1p', label: 'T1', fields: [{ id: 'palp_t1_dor', type: 'checkbox' }, { id: 'palp_t1_int', type: 'number' }] },
-                { id: 't2', label: 'T2', fields: [{ id: 'palp_t2_dor', type: 'checkbox' }, { id: 'palp_t2_int', type: 'number' }] },
-                { id: 't3', label: 'T3', fields: [{ id: 'palp_t3_dor', type: 'checkbox' }, { id: 'palp_t3_int', type: 'number' }] },
-                { id: 't4', label: 'T4', fields: [{ id: 'palp_t4_dor', type: 'checkbox' }, { id: 'palp_t4_int', type: 'number' }] },
-                { id: 't5', label: 'T5', fields: [{ id: 'palp_t5_dor', type: 'checkbox' }, { id: 'palp_t5_int', type: 'number' }] },
-                { id: 't6', label: 'T6', fields: [{ id: 'palp_t6_dor', type: 'checkbox' }, { id: 'palp_t6_int', type: 'number' }] },
-                { id: 't7p', label: 'T7', fields: [{ id: 'palp_t7_dor', type: 'checkbox' }, { id: 'palp_t7_int', type: 'number' }] }
-            ],
-            fields: [{ id: 'irritabilidade_obs', label: 'Observações de Irritabilidade Articular', type: 'textarea' }]
-        },
-        {
-            id: 'miofascial_neural_geral',
-            title: 'Palpação Miofascial e Testes Neurais',
             type: 'multi-table',
             subsections: [
                 {
-                    id: 'miofascial',
+                    id: 'irritabilidade_ca_t1',
+                    title: 'C2 a T1',
+                    type: 'table',
+                    columns: ['Nível Vertebral', 'Presença de Dor'],
+                    rows: [
+                        { id: 'c2', label: 'C2', fields: [{ id: 'palp_c2_dor', type: 'checkbox' }] },
+                        { id: 'c3', label: 'C3', fields: [{ id: 'palp_c3_dor', type: 'checkbox' }] },
+                        { id: 'c4', label: 'C4', fields: [{ id: 'palp_c4_dor', type: 'checkbox' }] },
+                        { id: 'c5p', label: 'C5', fields: [{ id: 'palp_c5_dor', type: 'checkbox' }] },
+                        { id: 'c6p', label: 'C6', fields: [{ id: 'palp_c6_dor', type: 'checkbox' }] },
+                        { id: 'c7p', label: 'C7', fields: [{ id: 'palp_c7_dor', type: 'checkbox' }] },
+                        { id: 't1p', label: 'T1', fields: [{ id: 'palp_t1_dor', type: 'checkbox' }] }
+                    ]
+                },
+                {
+                    id: 'irritabilidade_t2_t7',
+                    title: 'T2 a T7',
+                    type: 'table',
+                    columns: ['Nível Vertebral', 'Presença de Dor'],
+                    rows: [
+                        { id: 't2', label: 'T2', fields: [{ id: 'palp_t2_dor', type: 'checkbox' }] },
+                        { id: 't3', label: 'T3', fields: [{ id: 'palp_t3_dor', type: 'checkbox' }] },
+                        { id: 't4', label: 'T4', fields: [{ id: 'palp_t4_dor', type: 'checkbox' }] },
+                        { id: 't5', label: 'T5', fields: [{ id: 'palp_t5_dor', type: 'checkbox' }] },
+                        { id: 't6', label: 'T6', fields: [{ id: 'palp_t6_dor', type: 'checkbox' }] },
+                        { id: 't7p', label: 'T7', fields: [{ id: 'palp_t7_dor', type: 'checkbox' }] }
+                    ]
+                }
+            ],
+            fields: [{ id: 'irritabilidade_obs', label: 'OBSERVAÇÕES', type: 'textarea' }]
+        },
+        {
+            id: 'miofascial_neural',
+            title: 'Palpação Miofascial e Tensão Neural',
+            type: 'multi-table',
+            subsections: [
+                {
+                    id: 'miofascial_sub',
                     title: 'Palpação Miofascial',
                     type: 'table',
                     columns: ['Estrutura', 'Esquerdo', 'Direito'],
@@ -339,10 +396,22 @@ export const questionnairesData: Record<string, Questionnaire> = {
                         { id: 'romboides', label: 'M. Romboides', fields: [{ id: 'mio_romboides_esq', type: 'checkbox' }, { id: 'mio_romboides_dir', type: 'checkbox' }] },
                         { id: 'grande_dorsal', label: 'M. Grande Dorsal', fields: [{ id: 'mio_grande_dorsal_esq', type: 'checkbox' }, { id: 'mio_grande_dorsal_dir', type: 'checkbox' }] },
                         { id: 'peitorais', label: 'M. Peitorais', fields: [{ id: 'mio_peitorais_esq', type: 'checkbox' }, { id: 'mio_peitorais_dir', type: 'checkbox' }] }
-                    ],
-                    fields: [{ id: 'mio_obs', label: 'Observações Miofasciais', type: 'textarea' }]
+                    ]
                 },
-
+                {
+                    id: 'tensao_neural_sub',
+                    title: 'Teste de Tensão Neural',
+                    type: 'table',
+                    columns: ['Nervo', 'Esquerdo', 'Direito'],
+                    rows: [
+                        { id: 'nervo_mediano', label: 'Nervo Mediano', fields: [{ id: 'tensao_mediano_esq', type: 'checkbox' }, { id: 'tensao_mediano_dir', type: 'checkbox' }] },
+                        { id: 'nervo_ulnar', label: 'Nervo Ulnar', fields: [{ id: 'tensao_ulnar_esq', type: 'checkbox' }, { id: 'tensao_ulnar_dir', type: 'checkbox' }] },
+                        { id: 'nervo_radial', label: 'Nervo Radial', fields: [{ id: 'tensao_radial_esq', type: 'checkbox' }, { id: 'tensao_radial_dir', type: 'checkbox' }] }
+                    ]
+                }
+            ],
+            fields: [
+                { id: 'miofascial_neural_obs_geral', label: 'OBSERVAÇÕES', type: 'textarea' }
             ]
         },
         {
@@ -358,11 +427,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'ndi_integracao',
             title: 'NDI (Neck Disability Index)',
             fields: [
-                { id: 'ndi_score_previo', label: 'Score Questionário Prévio', type: 'text' },
-                { id: 'ndi_data_previo', label: 'Data da Avaliação Prévia', type: 'date' },
-                { id: 'ndi_obs_previo', label: 'Observações Básicas', type: 'textarea' },
-                { id: 'ndi_novo', label: 'Preencher novo Questionário NDI', type: 'button' },
-                { id: 'ndi_score', label: 'Resultado/Score NDI Atual', type: 'text' }
+                { id: 'ndi_novo', label: 'Preencher novo Questionário NDI', type: 'button' }
             ]
         },
         {
@@ -374,7 +439,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         }
     ],
-    calculateScore: (answers) => {
+    calculateScore: (answers: Record<string, any>) => {
       // For clinical assessments, we just return a "Finished" state for now
       return { score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' };
     }
@@ -389,13 +454,51 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'anamnese',
             title: 'Características da Disfunção',
             fields: [
-                { id: 'queixa', label: 'Queixa Principal', type: 'textarea' },
+                { id: 'anamnese_texto', label: 'Anamnese', type: 'textarea', rows: 6 },
                 { id: 'intensidade_dor', label: 'Intensidade da Dor', type: 'range', min: 0, max: 10, step: 1 },
                 { id: 'area_dor', label: 'Área da Dor (Pinte as áreas afetadas)', type: 'bodyschema', image: '/img/esquema_corpo_inteiro.png' },
-                { id: 'historia', label: 'História Pregressa', type: 'textarea' },
-                { id: 'piora', label: 'Atividade de Piora', type: 'textarea' },
-                { id: 'alivio', label: 'Atividade de Alívio', type: 'textarea' },
-                { id: 'doencas', label: 'Doenças Associadas/Cirurgias Realizadas', type: 'textarea' }
+                { id: 'anamnese_obs', label: 'OBSERVAÇÕES', type: 'textarea' }
+            ]
+        },
+        {
+            id: 'exame_neurologico',
+            title: 'Exame Neurológico',
+            type: 'multi-table',
+            subsections: [
+                {
+                    id: 'miotomos',
+                    title: 'Miótomos (Força 0-5)',
+                    type: 'table',
+                    columns: [
+                        'Nível / Movimento', 
+                        { label: 'Esquerdo', action: { type: 'fill', value: '5' } }, 
+                        { label: 'Direito', action: { type: 'fill', value: '5' } }
+                    ],
+                    rows: [
+                        { id: 'l2_mio', label: 'L2 (Flexão Quadril)', fields: [{ id: 'forca_l2_esq', type: 'select', options: scores0to5 }, { id: 'forca_l2_dir', type: 'select', options: scores0to5 }] },
+                        { id: 'l3_mio', label: 'L3 (Extensão Joelho)', fields: [{ id: 'forca_l3_esq', type: 'select', options: scores0to5 }, { id: 'forca_l3_dir', type: 'select', options: scores0to5 }] },
+                        { id: 'l4_mio', label: 'L4 (Dorsiflexão)', fields: [{ id: 'forca_l4_esq', type: 'select', options: scores0to5 }, { id: 'forca_l4_dir', type: 'select', options: scores0to5 }] },
+                        { id: 'l5_mio', label: 'L5 (Extensão Hálux)', fields: [{ id: 'forca_l5_esq', type: 'select', options: scores0to5 }, { id: 'forca_l5_dir', type: 'select', options: scores0to5 }] },
+                        { id: 's1_mio', label: 'S1 (Flexão Plantar)', fields: [{ id: 'forca_s1_esq', type: 'select', options: scores0to5 }, { id: 'forca_s1_dir', type: 'select', options: scores0to5 }] }
+                    ]
+                },
+                {
+                    id: 'reflexos',
+                    title: 'Reflexos Profundos',
+                    type: 'table',
+                    columns: [
+                        'Reflexo', 
+                        { label: 'Esquerdo', action: { type: 'fill', value: 'Normal' } }, 
+                        { label: 'Direito', action: { type: 'fill', value: 'Normal' } }
+                    ],
+                    rows: [
+                        { id: 'ref_patelar', label: 'Patelar (L4)', fields: [{ id: 'ref_pat_esq', type: 'select', options: reflexOptions }, { id: 'ref_pat_dir', type: 'select', options: reflexOptions }] },
+                        { id: 'ref_aquileu', label: 'Aquileu (S1)', fields: [{ id: 'ref_aqui_esq', type: 'select', options: reflexOptions }, { id: 'ref_aqui_dir', type: 'select', options: reflexOptions }] }
+                    ]
+                }
+            ],
+            fields: [
+                { id: 'neuro_lombar_obs', label: 'OBSERVAÇÕES', type: 'textarea' }
             ]
         },
 
@@ -403,8 +506,8 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'postural',
             title: 'Avaliação Postural',
             fields: [
-                { id: 'postura_obs', label: 'Vista Posterior / Anterior / Laterais (Observações)', type: 'textarea' },
-                { id: 'postura_img', label: 'Registros Fotográficos', type: 'image-upload' }
+                { id: 'postura_img', label: 'Registros Fotográficos', type: 'image-upload' },
+                { id: 'postura_obs', label: 'Vista Posterior / Anterior / Laterais (Observações)', type: 'textarea' }
             ]
         },
         {
@@ -416,57 +519,73 @@ export const questionnairesData: Record<string, Questionnaire> = {
                     id: 'movimento_lombar',
                     title: 'Lombar',
                     type: 'table',
-                    columns: ['Movimento', 'Graus', 'Padrão / Observações', { label: 'Imagem', type: 'image-upload' }],
+                    columns: ['Movimento', 'Graus'],
                     rows: [
-                        { id: 'flexao', label: 'Flexão', fields: ['flexao_graus', 'flexao_obs', { id: 'flexao_img', type: 'image-upload' }] },
-                        { id: 'extensao', label: 'Extensão', fields: ['extensao_graus', 'extensao_obs', { id: 'extensao_img', type: 'image-upload' }] },
-                        { id: 'incl_esq', label: 'Inclinação Esquerda', fields: ['incl_esq_graus', 'incl_esq_obs', { id: 'incl_esq_img', type: 'image-upload' }] },
-                        { id: 'incl_dir', label: 'Inclinação Direita', fields: ['incl_dir_graus', 'incl_dir_obs', { id: 'incl_dir_img', type: 'image-upload' }] },
-                        { id: 'rot_esq', label: 'Rotação Esquerda', fields: ['rot_esq_graus', 'rot_esq_obs', { id: 'rot_esq_img', type: 'image-upload' }] },
-                        { id: 'rot_dir', label: 'Rotação Direita', fields: ['rot_dir_graus', 'rot_dir_obs', { id: 'rot_dir_img', type: 'image-upload' }] }
+                        { id: 'flexao', label: 'Flexão', fields: ['flexao_graus'] },
+                        { id: 'extensao', label: 'Extensão', fields: ['extensao_graus'] },
+                        { id: 'incl_esq', label: 'Inclinação Esquerda', fields: ['incl_esq_graus'] },
+                        { id: 'incl_dir', label: 'Inclinação Direita', fields: ['incl_dir_graus'] },
+                        { id: 'rot_esq', label: 'Rotação Esquerda', fields: ['rot_esq_graus'] },
+                        { id: 'rot_dir', label: 'Rotação Direita', fields: ['rot_dir_graus'] }
                     ]
                 },
                 {
                     id: 'mobilidade_quadril',
                     title: 'Quadril',
                     type: 'table',
-                    columns: ['Movimento', 'Esquerdo (°)', 'Direito (°)', 'Padrão / Observações', { label: 'Imagem', type: 'image-upload' }],
+                    columns: ['Movimento', 'Esquerdo (°)', 'Direito (°)'],
                     rows: [
-                        { id: 'flex_quadril', label: 'Flexão', fields: ['flex_quad_esq_graus', 'flex_quad_dir_graus', 'flex_quad_obs', { id: 'flex_quad_img', type: 'image-upload' }] },
-                        { id: 'rot_med_quadril', label: 'Rot. Medial', fields: ['rot_med_quad_esq_graus', 'rot_med_quad_dir_graus', 'rot_med_quad_obs', { id: 'rot_med_quad_img', type: 'image-upload' }] },
-                        { id: 'rot_lat_quadril', label: 'Rot. Lateral', fields: ['rot_lat_quad_esq_graus', 'rot_lat_quad_dir_graus', 'rot_lat_quad_obs', { id: 'rot_lat_quad_img', type: 'image-upload' }] }
+                        { id: 'flex_quadril', label: 'Flexão', fields: ['flex_quad_esq_graus', 'flex_quad_dir_graus'] },
+                        { id: 'rot_med_quadril', label: 'Rot. Medial', fields: ['rot_med_quad_esq_graus', 'rot_med_quad_dir_graus'] },
+                        { id: 'rot_lat_quadril', label: 'Rot. Lateral', fields: ['rot_lat_quad_esq_graus', 'rot_lat_quad_dir_graus'] }
                     ]
                 }
-            ]
+            ],
+            fields: [{ id: 'movimento_lombar_obs', label: 'OBSERVAÇÕES', type: 'textarea' }]
         },
         {
             id: 'irritabilidade',
             title: 'Teste de Irritabilidade',
-            type: 'table',
-            columns: ['Nível Vertebral', 'Presença de Dor', 'Intensidade (0-10)'],
-            rows: [
-                { id: 't7p', label: 'T7', fields: [{ id: 'palp_t7_dor', type: 'checkbox' }, { id: 'palp_t7_int', type: 'number' }] },
-                { id: 't8p', label: 'T8', fields: [{ id: 'palp_t8_dor', type: 'checkbox' }, { id: 'palp_t8_int', type: 'number' }] },
-                { id: 't9p', label: 'T9', fields: [{ id: 'palp_t9_dor', type: 'checkbox' }, { id: 'palp_t9_int', type: 'number' }] },
-                { id: 't10p', label: 'T10', fields: [{ id: 'palp_t10_dor', type: 'checkbox' }, { id: 'palp_t10_int', type: 'number' }] },
-                { id: 't11p', label: 'T11', fields: [{ id: 'palp_t11_dor', type: 'checkbox' }, { id: 'palp_t11_int', type: 'number' }] },
-                { id: 't12p', label: 'T12', fields: [{ id: 'palp_t12_dor', type: 'checkbox' }, { id: 'palp_t12_int', type: 'number' }] },
-                { id: 'l1p', label: 'L1', fields: [{ id: 'palp_l1_dor', type: 'checkbox' }, { id: 'palp_l1_int', type: 'number' }] },
-                { id: 'l2p', label: 'L2', fields: [{ id: 'palp_l2_dor', type: 'checkbox' }, { id: 'palp_l2_int', type: 'number' }] },
-                { id: 'l3p', label: 'L3', fields: [{ id: 'palp_l3_dor', type: 'checkbox' }, { id: 'palp_l3_int', type: 'number' }] },
-                { id: 'l4p', label: 'L4', fields: [{ id: 'palp_l4_dor', type: 'checkbox' }, { id: 'palp_l4_int', type: 'number' }] },
-                { id: 'l5p', label: 'L5', fields: [{ id: 'palp_l5_dor', type: 'checkbox' }, { id: 'palp_l5_int', type: 'number' }] },
-                { id: 'sacrop', label: 'Sacro', fields: [{ id: 'palp_sacro_dor', type: 'checkbox' }, { id: 'palp_sacro_int', type: 'number' }] }
-            ],
-            fields: [{ id: 'palp_art_l_obs', label: 'Observações de Irritabilidade Articular', type: 'textarea' }]
-        },
-        {
-            id: 'miofascial_neural_geral',
-            title: 'Palpação Miofascial e Testes Neurais',
             type: 'multi-table',
             subsections: [
                 {
-                    id: 'miofascial',
+                    id: 'irritabilidade_t7_t12',
+                    title: 'T7 a T12',
+                    type: 'table',
+                    columns: ['Nível Vertebral', 'Presença de Dor'],
+                    rows: [
+                        { id: 't7p', label: 'T7', fields: [{ id: 'palp_t7_dor', type: 'checkbox' }] },
+                        { id: 't8p', label: 'T8', fields: [{ id: 'palp_t8_dor', type: 'checkbox' }] },
+                        { id: 't9p', label: 'T9', fields: [{ id: 'palp_t9_dor', type: 'checkbox' }] },
+                        { id: 't10p', label: 'T10', fields: [{ id: 'palp_t10_dor', type: 'checkbox' }] },
+                        { id: 't11p', label: 'T11', fields: [{ id: 'palp_t11_dor', type: 'checkbox' }] },
+                        { id: 't12p', label: 'T12', fields: [{ id: 'palp_t12_dor', type: 'checkbox' }] }
+                    ]
+                },
+                {
+                    id: 'irritabilidade_l1_sacro',
+                    title: 'L1 a Sacro',
+                    type: 'table',
+                    columns: ['Nível Vertebral', 'Presença de Dor'],
+                    rows: [
+                        { id: 'l1p', label: 'L1', fields: [{ id: 'palp_l1_dor', type: 'checkbox' }] },
+                        { id: 'l2p', label: 'L2', fields: [{ id: 'palp_l2_dor', type: 'checkbox' }] },
+                        { id: 'l3p', label: 'L3', fields: [{ id: 'palp_l3_dor', type: 'checkbox' }] },
+                        { id: 'l4p', label: 'L4', fields: [{ id: 'palp_l4_dor', type: 'checkbox' }] },
+                        { id: 'l5p', label: 'L5', fields: [{ id: 'palp_l5_dor', type: 'checkbox' }] },
+                        { id: 'sacrop', label: 'Sacro', fields: [{ id: 'palp_sacro_dor', type: 'checkbox' }] }
+                    ]
+                }
+            ],
+            fields: [{ id: 'palp_art_l_obs', label: 'OBSERVAÇÕES', type: 'textarea' }]
+        },
+        {
+            id: 'miofascial_neural',
+            title: 'Palpação Miofascial e Tensão Neural',
+            type: 'multi-table',
+            subsections: [
+                {
+                    id: 'miofascial_sub',
                     title: 'Palpação Miofascial',
                     type: 'table',
                     columns: ['Estrutura', 'Esquerdo', 'Direito'],
@@ -479,10 +598,22 @@ export const questionnairesData: Record<string, Questionnaire> = {
                         { id: 'tfl', label: 'M. Tensor da Fáscia Lata', fields: [{ id: 'mio_tfl_esq', type: 'checkbox' }, { id: 'mio_tfl_dir', type: 'checkbox' }] },
                         { id: 'iliopsoas', label: 'M. Iliopsoas', fields: [{ id: 'mio_iliopsoas_esq', type: 'checkbox' }, { id: 'mio_iliopsoas_dir', type: 'checkbox' }] },
                         { id: 'outro', label: 'M. Outro', fields: [{ id: 'mio_outro_esq', type: 'checkbox' }, { id: 'mio_outro_dir', type: 'checkbox' }] }
-                    ],
-                    fields: [{ id: 'mio_obs', label: 'Observações Miofasciais', type: 'textarea' }]
+                    ]
                 },
-
+                {
+                    id: 'tensao_neural_sub',
+                    title: 'Teste de Tensão Neural',
+                    type: 'table',
+                    columns: ['Teste / Nervo', 'Esquerdo', 'Direito'],
+                    rows: [
+                        { id: 'lasegue', label: 'Teste de Lasegue', fields: [{ id: 'tensao_lasegue_esq', type: 'checkbox' }, { id: 'tensao_lasegue_dir', type: 'checkbox' }] },
+                        { id: 'slump', label: 'SLUMP', fields: [{ id: 'tensao_slump_esq', type: 'checkbox' }, { id: 'tensao_slump_dir', type: 'checkbox' }] },
+                        { id: 'nervo_femoral', label: 'Nervo Femoral', fields: [{ id: 'tensao_femoral_esq', type: 'checkbox' }, { id: 'tensao_femoral_dir', type: 'checkbox' }] }
+                    ]
+                }
+            ],
+            fields: [
+                { id: 'miofascial_neural_obs_geral', label: 'OBSERVAÇÕES', type: 'textarea' }
             ]
         },
         {
@@ -498,9 +629,6 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'oswestry_integracao',
             title: 'ODI (Índice de Incapacidade de Oswestry)',
             fields: [
-                { id: 'oswestry_score_previo', label: 'Score Questionário Prévio', type: 'text' },
-                { id: 'oswestry_data_previo', label: 'Data da Avaliação Prévia', type: 'date' },
-                { id: 'oswestry_obs_previo', label: 'Observações Básicas', type: 'textarea' },
                 { id: 'oswestry_novo', label: 'Preencher novo Questionário ODI', type: 'button' },
                 { id: 'oswestry_score', label: 'Resultado/Score ODI Atual', type: 'text' }
             ]
@@ -514,7 +642,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         }
     ],
-    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
+    calculateScore: (answers: Record<string, any>) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
   },
   quickdash: {
     id: 'quickdash',
@@ -536,8 +664,12 @@ export const questionnairesData: Record<string, Questionnaire> = {
         { id: 'q10', text: '10. Sensação de formigamento ou dormência no seu braço, ombro ou mão.', options: [{ value: 1, label: 'Nenhum sintoma' }, { value: 2, label: 'De Leve intensidade' }, { value: 3, label: 'De Média intensidade' }, { value: 4, label: 'De Muita intensidade' }, { value: 5, label: 'Extremo' }] },
         { id: 'q11', text: '11. dificuldade para dormir por causa de dor no seu braço, ombro ou mão?', options: [{ value: 1, label: 'Nenhuma Dificuldade' }, { value: 2, label: 'Pouca Dificuldade' }, { value: 3, label: 'Moderada' }, { value: 4, label: 'Muita Dificuldade' }, { value: 5, label: 'Extrema' }] }
     ],
-    calculateScore: (answers) => {
-        const values = Object.values(answers).filter(v => typeof v === 'number');
+    calculateScore: (answers: Record<string, any>) => {
+        const values = Object.entries(answers)
+            .filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean')
+            .map(([_, v]) => Number(v))
+            .filter(v => !isNaN(v));
+            
         if (values.length < 10) return { score: 0, percentage: 0, interpretation: 'Mínimo de 10 respostas obrigatórias', unit: '%' };
         const sum = values.reduce((a, b) => a + b, 0);
         const finalScore = ((sum / values.length) - 1) * 25;
@@ -561,38 +693,53 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'anamnese',
             title: 'Características da Disfunção',
             fields: [
-                { id: 'queixa', label: 'Queixa Principal', type: 'textarea' },
+                { id: 'anamnese_texto', label: 'Anamnese', type: 'textarea', rows: 6 },
                 { id: 'intensidade_dor', label: 'Intensidade da Dor', type: 'range', min: 0, max: 10, step: 1 },
                 { id: 'area_dor', label: 'Área da Dor (Pinte as áreas afetadas)', type: 'bodyschema', image: '/img/esquema_corpo_inteiro.png' },
-                { id: 'historia', label: 'História Pregressa / Mecanismo de Lesão', type: 'textarea' },
-                { id: 'piora', label: 'Atividade de Piora', type: 'textarea' },
-                { id: 'alivio', label: 'Atividade de Alívio', type: 'textarea' },
-                { id: 'exames_complementares', label: 'Exames Complementares', type: 'textarea' },
-                { id: 'obs_cervical', label: 'Observações Coluna Cervical', type: 'textarea' },
-                { id: 'obs_toracica', label: 'Observações Coluna Torácica', type: 'textarea' }
+                { id: 'exames_complementares', label: 'Exames Complementares', type: 'textarea' }
             ]
         },
         {
             id: 'postural',
             title: 'Avaliação Postural e Inspeção',
             fields: [
-                { id: 'inspecao_obs', label: 'Observações (Simetria, Atrofia, Escápula Alada)', type: 'textarea' },
-                { id: 'postura_img', label: 'Registros Fotográficos', type: 'image-upload' }
+                { id: 'postura_img', label: 'Registros Fotográficos', type: 'image-upload' },
+                { id: 'inspecao_obs', label: 'Observações (Simetria, Atrofia, Escápula Alada)', type: 'textarea' }
             ]
         },
         {
             id: 'adm_ombro',
             title: 'Amplitude de Movimento (Graus)',
-            type: 'table',
-            columns: ['Movimento', 'Ativa', 'Passiva', { label: 'Imagem', type: 'image-upload' }],
-            rows: [
-                { id: 'flexao', label: 'Flexão', fields: ['flexao_ativa', 'flexao_passiva', { id: 'flex_img', type: 'image-upload' }] },
-                { id: 'extensao', label: 'Extensão', fields: ['extensao_ativa', 'extensao_passiva', { id: 'ext_img', type: 'image-upload' }] },
-                { id: 'abd_frontal', label: 'Abdução Frontal', fields: ['abd_f_ativa', 'abd_f_passiva', { id: 'abd_f_img', type: 'image-upload' }] },
-                { id: 'rot_med', label: 'Rotação Medial', fields: ['rm_ativa', 'rm_passiva', { id: 'rm_img', type: 'image-upload' }] },
-                { id: 'rot_lat', label: 'Rotação Lateral', fields: ['rl_ativa', 'rl_passiva', { id: 'rl_img', type: 'image-upload' }] }
+            type: 'multi-table',
+            subsections: [
+                {
+                    id: 'adm_ombro_esq',
+                    title: 'Ombro Esquerdo',
+                    type: 'table',
+                    columns: ['Movimento', 'Ativa', 'Passiva'],
+                    rows: [
+                        { id: 'flexao_e', label: 'Flexão', fields: ['flexao_ativa_e', 'flexao_passiva_e'] },
+                        { id: 'extensao_e', label: 'Extensão', fields: ['extensao_ativa_e', 'extensao_passiva_e'] },
+                        { id: 'abd_frontal_e', label: 'Abdução Frontal', fields: ['abd_f_ativa_e', 'abd_f_passiva_e'] },
+                        { id: 'rot_med_e', label: 'Rotação Medial', fields: ['rm_ativa_e', 'rm_passiva_e'] },
+                        { id: 'rot_lat_e', label: 'Rotação Lateral', fields: ['rl_ativa_e', 'rl_passiva_e'] }
+                    ]
+                },
+                {
+                    id: 'adm_ombro_dir',
+                    title: 'Ombro Direito',
+                    type: 'table',
+                    columns: ['Movimento', 'Ativa', 'Passiva'],
+                    rows: [
+                        { id: 'flexao_d', label: 'Flexão', fields: ['flexao_ativa_d', 'flexao_passiva_d'] },
+                        { id: 'extensao_d', label: 'Extensão', fields: ['extensao_ativa_d', 'extensao_passiva_d'] },
+                        { id: 'abd_frontal_d', label: 'Abdução Frontal', fields: ['abd_f_ativa_d', 'abd_f_passiva_d'] },
+                        { id: 'rot_med_d', label: 'Rotação Medial', fields: ['rm_ativa_d', 'rm_passiva_d'] },
+                        { id: 'rot_lat_d', label: 'Rotação Lateral', fields: ['rl_ativa_d', 'rl_passiva_d'] }
+                    ]
+                }
             ],
-            fields: [{ id: 'adm_ombro_obs', label: 'Observações de ADM', type: 'textarea' }]
+            fields: [{ id: 'adm_ombro_obs', label: 'OBSERVAÇÕES', type: 'textarea' }]
         },
         {
             id: 'testes_especiais',
@@ -618,9 +765,9 @@ export const questionnairesData: Record<string, Questionnaire> = {
                     id: 'testes_ckcuest',
                     title: 'Teste Funcional (CKCUEST)',
                     type: 'table',
-                    columns: ['Teste', 'Nº de toques', 'Observação'],
+                    columns: ['Teste', 'Esquerdo', 'Direito'],
                     rows: [
-                        { id: 'ckcuest', label: 'CKCUEST', fields: [{ id: 'ckcuest_valor', type: 'number' }, { id: 'ckcuest_obs', type: 'text' }] }
+                        { id: 'ckcuest', label: 'CKCUEST (Nº de toques)', fields: [{ id: 'ckcuest_esq', type: 'number' }, { id: 'ckcuest_dir', type: 'number' }] }
                     ]
                 },
                 {
@@ -676,11 +823,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'quickdash_integracao',
             title: 'QuickDASH (Disabilities of the Arm, Shoulder and Hand)',
             fields: [
-                { id: 'quickdash_score_previo', label: 'Score Questionário Prévio', type: 'text' },
-                { id: 'quickdash_data_previo', label: 'Data da Avaliação Prévia', type: 'date' },
-                { id: 'quickdash_obs_previo', label: 'Observações Básicas', type: 'textarea' },
-                { id: 'quickdash_novo', label: 'Preencher novo QuickDASH', type: 'button' },
-                { id: 'quickdash_score', label: 'Resultado QuickDASH Atual', type: 'text' }
+                { id: 'quickdash_novo', label: 'Preencher novo QuickDASH', type: 'button' }
             ]
         },
         {
@@ -721,7 +864,8 @@ export const questionnairesData: Record<string, Questionnaire> = {
                 { id: 'flexao_joelho', label: 'Flexão do Joelho', fields: ['flex_joelho_esq', 'flex_joelho_dir'] },
                 { id: 'dorsiflexao', label: 'Dorsiflexão', fields: ['dorsi_esq', 'dorsi_dir'] },
                 { id: 'flexao_plantar', label: 'Flexão Plantar', fields: ['plantar_esq', 'plantar_dir'] }
-            ]
+            ],
+            fields: [{ id: 'adm_geriatria_obs', label: 'Observações', type: 'textarea' }]
         },
         {
             id: 'testes_equilibrio',
@@ -733,28 +877,20 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         },
         {
-            id: 'apoio_unipodal',
-            title: 'Ficar em Pé em Uma Perna Só (Apoio Unipodal - obj: >10.43s)',
-            type: 'table',
-            columns: ['Lado', '1ª Tentativa (seg)', '2ª Tentativa (seg)'],
-            rows: [
-                { id: 'unipodal_dir', label: 'Direita', fields: ['unipodal_dir_t1', 'unipodal_dir_t2'] },
-                { id: 'unipodal_esq', label: 'Esquerda', fields: ['unipodal_esq_t1', 'unipodal_esq_t2'] }
-            ]
-        },
-        {
-            id: 'oito_toques',
-            title: 'Oito Toques Consecutivos (obj: <10s)',
+            id: 'equilibrio_funcional',
+            title: 'Testes de Equilíbrio Funcional',
             fields: [
-                { id: 'toques_tempo', label: 'Tempo (segundos)', type: 'number' },
-                { id: 'toques_qualidade', label: 'Qualidade do Movimento (1 a 5)', type: 'number' }
+                { id: 'unipodal_dir', label: 'Apoio Unipodal Direita (segundos)', type: 'number' },
+                { id: 'unipodal_esq', label: 'Apoio Unipodal Esquerda (segundos)', type: 'number' },
+                { id: 'toques_tempo', label: 'Oito Toques Consecutivos - Tempo (segundos)', type: 'number' },
+                { id: 'toques_qualidade', label: 'Oito Toques Consecutivos - Qualidade (1 a 5)', type: 'number' }
             ]
         },
         {
             id: 'levantar_braco',
             title: 'Em pé: Levantar o Braço (Ajuste antecipatório)',
             fields: [
-                { id: 'levantar_braco_res', label: 'Realizou os ajustes necessários sem desequilibrar?', type: 'textarea' }
+                { id: 'levantar_braco_res', label: 'Realizou os ajustes necessários sem desequilibrar?', type: 'select', options: ['Bom Equilíbrio', 'Dificuldade em Equilibrar-se'] }
             ]
         },
         {
@@ -956,8 +1092,12 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         }
     ],
-    calculateScore: (answers) => {
-        const values = Object.values(answers);
+    calculateScore: (answers: Record<string, any>) => {
+        const values = Object.entries(answers)
+            .filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean')
+            .map(([_, v]) => Number(v))
+            .filter(v => !isNaN(v));
+            
         if (values.length === 0) return { score: 0, percentage: 0, interpretation: 'Nenhuma resposta' };
         const totalScore = values.reduce((a, b) => a + b, 0);
         let interpretation = '';
@@ -975,6 +1115,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
     questions: [
         { text: 'Instrução: As questões a seguir são sobre a saúde e atividades físicas do paciente. Por favor, responda conforme a condição atual.', isInstruction: true },
         {
+            id: 'ves_q1',
             text: '1. Qual é a idade do paciente?',
             options: [
                 { value: 0, label: '65 a 74 anos' },
@@ -983,6 +1124,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         },
         {
+            id: 'ves_q2',
             text: '2. Em geral, comparando com outras pessoas da sua idade, você diria que sua saúde é:',
             options: [
                 { value: 0, label: 'Excelente' },
@@ -994,6 +1136,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
         },
         { text: 'LIMITAÇÃO FÍSICA — Em média, quanta dificuldade você tem para: (1 ponto para cada "Muita dificuldade" ou "Incapaz", máximo 2 pontos nesta seção)', isInstruction: true },
         {
+            id: 'ves_q3a',
             text: '3a. Curvar-se, agachar ou ajoelhar-se?',
             options: [
                 { value: 0, label: 'Nenhuma dificuldade' }, { value: 0, label: 'Um pouco de dificuldade' }, { value: 0, label: 'Alguma dificuldade' },
@@ -1001,6 +1144,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         },
         {
+            id: 'ves_q3b',
             text: '3b. Levantar ou carregar objetos com peso aproximado de 5 kg?',
             options: [
                 { value: 0, label: 'Nenhuma dificuldade' }, { value: 0, label: 'Um pouco de dificuldade' }, { value: 0, label: 'Alguma dificuldade' },
@@ -1008,6 +1152,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         },
         {
+            id: 'ves_q3c',
             text: '3c. Elevar ou estender os braços acima do nível do ombro?',
             options: [
                 { value: 0, label: 'Nenhuma dificuldade' }, { value: 0, label: 'Um pouco de dificuldade' }, { value: 0, label: 'Alguma dificuldade' },
@@ -1015,6 +1160,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         },
         {
+            id: 'ves_q3d',
             text: '3d. Escrever ou manusear e segurar pequenos objetos?',
             options: [
                 { value: 0, label: 'Nenhuma dificuldade' }, { value: 0, label: 'Um pouco de dificuldade' }, { value: 0, label: 'Alguma dificuldade' },
@@ -1022,6 +1168,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         },
         {
+            id: 'ves_q3e',
             text: '3e. Andar 400 metros (aproximadamente quatro quarteirões)?',
             options: [
                 { value: 0, label: 'Nenhuma dificuldade' }, { value: 0, label: 'Um pouco de dificuldade' }, { value: 0, label: 'Alguma dificuldade' },
@@ -1029,6 +1176,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         },
         {
+            id: 'ves_q3f',
             text: '3f. Fazer serviço doméstico pesado, como esfregar o chão ou limpar janelas?',
             options: [
                 { value: 0, label: 'Nenhuma dificuldade' }, { value: 0, label: 'Um pouco de dificuldade' }, { value: 0, label: 'Alguma dificuldade' },
@@ -1037,39 +1185,54 @@ export const questionnairesData: Record<string, Questionnaire> = {
         },
         { text: 'INCAPACIDADES — Por causa da sua saúde ou condição física, você tem dificuldade para: (4 pontos se 1 ou mais respostas "Sim", máximo 4 pontos nesta seção)', isInstruction: true },
         {
+            id: 'ves_q4a',
             text: '4a. Fazer compras de itens pessoais (produtos de higiene pessoal ou medicamentos)?',
             options: [ { value: 0, label: 'Não' }, { value: 4, label: 'Sim' } ]
         },
         {
+            id: 'ves_q4b',
             text: '4b. Lidar com dinheiro (controlar despesas, gastos ou pagar contas)?',
             options: [ { value: 0, label: 'Não' }, { value: 4, label: 'Sim' } ]
         },
         {
+            id: 'ves_q4c',
             text: '4c. Atravessar o quarto andando ou caminhar pela sala?',
             options: [ { value: 0, label: 'Não' }, { value: 4, label: 'Sim' } ]
         },
         {
+            id: 'ves_q4d',
             text: '4d. Realizar tarefas domésticas leves (lavar louça, arrumar a casa ou limpeza leve)?',
             options: [ { value: 0, label: 'Não' }, { value: 4, label: 'Sim' } ]
         },
         {
+            id: 'ves_q4e',
             text: '4e. Tomar banho sozinho(a) de chuveiro ou banheira?',
             options: [ { value: 0, label: 'Não' }, { value: 4, label: 'Sim' } ]
         }
     ],
-    calculateScore: (answers) => {
+    calculateScore: (answers: Record<string, any>) => {
+        const getVal = (idx: any) => {
+            const val = answers[idx];
+            return (val !== undefined && val !== "" && typeof val !== 'boolean') ? Number(val) : undefined;
+        };
+
         let score = 0;
-        if (answers[1] !== undefined) score += answers[1]; // Q1 age
-        if (answers[2] !== undefined) score += answers[2]; // Q2 health
+        const q1 = getVal(1);
+        if (q1 !== undefined) score += q1; // Q1 age
+        const q2 = getVal(2);
+        if (q2 !== undefined) score += q2; // Q2 health
         
-        // Q3a-3f (physical limitations) - indicies 4 to 9 in the current questionnaire template
+        // Q3a-3f (physical limitations) - indicies 4 to 9
         let physLimitScore = 0;
-        [4,5,6,7,8,9].forEach(idx => { if (answers[idx]) physLimitScore += answers[idx]; });
+        [4,5,6,7,8,9].forEach(idx => { 
+            const val = getVal(idx);
+            if (val !== undefined) physLimitScore += val; 
+        });
         score += Math.min(physLimitScore, 2);
 
         // Q4a-4e (disabilities) - indicies 11 to 15
         let hasDisability = false;
-        [11,12,13,14,15].forEach(idx => { if (answers[idx] === 4) hasDisability = true; });
+        [11,12,13,14,15].forEach(idx => { if (getVal(idx) === 4) hasDisability = true; });
         if (hasDisability) score += 4;
 
         let interpretation = score >= 3 ? 'Idoso Vulnerável' : 'Idoso Robusto';
@@ -1078,41 +1241,42 @@ export const questionnairesData: Record<string, Questionnaire> = {
   },
   lbpq: {
     id: 'lbpq',
-    segment: 'geriatria',
-    title: 'LBPQ — Roland-Morris (Incapacidade por Dor Lombar)',
-    description: 'Questionário de 24 itens para avaliar incapacidade funcional por dor lombar.',
-    questions: [
-        { text: 'Instrução: Assinale apenas as frases que descrevem você HOJE.', isInstruction: true },
-        { text: '1. Fico em casa a maior parte do tempo por causa das minhas costas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '2. Mudo de posição frequentemente tentando deixar minhas costas confortáveis.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '3. Ando mais devagar que o habitual por causa das minhas costas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '4. Por causa das minhas costas, não estou fazendo alguns trabalhos que geralmente faço em casa.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '5. Por causa das minhas costas, uso o corrimão para subir escadas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '6. Por causa das minhas costas, deito para descansar mais frequentemente.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '7. Por causa das minhas costas, tenho que me apoiar em alguma coisa para me levantar de uma poltrona.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '8. Por causa das minhas costas, peço que outras pessoas façam as coisas por mim.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '9. Me visto mais lentamente que o habitual por causa das minhas costas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '10. Só fico em pé por curtos períodos de tempo por causa das minhas costas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '11. Por causa das minhas costas, evito dobrar-me ou ajoelhar-me.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '12. Acho difícil levantar-me de uma cadeira por causa das minhas costas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '13. As minhas costas estão quase sempre doendo.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '14. Tenho dificuldade em virar-me na cama por causa das minhas costas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '15. Não tenho muito apetite por causa das dores nas minhas costas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '16. Tenho problemas para colocar minhas meias por causa das dores nas costas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '17. Caminho apenas curtas distâncias por causa das dores nas costas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '18. Não durmo tão bem por causa das minhas costas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '19. Por causa das dores nas costas, visto-me com ajuda de outras pessoas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '20. Fico sentado a maior parte do dia por causa das minhas costas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '21. Evito trabalhos pesados em casa por causa das minhas costas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '22. Por causa das dores nas costas, fico mais irritado com as pessoas do que o habitual.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '23. Por causa das minhas costas, subo escadas mais vagarosamente do que o habitual.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] },
-        { text: '24. Fico na cama deitado ou sentado a maior parte do tempo por causa das dores nas costas.', options: [{ value: 0, label: 'Não' }, { value: 1, label: 'Sim' }] }
-    ],
-    calculateScore: (answers) => {
-        const total = Object.values(answers).reduce((a, b) => a + b, 0);
-        let interpretation = total <= 4 ? 'Mínima' : total <= 8 ? 'Leve' : total <= 14 ? 'Moderada' : 'Severa';
-        return { score: total, max: 24, percentage: Math.round((total/24)*100), interpretation: `Incapacidade: ${interpretation}`, unit: 'pontos' };
-    }
+    segment: 'lombar',
+    title: 'Questionário Roland Morris',
+    description: 'Quando sua região lombar dói, você pode achar difícil fazer algumas das coisas que normalmente faz. Este questionário foi elaborado para que possamos saber como sua dor lombar afetou sua capacidade de se locomover na vida diária. Por favor, leia cada item abaixo. Se você sentir que a descrição se aplica a você hoje, marque a caixa ao lado dela.',
+    sections: [
+        {
+            id: 'roland_morris_funcional',
+            title: 'Avaliação Funcional Roland Morris',
+            fields: [
+                { id: '1', label: '1. Eu fico em casa a maior parte do tempo por causa da minha coluna.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '2', label: '2. Eu mudo de posição frequentemente para tentar deixar minha coluna confortável.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '3', label: '3. Eu ando mais vagarosamente do que o habitual por causa da minha coluna.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '4', label: '4. Por causa da minha coluna, eu não estou fazendo nenhum dos trabalhos que habitualmente faço em casa.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '5', label: '5. Por causa da minha coluna, eu uso o corrimão para subir escadas.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '6', label: '6. Por causa da minha coluna, eu me deito para descansar mais vezes.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '7', label: '7. Por causa da minha coluna, eu tenho que me segurar em algo para me levantar de uma cadeira macia.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '8', label: '8. Por causa da minha coluna, eu tento conseguir que outras pessoas façam as coisas para mim.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '9', label: '9. Eu me visto mais vagarosamente do que o habitual por causa da minha coluna.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '10', label: '10. Eu fico em pé somente por curtos períodos de tempo por causa da minha coluna.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '11', label: '11. Por causa da minha coluna, eu tento não me abaixar ou me ajoelhar.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '12', label: '12. Eu encontro dificuldade em me levantar de uma cadeira por causa da minha coluna.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '13', label: '13. Minha coluna dói quase o tempo todo.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '14', label: '14. Eu encontro dificuldade em me virar na cama por causa da minha coluna.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '15', label: '15. Meu apetite não é muito bom por causa da minha coluna.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '16', label: '16. Eu tenho dificuldade em colocar minhas meias (ou meias calça) por causa da dor na minha coluna.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '17', label: '17. Eu ando somente distâncias curtas por causa da minha dor na coluna.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '18', label: '18. Eu durmo menos do que o habitual por causa da minha coluna.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '19', label: '19. Por causa da minha dor na coluna, eu me visto com ajuda de outra pessoa.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '20', label: '20. Eu fico sentado a maior parte do dia por causa da minha coluna.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '21', label: '21. Eu evito trabalhos pesados em volta da casa por causa da minha coluna.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '22', label: '22. Por causa da minha coluna, eu fico mais irritado e mal humorado com as pessoas do que o habitual.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '23', label: '23. Por causa da minha coluna, eu subo escadas mais vagarosamente do que o habitual.', type: 'select', options: ['Não', 'Sim'] },
+                { id: '24', label: '24. Eu fico na cama a maior parte do dia por causa da minha coluna.', type: 'select', options: ['Não', 'Sim'] },
+                { id: 'lbpq_obs', label: 'Observações Roland Morris', type: 'textarea' }
+            ]
+        }
+    ]
   },
   brief: {
     id: 'brief',
@@ -1134,11 +1298,15 @@ export const questionnairesData: Record<string, Questionnaire> = {
         { text: '10. Sono.', options: scores0to5.concat(["6", "7", "8", "9", "10"]).map(v => ({ value: parseInt(v), label: v })) },
         { text: '11. Aproveitamento da vida.', options: scores0to5.concat(["6", "7", "8", "9", "10"]).map(v => ({ value: parseInt(v), label: v })) }
     ],
-    calculateScore: (answers) => {
+    calculateScore: (answers: Record<string, any>) => {
+        const getVal = (idx: any) => {
+            const val = answers[idx];
+            return (val !== undefined && val !== "" && typeof val !== 'boolean') ? Number(val) : undefined;
+        };
         const severityIndices = [1, 2, 3, 4];
         const interferenceIndices = [6, 7, 8, 9, 10, 11, 12];
-        const sevValues = severityIndices.filter(i => (answers[i] || answers[i] === 0) && typeof answers[i] === 'number').map(i => answers[i]);
-        const intValues = interferenceIndices.filter(i => (answers[i] || answers[i] === 0) && typeof answers[i] === 'number').map(i => answers[i]);
+        const sevValues = severityIndices.map(getVal).filter(v => v !== undefined) as number[];
+        const intValues = interferenceIndices.map(getVal).filter(v => v !== undefined) as number[];
         const sevAvg = sevValues.length ? (sevValues.reduce((a,b) => a+b, 0) / sevValues.length) : 0;
         const intAvg = intValues.length ? (intValues.reduce((a,b) => a+b, 0) / intValues.length) : 0;
         return { score: sevAvg, max: 10, percentage: sevAvg*10, interpretation: `Severidade: ${sevAvg.toFixed(1)}/10 | Interferência: ${intAvg.toFixed(1)}/10`, unit: 'média' };
@@ -1159,8 +1327,11 @@ export const questionnairesData: Record<string, Questionnaire> = {
         { text: '7. Subir Escadas', options: [{ value: 10, label: 'Sem problemas' }, { value: 6, label: 'Levemente prejudicado' }, { value: 2, label: 'Um degrau de cada vez' }, { value: 0, label: 'Impossível' }] },
         { text: '8. Agachar', options: [{ value: 5, label: 'Sem problemas' }, { value: 4, label: 'Levemente prejudicado' }, { value: 2, label: 'Não além de 90 graus' }, { value: 0, label: 'Impossível' }] }
     ],
-    calculateScore: (answers) => {
-        const values = Object.values(answers).filter(v => typeof v === 'number');
+    calculateScore: (answers: Record<string, any>) => {
+        const values = Object.entries(answers)
+            .filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean')
+            .map(([_, v]) => Number(v))
+            .filter(v => !isNaN(v));
         const sum = values.reduce((a, b) => a + b, 0);
         return { score: sum, max: 100, percentage: sum, interpretation: sum >= 95 ? 'Excelente' : sum >= 84 ? 'Bom' : sum >= 65 ? 'Regular' : 'Ruim', unit: 'pontos' };
     }
@@ -1229,7 +1400,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
   },
   aofas: {
     id: 'aofas',
-    segment: 'mmii',
+    segment: 'tornozelo',
     title: 'Escala AOFAS (Tornozelo e Retropé)',
     description: 'Avalia dor, função e alinhamento do tornozelo e retropé.',
     questions: [
@@ -1258,25 +1429,45 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'anamnese',
             title: 'Anamnese',
             fields: [
-                { id: 'queixa', label: 'Queixa Principal', type: 'textarea' },
+                { id: 'anamnese_mmii', label: 'Anamnese', type: 'textarea', rows: 6 },
                 { id: 'intensidade_dor', label: 'Intensidade da Dor', type: 'range', min: 0, max: 10, step: 1 },
                 { id: 'area_dor', label: 'Área da Dor', type: 'bodyschema', image: '/img/esquema_corpo_inteiro.png' },
-                { id: 'historia', label: 'História Atual e Pregressa', type: 'textarea' },
                 { id: 'exames', label: 'Exames Complementares', type: 'textarea' }
             ]
         },
         {
             id: 'adm',
             title: 'Amplitude de Movimento (ADM)',
-            type: 'table',
-            columns: ['Movimento', 'Esquerdo', 'Direito'],
-            rows: [
-                { id: 'flex_quadril', label: 'Flexão de Quadril', fields: ['flex_q_esq', 'flex_q_dir'] },
-                { id: 'ext_quadril', label: 'Extensão de Quadril', fields: ['ext_q_esq', 'ext_q_dir'] },
-                { id: 'abd_quadril', label: 'Abdução de Quadril', fields: ['abd_q_esq', 'abd_q_dir'] },
-                { id: 'ext_joelho', label: 'Extensão de Joelho', fields: ['ext_j_esq', 'ext_j_dir'] },
-                { id: 'flex_joelho', label: 'Flexão de Joelho', fields: ['flex_j_esq', 'flex_j_dir'] }
-            ]
+            type: 'multi-table',
+            subsections: [
+                {
+                    id: 'adm_mmii_esq',
+                    title: 'Membro Inferior Esquerdo',
+                    type: 'table',
+                    columns: ['Movimento', 'Ativa', 'Passiva'],
+                    rows: [
+                        { id: 'flex_q_e', label: 'Flexão de Quadril', fields: ['flex_q_ativa_e', 'flex_q_passiva_e'] },
+                        { id: 'ext_q_e', label: 'Extensão de Quadril', fields: ['ext_q_ativa_e', 'ext_q_passiva_e'] },
+                        { id: 'abd_q_e', label: 'Abdução de Quadril', fields: ['abd_q_ativa_e', 'abd_q_passiva_e'] },
+                        { id: 'ext_j_e', label: 'Extensão de Joelho', fields: ['ext_j_ativa_e', 'ext_j_passiva_e'] },
+                        { id: 'flex_j_e', label: 'Flexão de Joelho', fields: ['flex_j_ativa_e', 'flex_j_passiva_e'] }
+                    ]
+                },
+                {
+                    id: 'adm_mmii_dir',
+                    title: 'Membro Inferior Direito',
+                    type: 'table',
+                    columns: ['Movimento', 'Ativa', 'Passiva'],
+                    rows: [
+                        { id: 'flex_q_d', label: 'Flexão de Quadril', fields: ['flex_q_ativa_d', 'flex_q_passiva_d'] },
+                        { id: 'ext_q_d', label: 'Extensão de Quadril', fields: ['ext_q_ativa_d', 'ext_q_passiva_d'] },
+                        { id: 'abd_q_d', label: 'Abdução de Quadril', fields: ['abd_q_ativa_d', 'abd_q_passiva_d'] },
+                        { id: 'ext_j_d', label: 'Extensão de Joelho', fields: ['ext_j_ativa_d', 'ext_j_passiva_d'] },
+                        { id: 'flex_j_d', label: 'Flexão de Joelho', fields: ['flex_j_ativa_d', 'flex_j_passiva_d'] }
+                    ]
+                }
+            ],
+            fields: [{ id: 'adm_mmii_obs', label: 'OBSERVAÇÕES', type: 'textarea' }]
         },
         {
             id: 'perimetria',
@@ -1286,7 +1477,8 @@ export const questionnairesData: Record<string, Questionnaire> = {
             rows: [
                 { id: 'peri_joelho', label: 'Interlinha Articular (Joelho)', fields: ['p_joe_esq', 'p_joe_dir', 'p_joe_def'] },
                 { id: 'peri_coxa_10', label: 'Coxa (10 cm acima patela)', fields: ['p_cox_esq', 'p_cox_dir', 'p_cox_def'] }
-            ]
+            ],
+            fields: [{ id: 'peri_obs', label: 'OBSERVAÇÕES', type: 'textarea' }]
         },
         {
             id: 'forca',
@@ -1297,16 +1489,19 @@ export const questionnairesData: Record<string, Questionnaire> = {
                 { id: 'abd_q_forca', label: 'Abdução de Quadril', fields: ['f_abd_q_esq', 'f_abd_q_dir', 'f_abd_q_def'] },
                 { id: 'ext_q_forca', label: 'Extensão de Quadril', fields: ['f_ext_q_esq', 'f_ext_q_dir', 'f_ext_q_def'] },
                 { id: 'ext_j_forca', label: 'Extensão de Joelho', fields: ['f_ext_j_esq', 'f_ext_j_dir', 'f_ext_j_def'] },
-                { id: 'flex_j_forca', label: 'Flexão de Joelho', fields: ['f_flex_j_esq', 'f_flex_j_dir', 'f_flex_j_def'] },
+                { id: 'flex_j_sentado_forca', label: 'Flexão de Joelho (Sentado)', fields: ['f_flex_j_esq', 'f_flex_j_dir', 'f_flex_j_def'] },
+                { id: 'flex_j_prono_forca', label: 'Flexão de Joelho (Prono)', fields: ['f_flex_j_p_esq', 'f_flex_j_p_dir', 'f_flex_j_p_def'] },
                 { id: 'relacao_iq', label: 'Relação I/Q', fields: ['rel_iq_esq', 'rel_iq_dir', ''] }
-            ]
+            ],
+            fields: [{ id: 'forca_mmii_obs', label: 'OBSERVAÇÕES', type: 'textarea' }]
         },
         {
             id: 'endurance',
             title: 'Endurance Muscular (segundos)',
             fields: [
                 { id: 'sorensen', label: 'Teste de Sorensen (Posterior)', type: 'number' },
-                { id: 'flexao_60', label: 'Flexão 60º (Anterior)', type: 'number' }
+                { id: 'flexao_60', label: 'Flexão 60º (Anterior)', type: 'number' },
+                { id: 'endurance_obs', label: 'OBSERVAÇÕES', type: 'textarea' }
             ]
         },
         {
@@ -1314,21 +1509,20 @@ export const questionnairesData: Record<string, Questionnaire> = {
             title: 'Y-Balance Test (YBT)',
             fields: [
                 { id: 'ybt_esq', label: 'Y Apoio Esq. (%)', type: 'number' },
-                { id: 'ybt_dir', label: 'Y Apoio Dir. (%)', type: 'number' }
+                { id: 'ybt_dir', label: 'Y Apoio Dir. (%)', type: 'number' },
+                { id: 'ybt_diff', label: 'Assimetria (%)', type: 'text' },
+                { id: 'ybt_calc', label: 'Calculadora YBT', type: 'button' },
+                { id: 'ybt_obs', label: 'OBSERVAÇÕES', type: 'textarea' }
             ]
         },
         {
             id: 'integracao',
             title: 'Questionários Complementares',
             fields: [
-                { id: 'lysholm_score', label: 'Resultado Lysholm', type: 'text' },
-                { id: 'lysholm_novo', label: 'Abrir Lysholm', type: 'button' },
-                { id: 'womac_score', label: 'Resultado WOMAC', type: 'text' },
-                { id: 'womac_novo', label: 'Abrir WOMAC', type: 'button' },
-                { id: 'ikdc_score', label: 'Resultado IKDC', type: 'text' },
-                { id: 'ikdc_novo', label: 'Abrir IKDC', type: 'button' },
-                { id: 'aofas_score', label: 'Resultado AOFAS', type: 'text' },
-                { id: 'aofas_novo', label: 'Abrir AOFAS', type: 'button' }
+                { id: 'lysholm_novo', label: 'Lysholm', type: 'button' },
+                { id: 'womac_novo', label: 'WOMAC', type: 'button' },
+                { id: 'ikdc_novo', label: 'IKDC', type: 'button' },
+                { id: 'aofas_novo', label: 'AOFAS', type: 'button' }
             ]
         },
         {
@@ -1340,6 +1534,86 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         }
     ]
+  },
+
+  afTornozelo: {
+    id: 'afTornozelo',
+    type: 'clinical',
+    segment: 'tornozelo',
+    title: 'Avaliação Funcional de Tornozelo e Pé',
+    description: 'Protocolo clínico para avaliação de entorses, tendinopatias e disfunções do complexo tornozelo-pé.',
+    sections: [
+        {
+            id: 'anamnese',
+            title: 'Anamnese',
+            fields: [
+                { id: 'queixa', label: 'Queixa Principal', type: 'textarea' },
+                { id: 'intensidade_dor', label: 'Intensidade da Dor (EVA)', type: 'range', min: 0, max: 10, step: 1 },
+                { id: 'area_dor', label: 'Área da Dor', type: 'bodyschema', image: '/img/esquema_corpo_inteiro.png' },
+                { id: 'historia', label: 'História Atual / Mecanismo de Lesão', type: 'textarea' },
+                { id: 'exames', label: 'Exames Complementares', type: 'textarea' }
+            ]
+        },
+        {
+            id: 'adm_tornozelo',
+            title: 'Amplitude de Movimento (Graus)',
+            type: 'table',
+            columns: ['Movimento', 'Esquerdo', 'Direito'],
+            rows: [
+                { id: 'flexao_plantar', label: 'Flexão Plantar', fields: ['flex_pla_esq', 'flex_pla_dir'] },
+                { id: 'dorsiflexao', label: 'Dorsiflexão', fields: ['dorsi_esq', 'dorsi_dir'] },
+                { id: 'inversao', label: 'Inversão', fields: ['inv_esq', 'inv_dir'] },
+                { id: 'eversao', label: 'Eversão', fields: ['eve_esq', 'eve_dir'] }
+            ],
+            fields: [{ id: 'adm_tornozelo_obs', label: 'Observações', type: 'textarea' }]
+        },
+        {
+            id: 'perimetria',
+            title: 'Perimetria - Figura em 8 (cm)',
+            type: 'table',
+            columns: ['Local', 'Esquerdo', 'Direito', '% Déficit'],
+            rows: [
+                { id: 'figura_8', label: 'Figura em 8', fields: ['fig8_esq', 'fig8_dir', 'fig8_def'] }
+            ]
+        },
+        {
+            id: 'forca_tornozelo',
+            title: 'Força Muscular (kgF)',
+            type: 'table',
+            columns: ['Músculo/Movimento', 'Esquerdo', 'Direito', '% Déficit'],
+            rows: [
+                { id: 'flex_pla_forca', label: 'Flexão Plantar', fields: ['f_pla_esq', 'f_pla_dir', 'f_pla_def'] },
+                { id: 'dorsi_forca', label: 'Dorsiflexão', fields: ['f_dor_esq', 'f_dor_dir', 'f_dor_def'] }
+            ]
+        },
+        {
+            id: 'testes_especiais',
+            title: 'Testes Especiais',
+            type: 'table',
+            columns: ['Teste', 'Esquerdo', 'Direito'],
+            rows: [
+                { id: 'gaveta_ant', label: 'Gaveta Anterior', fields: [{ id: 'test_gaveta_esq', type: 'checkbox' }, { id: 'test_gaveta_dir', type: 'checkbox' }] },
+                { id: 'talar_tilt', label: 'Talar Tilt', fields: [{ id: 'test_talar_esq', type: 'checkbox' }, { id: 'test_talar_dir', type: 'checkbox' }] },
+                { id: 'thompson', label: 'Teste de Thompson', fields: [{ id: 'test_thompson_esq', type: 'checkbox' }, { id: 'test_thompson_dir', type: 'checkbox' }] }
+            ]
+        },
+        {
+            id: 'integracao_aofas',
+            title: 'Escalas e Questionários',
+            fields: [
+                { id: 'aofas_novo', label: 'Escala AOFAS', type: 'button' }
+            ]
+        },
+        {
+            id: 'diagnostico_conclusoes',
+            title: 'Diagnóstico e Conclusões',
+            fields: [
+                { id: 'diagnostico', label: 'Diagnóstico Cinético Funcional', type: 'textarea' },
+                { id: 'conclusao', label: 'Conclusões e Sugestões Terapêuticas', type: 'textarea' }
+            ]
+        }
+    ],
+    calculateScore: (answers: Record<string, any>) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
   },
 
   afMao: {
@@ -1374,7 +1648,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'perimetria',
             title: 'Perimetria (cm)',
             type: 'table',
-            columns: ['Local', 'Esquerdo', 'Direito', '% Déficit'],
+            columns: ['Local', 'Esquerdo (cm)', 'Direito (cm)', 'DÉFICIT %'],
             rows: [
                 { id: 'p_ant_sup', label: 'Antebraço Superior', fields: ['peri_ant_sup_esq', 'peri_ant_sup_dir', 'peri_ant_sup_def'] },
                 { id: 'p_ant_inf', label: 'Antebraço Inferior', fields: ['peri_ant_inf_esq', 'peri_ant_inf_dir', 'peri_ant_inf_def'] },
@@ -1382,55 +1656,79 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         },
         {
-            id: 'palpacao_articular',
-            title: 'Palpação Articular',
-            type: 'table',
-            columns: ['Estrutura', 'Esquerdo', 'Direito'],
-            rows: [
-                { id: 'estilioide_radial', label: 'Estiloide Radial', fields: [{ id: 'palp_estrad_esq', type: 'checkbox' }, { id: 'palp_estrad_dir', type: 'checkbox' }] },
-                { id: 'estilioide_ulnar', label: 'Estiloide Ulnar', fields: [{ id: 'palp_estuln_esq', type: 'checkbox' }, { id: 'palp_estuln_dir', type: 'checkbox' }] },
-                { id: 'scaphoide', label: 'Escafoide', fields: [{ id: 'palp_esc_esq', type: 'checkbox' }, { id: 'palp_esc_dir', type: 'checkbox' }] },
-                { id: 'tunelcarpiano', label: 'Túnel do Carpo (face palmar)', fields: [{ id: 'palp_tunel_esq', type: 'checkbox' }, { id: 'palp_tunel_dir', type: 'checkbox' }] }
+            id: 'palpacao',
+            title: 'PALPAÇÃO',
+            type: 'multi-table',
+            subsections: [
+                {
+                    id: 'palpacao_articular',
+                    title: 'Palpação Articular',
+                    type: 'table',
+                    columns: ['Estrutura', 'Esquerdo', 'Direito'],
+                    rows: [
+                        { id: 'estilioide_radial', label: 'Estiloide Radial', fields: [{ id: 'palp_estrad_esq', type: 'checkbox' }, { id: 'palp_estrad_dir', type: 'checkbox' }] },
+                        { id: 'estilioide_ulnar', label: 'Estiloide Ulnar', fields: [{ id: 'palp_estuln_esq', type: 'checkbox' }, { id: 'palp_estuln_dir', type: 'checkbox' }] },
+                        { id: 'scaphoide', label: 'Escafoide', fields: [{ id: 'palp_esc_esq', type: 'checkbox' }, { id: 'palp_esc_dir', type: 'checkbox' }] },
+                        { id: 'tunelcarpiano', label: 'Túnel do Carpo (face palmar)', fields: [{ id: 'palp_tunel_esq', type: 'checkbox' }, { id: 'palp_tunel_dir', type: 'checkbox' }] }
+                    ]
+                },
+                {
+                    id: 'palpacao_miofascial',
+                    title: 'Palpação Miofascial',
+                    type: 'table',
+                    columns: ['Músculo', 'Esquerdo', 'Direito'],
+                    rows: [
+                        { id: 'extensores_punho', label: 'Extensores do Punho', fields: [{ id: 'mio_extp_esq', type: 'checkbox' }, { id: 'mio_extp_dir', type: 'checkbox' }] },
+                        { id: 'flexores_punho', label: 'Flexores do Punho', fields: [{ id: 'mio_flexp_esq', type: 'checkbox' }, { id: 'mio_flexp_dir', type: 'checkbox' }] },
+                        { id: 'tenar', label: 'Musculatura Tênar', fields: [{ id: 'mio_tenar_esq', type: 'checkbox' }, { id: 'mio_tenar_dir', type: 'checkbox' }] },
+                        { id: 'hipotenar', label: 'Musculatura Hipotênar', fields: [{ id: 'mio_hipo_esq', type: 'checkbox' }, { id: 'mio_hipo_dir', type: 'checkbox' }] }
+                    ]
+                }
             ]
         },
         {
-            id: 'palpacao_miofascial',
-            title: 'Palpação Miofascial',
-            type: 'table',
-            columns: ['Músculo', 'Esquerdo', 'Direito'],
-            rows: [
-                { id: 'extensores_punho', label: 'Extensores do Punho', fields: [{ id: 'mio_extp_esq', type: 'checkbox' }, { id: 'mio_extp_dir', type: 'checkbox' }] },
-                { id: 'flexores_punho', label: 'Flexores do Punho', fields: [{ id: 'mio_flexp_esq', type: 'checkbox' }, { id: 'mio_flexp_dir', type: 'checkbox' }] },
-                { id: 'tenar', label: 'Musculatura Tênar', fields: [{ id: 'mio_tenar_esq', type: 'checkbox' }, { id: 'mio_tenar_dir', type: 'checkbox' }] },
-                { id: 'hipotenar', label: 'Musculatura Hipotênar', fields: [{ id: 'mio_hipo_esq', type: 'checkbox' }, { id: 'mio_hipo_dir', type: 'checkbox' }] }
+            id: 'amplitude_movimento',
+            title: 'AMPLITUDE DE MOVIMENTO',
+            type: 'multi-table',
+            subsections: [
+                {
+                    id: 'adm_punho',
+                    title: 'Punho (Graus)',
+                    type: 'table',
+                    columns: ['Movimento', 'Esquerdo (°)', 'Direito (°)', 'DÉFICIT %'],
+                    rows: [
+                        { id: 'flexao_pun', label: 'Flexão', fields: ['flexao_pun_esq', 'flexao_pun_dir', 'flexao_pun_def'] },
+                        { id: 'extensao_pun', label: 'Extensão', fields: ['extensao_pun_esq', 'extensao_pun_dir', 'extensao_pun_def'] },
+                        { id: 'desv_radial', label: 'Desvio Radial', fields: ['desv_radial_esq', 'desv_radial_dir', 'desv_radial_def'] },
+                        { id: 'desv_ulnar', label: 'Desvio Ulnar', fields: ['desv_ulnar_esq', 'desv_ulnar_dir', 'desv_ulnar_def'] }
+                    ]
+                },
+                {
+                    id: 'obs_adm_punho_div',
+                    title: 'Observações - Punho',
+                    fields: [{ id: 'obs_adm_punho', label: 'Observações', type: 'textarea' }]
+                },
+                {
+                    id: 'adm_mao',
+                    title: 'Mão e Dedos (Graus)',
+                    type: 'table',
+                    columns: ['Articulação / Movimento', 'Esquerdo (°)', 'Direito (°)', 'DÉFICIT %'],
+                    rows: [
+                        { id: 'flex_mcf', label: 'Flexão MCF (dedos)', fields: ['flex_mcf_esq', 'flex_mcf_dir', 'flex_mcf_def'] },
+                        { id: 'ext_mcf', label: 'Extensão MCF (dedos)', fields: ['ext_mcf_esq', 'ext_mcf_dir', 'ext_mcf_def'] },
+                        { id: 'flex_ifp', label: 'Flexão IFP', fields: ['flex_ifp_esq', 'flex_ifp_dir', 'flex_ifp_def'] },
+                        { id: 'flex_ifd', label: 'Flexão IFD', fields: ['flex_ifd_esq', 'flex_ifd_dir', 'flex_ifd_def'] },
+                        { id: 'oposicao_polegar', label: 'Oposição do Polegar', fields: ['oposicao_polegar_esq', 'oposicao_polegar_dir', 'oposicao_polegar_def'] }
+                    ]
+                },
+                {
+                    id: 'obs_adm_mao_div',
+                    title: 'Observações - Mão',
+                    fields: [{ id: 'obs_adm_mao', label: 'Observações', type: 'textarea' }]
+                }
             ]
         },
 
-        {
-            id: 'adm_punho',
-            title: 'Amplitude de Movimento - Punho (Graus)',
-            type: 'table',
-            columns: ['Movimento', 'Esquerdo (°)', 'Direito (°)', 'Observações'],
-            rows: [
-                { id: 'flexao_pun', label: 'Flexão', fields: ['flexao_pun_esq', 'flexao_pun_dir', 'flexao_pun_obs'] },
-                { id: 'extensao_pun', label: 'Extensão', fields: ['extensao_pun_esq', 'extensao_pun_dir', 'extensao_pun_obs'] },
-                { id: 'desv_radial', label: 'Desvio Radial', fields: ['desv_radial_esq', 'desv_radial_dir', 'desv_radial_obs'] },
-                { id: 'desv_ulnar', label: 'Desvio Ulnar', fields: ['desv_ulnar_esq', 'desv_ulnar_dir', 'desv_ulnar_obs'] }
-            ]
-        },
-        {
-            id: 'adm_mao',
-            title: 'Amplitude de Movimento - Mão e Dedos (Graus)',
-            type: 'table',
-            columns: ['Articulação / Movimento', 'Esquerdo (°)', 'Direito (°)', 'Observações'],
-            rows: [
-                { id: 'flex_mcf', label: 'Flexão MCF (dedos)', fields: ['flex_mcf_esq', 'flex_mcf_dir', 'flex_mcf_obs'] },
-                { id: 'ext_mcf', label: 'Extensão MCF (dedos)', fields: ['ext_mcf_esq', 'ext_mcf_dir', 'ext_mcf_obs'] },
-                { id: 'flex_ifp', label: 'Flexão IFP', fields: ['flex_ifp_esq', 'flex_ifp_dir', 'flex_ifp_obs'] },
-                { id: 'flex_ifd', label: 'Flexão IFD', fields: ['flex_ifd_esq', 'flex_ifd_dir', 'flex_ifd_obs'] },
-                { id: 'oposicao_polegar', label: 'Oposição do Polegar', fields: ['oposicao_polegar_esq', 'oposicao_polegar_dir', 'oposicao_polegar_obs'] }
-            ]
-        },
         {
             id: 'testes_especiais',
             title: 'Testes Especiais',
@@ -1449,7 +1747,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'forca_preensao',
             title: 'Força de Preensão e Pinça (kgF)',
             type: 'table',
-            columns: ['Teste', 'Esquerdo', 'Direito', '% Déficit'],
+            columns: ['Teste', 'Esquerdo', 'Direito', 'DÉFICIT %'],
             rows: [
                 { id: 'preensao_palmar', label: 'Preensão Palmar (Dinamômetro)', fields: ['preensao_esq', 'preensao_dir', 'preensao_def'] },
                 { id: 'pinca_polpa', label: 'Pinça Polpa a Polpa', fields: ['polpa_esq', 'polpa_dir', 'polpa_def'] },
@@ -1469,12 +1767,11 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'quickdash_integracao',
             title: 'Quick DASH (Braço, Ombro e Mão)',
             fields: [
-                { id: 'quickdash_novo', label: 'Preencher novo Questionário Quick DASH', type: 'button' },
-                { id: 'quickdash_score', label: 'Resultado/Score Quick DASH Atual', type: 'text' }
+                { id: 'quickdash_novo', label: 'Preencher novo Questionário Quick DASH', type: 'button' }
             ]
         }
     ],
-    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
+    calculateScore: (answers: Record<string, any>) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
   },
   afSensibilidade: {
     id: 'afSensibilidade',
@@ -1508,7 +1805,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         }
     ],
-    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
+    calculateScore: (answers: Record<string, any>) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Avaliação Concluída', unit: '%' })
   },
   afAnaliseAngular: {
     id: 'afAnaliseAngular',
@@ -1531,7 +1828,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         }
     ],
-    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Análise Concluída', unit: '%' })
+    calculateScore: (answers: Record<string, any>) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Análise Concluída', unit: '%' })
   },
   afOrientacao: {
     id: 'afOrientacao',
@@ -1553,7 +1850,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         }
     ],
-    calculateScore: (answers) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Orientação Registrada', unit: '%' })
+    calculateScore: (answers: Record<string, any>) => ({ score: 0, max: 0, percentage: 100, interpretation: 'Orientação Registrada', unit: '%' })
   }
 };
 

@@ -33,7 +33,12 @@ export interface CalculationResult {
 }
 
 export function calculateAssessmentScore(type: CalculationType, answers: Record<string, any>): CalculationResult {
-    const values = Object.values(answers).filter(v => typeof v === 'number');
+    // Filter answers where keys are numeric indices (0, 1, 2...) and values are numeric or string-numbers
+    const values = Object.entries(answers)
+        .filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean')
+        .map(([_, v]) => Number(v))
+        .filter(v => !isNaN(v));
+    
     const n = values.length;
     const sum = values.reduce((a, b) => a + b, 0);
 
@@ -236,8 +241,8 @@ export function calculateAssessmentScore(type: CalculationType, answers: Record<
             // Severity: avg of indices 1-4 | Interference: avg of indices 6-12
             // We assume indices match or we use keys.
             const keys = Object.keys(answers).map(Number).sort((a,b) => a-b);
-            const severityVals = keys.filter(k => k >= 1 && k <= 4).map(k => answers[k]).filter(v => typeof v === 'number');
-            const interferenceVals = keys.filter(k => k >= 6 && k <= 12).map(k => answers[k]).filter(v => typeof v === 'number');
+            const severityVals = keys.filter(k => k >= 1 && k <= 4).map(k => answers[k]).filter(v => v !== undefined && v !== "" && typeof v !== 'boolean' && !isNaN(Number(v))).map(Number);
+            const interferenceVals = keys.filter(k => k >= 6 && k <= 12).map(k => answers[k]).filter(v => v !== undefined && v !== "" && typeof v !== 'boolean' && !isNaN(Number(v))).map(Number);
             
             const severityScore = severityVals.length > 0 ? (severityVals.reduce((a,b) => a+b, 0) / severityVals.length) : 0;
             const interferenceScore = interferenceVals.length > 0 ? (interferenceVals.reduce((a,b) => a+b, 0) / interferenceVals.length) : 0;

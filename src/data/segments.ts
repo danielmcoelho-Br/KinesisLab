@@ -42,12 +42,6 @@ export const segments = [
     icon: "/icons/icon_cotovelo.png"
   },
   {
-    id: "cotovelo",
-    title: "Cotovelo",
-    description: "Avaliação de epicondilites e outras disfunções do cotovelo.",
-    icon: "/icons/cotovelo.png"
-  },
-  {
     id: "diversas",
     title: "Formulários Diversos",
     description: "Testes isolados, análise fotográfica e orientações.",

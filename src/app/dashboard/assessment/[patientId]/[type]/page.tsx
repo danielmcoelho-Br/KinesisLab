@@ -152,11 +152,12 @@ const AssessmentHistoryChart = ({
     referenceValue,
     referenceLabel,
     assessmentId,
-    assessmentDate = new Date().toLocaleDateString('pt-BR'),
-    isEndurance = false
+    currentDate = new Date().toLocaleDateString('pt-BR'),
+    isEndurance = false,
+    useScoreData = false
 }: { 
     currentValue: number, 
-    fieldId: string,
+    fieldId?: string,
     chartTitle: string,
     unit?: string,
     history?: any[], 
@@ -164,23 +165,30 @@ const AssessmentHistoryChart = ({
     referenceValue?: number,
     referenceLabel?: string,
     assessmentId?: string | null,
-    assessmentDate?: string,
-    isEndurance?: boolean
+    currentDate?: string,
+    isEndurance?: boolean,
+    useScoreData?: boolean
 }) => {
     // Filter history for the specific field, score > 0, and NOT the current assessment being viewed
-    const validHistory = history.filter(h => Number(h.answers?.[fieldId]) > 0 && h.id !== assessmentId);
+    const validHistory = history.filter(h => {
+        const val = useScoreData ? Number(h.scoreData?.score) : Number(h.answers?.[fieldId || '']);
+        return val > 0 && h.id !== assessmentId;
+    });
 
     if (!currentValue && validHistory.length === 0 && !isPrint) return null;
 
     const maxValue = Math.max(
         currentValue || 0,
         referenceValue || 0,
-        ...validHistory.map(h => Number(h.answers?.[fieldId]) || 0)
+        ...validHistory.map(h => {
+            const val = useScoreData ? Number(h.scoreData?.score) : Number(h.answers?.[fieldId || '']);
+            return val || 0;
+        })
     ) * 1.2 || 60;
     
     const validHistoryData = validHistory.map(h => ({
         id: h.id,
-        value: Number(h.answers?.[fieldId]) || 0,
+        value: useScoreData ? Number(h.scoreData?.score) : Number(h.answers?.[fieldId || '']),
         date: new Date(h.created_at).toLocaleDateString('pt-BR'),
         timestamp: new Date(h.created_at).getTime()
     })).sort((a, b) => a.timestamp - b.timestamp);
@@ -268,7 +276,7 @@ const AssessmentHistoryChart = ({
                     <Bar 
                         value={Number(currentValue) || 0} 
                         maxValue={maxValue}
-                        label={assessmentId ? assessmentDate : new Date().toLocaleDateString('pt-BR')} 
+                        label={assessmentId ? currentDate : new Date().toLocaleDateString('pt-BR')} 
                         unit={unit}
                         color={isPrint ? "#8B0000" : "var(--primary)"} 
                         isPrint={isPrint}
@@ -505,74 +513,118 @@ const AssessmentComparisonChart = memo(({
     leftValue, 
     rightValue,
     unit = "kgF",
-    isPrint = false
+    isPrint = false,
+    normValue,
+    history = [],
+    fieldIdPrefix = ""
 }: { 
     label: string, 
     leftValue: number, 
     rightValue: number,
     unit?: string,
-    isPrint?: boolean
+    isPrint?: boolean,
+    normValue?: number,
+    history?: any[],
+    fieldIdPrefix?: string
 }) => {
-    const maxValue = Math.max(leftValue, rightValue, 1);
+    const maxValue = Math.max(leftValue, rightValue, normValue || 0, 1) * 1.1;
     const leftHeight = (leftValue / maxValue) * 100;
     const rightHeight = (rightValue / maxValue) * 100;
+    const normHeight = normValue ? (normValue / maxValue) * 100 : 0;
 
     return (
         <div className="comparison-chart-container" style={{ 
             backgroundColor: 'white', 
-            padding: isPrint ? '0.75rem' : '1.5rem', 
-            borderRadius: '1rem', 
-            border: '1px solid var(--border)',
-            boxShadow: isPrint ? 'none' : 'var(--shadow-sm)',
+            padding: isPrint ? '1rem' : '1.5rem', 
+            borderRadius: '1.25rem', 
+            border: '1px solid #e2e8f0',
+            boxShadow: isPrint ? 'none' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '1rem',
-            width: isPrint ? '100%' : 'auto',
-            pageBreakInside: 'avoid',
-            breakInside: 'avoid'
+            gap: '1.25rem',
+            width: '100%',
+            maxWidth: '500px',
+            margin: '0 auto',
+            position: 'relative',
+            pageBreakInside: 'avoid'
         }}>
-            <h5 style={{ margin: 0, fontSize: '0.85rem', color: 'var(--secondary)', textAlign: 'center', fontWeight: '800' }}>{label}</h5>
-            <div style={{ display: 'flex', height: isPrint ? '120px' : '150px', alignItems: 'flex-end', justifyContent: 'center', gap: '1.5rem', padding: '0.5rem' }}>
+            <h5 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--secondary)', textAlign: 'center', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {label}
+            </h5>
+            
+            <div style={{ position: 'relative', display: 'flex', height: '180px', alignItems: 'flex-end', justifyContent: 'center', gap: '2rem', padding: '1rem 0.5rem', marginTop: '1rem' }}>
+                {/* Normative Bar (Far Left) */}
+                {normValue && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '60px', height: '100%', zIndex: 2 }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', width: '100%' }}>
+                            <div 
+                                style={{ 
+                                    height: `${normHeight}%`,
+                                    width: '100%', 
+                                    backgroundColor: '#94a3b8', 
+                                    borderRadius: '8px 8px 0 0',
+                                    position: 'relative',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+                                }}
+                            >
+                                <span style={{ position: 'absolute', top: '-25px', fontSize: '0.85rem', fontWeight: '900', color: '#64748b' }}>{normValue}</span>
+                            </div>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', marginTop: '0.75rem', fontWeight: '800', color: '#64748b' }}>NORMAL</span>
+                    </div>
+                )}
+
                 {/* Left Bar */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, height: '100%' }}>
-                     <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', width: '100%', minWidth: '40px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '60px', height: '100%', zIndex: 2 }}>
+                     <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', width: '100%' }}>
                         <div 
                             style={{ 
                                 height: `${leftHeight}%`,
                                 width: '100%', 
                                 backgroundColor: 'var(--primary-light)', 
-                                borderRadius: '6px 6px 0 0',
+                                borderRadius: '8px 8px 0 0',
                                 position: 'relative',
                                 display: 'flex',
-                                justifyContent: 'center'
+                                justifyContent: 'center',
+                                boxShadow: '0 4px 6px -1px rgba(139, 0, 0, 0.1)'
                             }}
                         >
-                            <span style={{ position: 'absolute', top: '-22px', fontSize: '0.75rem', fontWeight: '800', color: 'var(--primary)' }}>{leftValue}{unit}</span>
+                            <span style={{ position: 'absolute', top: '-25px', fontSize: '0.85rem', fontWeight: '900', color: 'var(--primary)' }}>{leftValue}</span>
                         </div>
                      </div>
-                     <span style={{ fontSize: '0.7rem', marginTop: '0.5rem', fontWeight: '700', color: 'var(--text-muted)' }}>ESQUERDO</span>
+                     <span style={{ fontSize: '0.75rem', marginTop: '0.75rem', fontWeight: '800', color: '#64748b' }}>ESQ</span>
                 </div>
 
                 {/* Right Bar */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, height: '100%' }}>
-                     <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', width: '100%', minWidth: '40px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '60px', height: '100%', zIndex: 2 }}>
+                     <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', width: '100%' }}>
                         <div 
                             style={{ 
                                 height: `${rightHeight}%`,
                                 width: '100%', 
                                 backgroundColor: 'var(--primary)', 
-                                borderRadius: '6px 6px 0 0',
+                                borderRadius: '8px 8px 0 0',
                                 position: 'relative',
                                 display: 'flex',
-                                justifyContent: 'center'
+                                justifyContent: 'center',
+                                boxShadow: '0 4px 6px -1px rgba(139, 0, 0, 0.2)'
                             }}
                         >
-                            <span style={{ position: 'absolute', top: '-22px', fontSize: '0.75rem', fontWeight: '800', color: 'var(--primary)' }}>{rightValue}{unit}</span>
+                            <span style={{ position: 'absolute', top: '-25px', fontSize: '0.85rem', fontWeight: '900', color: 'var(--primary)' }}>{rightValue}</span>
                         </div>
                      </div>
-                     <span style={{ fontSize: '0.7rem', marginTop: '0.5rem', fontWeight: '700', color: 'var(--text-muted)' }}>DIREITO</span>
+                     <span style={{ fontSize: '0.75rem', marginTop: '0.75rem', fontWeight: '800', color: '#64748b' }}>DIR</span>
                 </div>
             </div>
+
+            {/* Historical Legend/Trend if available */}
+            {history.length > 1 && (
+                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem', fontSize: '0.7rem', color: '#94a3b8', fontStyle: 'italic', textAlign: 'center' }}>
+                    * Gráfico comparativo baseado na avaliação atual e metas clínicas.
+                </div>
+            )}
         </div>
     );
 });
@@ -820,6 +872,43 @@ const DataTableCell = memo(({
         );
     }
 
+    if (fieldType === 'static') {
+        return (
+            <div style={{ textAlign: 'center', fontWeight: '800', color: '#64748b', fontSize: '0.82rem' }}>
+                {fieldOptions.find((o: any) => o.id === fieldId)?.value || (fieldId.includes('obj') ? fieldId.split('_obj')[0] : value) || '-'} 
+                {/* Fallback for static value stored in field definition */}
+                {(() => {
+                    // Logic to find value from field definition if not in value
+                    return ''; 
+                })()}
+            </div>
+        );
+    }
+
+    if (fieldId.endsWith('_res') || fieldId.endsWith('_res_esq') || fieldId.endsWith('_res_dir')) {
+        const isNormal = value === 'Normal';
+        const isAbaixo = value === 'Abaixo';
+        
+        return (
+            <div style={{ textAlign: 'center' }}>
+                <span style={{ 
+                    color: isNormal ? '#059669' : (isAbaixo ? '#dc2626' : '#94a3b8'), 
+                    fontWeight: '800',
+                    fontSize: '0.7rem',
+                    textTransform: 'uppercase',
+                    backgroundColor: isNormal ? '#ecfdf5' : (isAbaixo ? '#fef2f2' : '#f8fafc'),
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    border: `1px solid ${isNormal ? '#10b981' : (isAbaixo ? '#f87171' : '#e2e8f0')}`,
+                    display: 'inline-block',
+                    minWidth: '60px'
+                }}>
+                    {value || "-"}
+                </span>
+            </div>
+        );
+    }
+
     return isPrint ? (
         <div style={{ textAlign: 'center' }}>
             <span style={{ fontWeight: '600' }}>{value || "-"}</span>
@@ -842,7 +931,7 @@ const DataTableCell = memo(({
                     textAlign: 'center'
                 }}
             />
-            {isEditing && fieldType === 'number' && (fieldId.includes('forca') || fieldId.startsWith('f_') || fieldId.includes('preensao') || fieldId.includes('resist')) && onOpenDynamo && (
+            {isEditing && fieldType === 'number' && (fieldId.includes('forca') || fieldId.startsWith('f_') || fieldId.includes('preensao') || fieldId.includes('polpa') || fieldId.includes('lateral') || fieldId.includes('tripode') || fieldId.includes('resist')) && onOpenDynamo && (
                 <button
                     type="button"
                     onClick={() => onOpenDynamo(fieldId, rowLabel || "")}
@@ -966,6 +1055,9 @@ const DataTable = memo(({
                                             lowerId.includes('forca') || 
                                             lowerId.startsWith('f_') || 
                                             lowerId.includes('preensao') || 
+                                            lowerId.includes('polpa') || 
+                                            lowerId.includes('lateral') || 
+                                            lowerId.includes('tripode') || 
                                             lowerId.includes('resist') || 
                                             lowerId.includes('peri') || 
                                             lowerId.includes('graus') ||
@@ -1334,17 +1426,108 @@ const FormField = memo(function FormField({
 
     switch (field.type) {
       case 'textarea':
+        if (field.id === 'slhrt_class' && value) {
+            return (
+                <div key={field.id} style={{ 
+                    background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)', 
+                    padding: '1.5rem', 
+                    borderRadius: '1.25rem', 
+                    border: '1px solid #cbd5e1', 
+                    borderLeft: '6px solid var(--primary)',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    marginBottom: '1.5rem',
+                    gridColumn: '1 / -1',
+                    marginTop: '0.5rem'
+                }}>
+                    <div style={{ marginBottom: '1.25rem' }}>
+                        <span style={{ display: 'block', fontWeight: '950', color: 'var(--secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '1rem' }}>Single Leg Heel Raise Test</span>
+                    </div>
+                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '1rem', color: '#334155', lineHeight: '1.8' }}>
+                        {String(value || "").split('\n').map((line, idx) => {
+                            if (line.includes('ESQUERDO') || line.includes('DIREITO')) {
+                                const parts = line.split(': ');
+                                const label = parts[0];
+                                const status = parts[1] || "";
+                                const isAdequate = status.includes('Adequado');
+                                return (
+                                    <div key={idx} style={{ 
+                                        marginBottom: '10px', 
+                                        display: 'flex', 
+                                        justifyContent: 'space-between', 
+                                        alignItems: 'center', 
+                                        padding: '10px 16px', 
+                                        background: 'white', 
+                                        borderRadius: '0.75rem', 
+                                        border: '1px solid #e2e8f0'
+                                    }}>
+                                        <span style={{ fontWeight: '800', color: '#1e293b', fontSize: '0.85rem' }}>{label}</span>
+                                        <span style={{ 
+                                            padding: '4px 12px', 
+                                            borderRadius: '9999px', 
+                                            fontSize: '0.75rem', 
+                                            fontWeight: '800',
+                                            backgroundColor: isAdequate ? '#dcfce7' : '#fee2e2',
+                                            color: isAdequate ? '#15803d' : '#991b1b',
+                                            border: `1px solid ${isAdequate ? '#bbf7d0' : '#fecaca'}`
+                                        }}>{status}</span>
+                                    </div>
+                                );
+                            }
+                            if (line.includes('Assimetria')) {
+                                const isSim = line.includes('SIM');
+                                return (
+                                    <div key={idx} style={{ 
+                                        marginTop: '1.25rem', 
+                                        padding: '12px 16px', 
+                                        background: isSim ? '#fff1f2' : '#f0fdf4', 
+                                        borderRadius: '0.75rem', 
+                                        border: `1px solid ${isSim ? '#fecaca' : '#bbf7d0'}`, 
+                                        color: isSim ? '#991b1b' : '#15803d', 
+                                        fontWeight: '800', 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '12px',
+                                        fontSize: '0.95rem'
+                                    }}>
+                                        <span style={{ fontSize: '1.2rem' }}>{isSim ? '⚠️' : '✅'}</span>
+                                        <span>{line}</span>
+                                    </div>
+                                );
+                            }
+                            return <div key={idx} style={{ color: '#64748b', fontSize: '0.85rem', fontStyle: 'italic', marginTop: '4px' }}>{line}</div>;
+                        })}
+                    </div>
+                </div>
+            );
+        }
         return (
-          <div key={field.id} className="form-group">
+          <div key={field.id} className="form-group" style={{ gridColumn: (field.id === 'inspecao_text' || field.id === 'obs_perimetria') ? '1 / -1' : 'auto' }}>
             <label className="form-label">{field.label}</label>
-            <textarea 
-              {...commonProps}
-              rows={field.rows || 3} 
-              value={value || ""} 
-              onChange={(e) => handleInputChange(field.id, e.target.value)}
-              placeholder="Descreva aqui..."
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)', fontSize: '0.85rem' }}
-            />
+            {!isEditing ? (
+                <div style={{ 
+                    width: '100%', 
+                    padding: '1.25rem', 
+                    borderRadius: '0.75rem', 
+                    background: '#f8fafc', 
+                    border: '1px solid #e2e8f0', 
+                    fontSize: '0.95rem',
+                    lineHeight: '1.6',
+                    color: '#1e293b',
+                    whiteSpace: 'pre-wrap',
+                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
+                }}>
+                    {value || "Nenhuma informação registrada."}
+                </div>
+            ) : (
+                <textarea 
+                    {...commonProps}
+                    rows={field.rows || 3} 
+                    value={value || ""} 
+                    onChange={(e) => handleInputChange(field.id, e.target.value)}
+                    placeholder="Descreva aqui..."
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)', fontSize: '0.85rem' }}
+                />
+            )}
           </div>
         );
       case 'range': {
@@ -1546,7 +1729,6 @@ const FormField = memo(function FormField({
                                 referenceValue={referenceValue}
                                 referenceLabel={referenceLabel}
                                 assessmentId={assessmentId}
-                                assessmentDate={assessmentDate}
                                 isEndurance={isResistencia}
                             />
                         </div>
@@ -1620,6 +1802,7 @@ const FormField = memo(function FormField({
                             <BodySchema 
                                 image={field.image || "/img/esquema_corpo_inteiro.png"}
                                 value={value} 
+                                onChange={() => {}}
                                 readOnly={true}
                             />
                         </div>
@@ -1925,6 +2108,164 @@ const FormSection = memo(({
                         </button>
                     )}
 
+                    {/* STEP-DOWN TEST SECTION */}
+                    <div style={{ 
+                        marginTop: '2.5rem', 
+                        paddingTop: '2rem', 
+                        borderTop: '2px dashed var(--border)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1.5rem'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{ width: '4px', height: '24px', backgroundColor: 'var(--primary)', borderRadius: '2px' }} />
+                            <h4 style={{ fontSize: '1.1rem', fontWeight: '900', color: 'var(--secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Step-Down Test</h4>
+                        </div>
+
+                        {/* Angle Measurement Buttons (Side by Side) */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: '800', color: 'var(--text-muted)' }}>Estúdio Esquerdo</label>
+                                <AngleMeasurement 
+                                    value={answers.sd_estudio_esq} 
+                                    onChange={(val) => handleInputChange('sd_estudio_esq', val)}
+                                    isEditing={isEditing}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: '800', color: 'var(--text-muted)' }}>Estúdio Direito</label>
+                                <AngleMeasurement 
+                                    value={answers.sd_estudio_dir} 
+                                    onChange={(val) => handleInputChange('sd_estudio_dir', val)}
+                                    isEditing={isEditing}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Result Table (Similar to WBL but for Step-Down) */}
+                        <div className="table-responsive" style={{ marginTop: '1rem', borderRadius: '1rem', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+                            <table className="w-full border-collapse" style={{ backgroundColor: 'white' }}>
+                                <thead>
+                                    <tr style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                                        <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '800', color: 'var(--secondary)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>Parâmetro</th>
+                                        <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '800', color: 'var(--secondary)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>Esq (°)</th>
+                                        <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '800', color: 'var(--secondary)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>Resultado</th>
+                                        <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '800', color: 'var(--secondary)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>Dir (°)</th>
+                                        <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '800', color: 'var(--secondary)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>Resultado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style={{ padding: '1rem', fontSize: '0.85rem', fontWeight: '700', color: 'var(--secondary)', borderBottom: '1px solid #f1f5f9' }}>Valgo dinâmico do joelho (8°±5)</td>
+                                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
+                                            <input 
+                                                type="number" 
+                                                value={answers.sd_valgo_esq || ''} 
+                                                onChange={(e) => handleInputChange('sd_valgo_esq', e.target.value)}
+                                                disabled={!isEditing}
+                                                className="form-control"
+                                                style={{ width: '70px', margin: '0 auto', textAlign: 'center', fontWeight: '700' }}
+                                            />
+                                        </td>
+                                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
+                                            {answers.sd_valgo_res_esq ? (
+                                                <span style={{ 
+                                                    fontSize: '0.7rem', 
+                                                    fontWeight: '800', 
+                                                    color: answers.sd_valgo_res_esq === 'Déficit' ? '#991b1b' : '#166534',
+                                                    backgroundColor: answers.sd_valgo_res_esq === 'Déficit' ? '#fee2e2' : '#f0fdf4',
+                                                    padding: '4px 8px',
+                                                    borderRadius: '6px',
+                                                    border: `1px solid ${answers.sd_valgo_res_esq === 'Déficit' ? '#fecaca' : '#bbf7d0'}`
+                                                }}>
+                                                    {answers.sd_valgo_res_esq}
+                                                </span>
+                                            ) : <span style={{ color: '#cbd5e1' }}>---</span>}
+                                        </td>
+                                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
+                                            <input 
+                                                type="number" 
+                                                value={answers.sd_valgo_dir || ''} 
+                                                onChange={(e) => handleInputChange('sd_valgo_dir', e.target.value)}
+                                                disabled={!isEditing}
+                                                className="form-control"
+                                                style={{ width: '70px', margin: '0 auto', textAlign: 'center', fontWeight: '700' }}
+                                            />
+                                        </td>
+                                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
+                                            {answers.sd_valgo_res_dir ? (
+                                                <span style={{ 
+                                                    fontSize: '0.7rem', 
+                                                    fontWeight: '800', 
+                                                    color: answers.sd_valgo_res_dir === 'Déficit' ? '#991b1b' : '#166534',
+                                                    backgroundColor: answers.sd_valgo_res_dir === 'Déficit' ? '#fee2e2' : '#f0fdf4',
+                                                    padding: '4px 8px',
+                                                    borderRadius: '6px',
+                                                    border: `1px solid ${answers.sd_valgo_res_dir === 'Déficit' ? '#fecaca' : '#bbf7d0'}`
+                                                }}>
+                                                    {answers.sd_valgo_res_dir}
+                                                </span>
+                                            ) : <span style={{ color: '#cbd5e1' }}>---</span>}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{ padding: '1rem', fontSize: '0.85rem', fontWeight: '700', color: 'var(--secondary)' }}>Queda pélvica (10°±5)</td>
+                                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                            <input 
+                                                type="number" 
+                                                value={answers.sd_queda_esq || ''} 
+                                                onChange={(e) => handleInputChange('sd_queda_esq', e.target.value)}
+                                                disabled={!isEditing}
+                                                className="form-control"
+                                                style={{ width: '70px', margin: '0 auto', textAlign: 'center', fontWeight: '700' }}
+                                            />
+                                        </td>
+                                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                            {answers.sd_queda_res_esq ? (
+                                                <span style={{ 
+                                                    fontSize: '0.7rem', 
+                                                    fontWeight: '800', 
+                                                    color: answers.sd_queda_res_esq === 'Déficit' ? '#991b1b' : '#166534',
+                                                    backgroundColor: answers.sd_queda_res_esq === 'Déficit' ? '#fee2e2' : '#f0fdf4',
+                                                    padding: '4px 8px',
+                                                    borderRadius: '6px',
+                                                    border: `1px solid ${answers.sd_queda_res_esq === 'Déficit' ? '#fecaca' : '#bbf7d0'}`
+                                                }}>
+                                                    {answers.sd_queda_res_esq}
+                                                </span>
+                                            ) : <span style={{ color: '#cbd5e1' }}>---</span>}
+                                        </td>
+                                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                            <input 
+                                                type="number" 
+                                                value={answers.sd_queda_dir || ''} 
+                                                onChange={(e) => handleInputChange('sd_queda_dir', e.target.value)}
+                                                disabled={!isEditing}
+                                                className="form-control"
+                                                style={{ width: '70px', margin: '0 auto', textAlign: 'center', fontWeight: '700' }}
+                                            />
+                                        </td>
+                                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                            {answers.sd_queda_res_dir ? (
+                                                <span style={{ 
+                                                    fontSize: '0.7rem', 
+                                                    fontWeight: '800', 
+                                                    color: answers.sd_queda_res_dir === 'Déficit' ? '#991b1b' : '#166534',
+                                                    backgroundColor: answers.sd_queda_res_dir === 'Déficit' ? '#fee2e2' : '#f0fdf4',
+                                                    padding: '4px 8px',
+                                                    borderRadius: '6px',
+                                                    border: `1px solid ${answers.sd_queda_res_dir === 'Déficit' ? '#fecaca' : '#bbf7d0'}`
+                                                }}>
+                                                    {answers.sd_queda_res_dir}
+                                                </span>
+                                            ) : <span style={{ color: '#cbd5e1' }}>---</span>}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     {/* Observations field */}
                     <div className="form-group" style={{ marginTop: '0.5rem' }}>
                         <label className="form-label" style={{ fontWeight: '700' }}>OBSERVAÇÕES</label>
@@ -1947,69 +2288,83 @@ const FormSection = memo(({
                 </div>
             ) : section.type === 'table' ? (
                 <>
-                    <DataTable 
-                        section={section} 
-                        answers={answers} 
-                        isEditing={isEditing} 
-                        handleInputChange={handleInputChange} 
-                        onImageClick={onImageClick}
-                        onOpenDynamo={onOpenDynamo}
-                        onAnalyzeImage={onAnalyzeImage}
-                        isPrint={isPrint}
-                        assessmentDate={assessmentDate}
-                    />
-                    {['perimetria', 'forca', 'dinamometria', 'ndi_integracao', 'oswestry_integracao', 'quickdash_integracao', 'testes_especiais_resistidos'].includes(section.id) && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginTop: '1rem' }}>
-                            {section.rows?.map((row: any) => row.fields.map((f: any, fidx: number) => {
-                                const fid = typeof f === 'string' ? f : f.id;
-                                const col = section.columns?.[fidx + 1];
-                                const colLabel = typeof col === 'string' ? col : (col?.label || "");
-                                if (colLabel.includes('Esquerdo') || colLabel.includes('Direito') || fid.endsWith('_score')) {
-                                    return (
-                                        <AssessmentHistoryChart 
-                                            key={`hist-${fid}`}
-                                            fieldId={fid}
-                                            currentValue={Number(String(answers[fid] || '0').replace('%', '').replace(',', '.')) || 0}
-                                            chartTitle={`Evolução: ${row.label} (${colLabel})`}
-                                            unit={fid.endsWith('_score') ? '%' : (section.id.includes('forca') ? 'kgF' : 'cm')}
-                                            history={patientAssessments}
-                                            isPrint={isPrint}
-                                            assessmentId={assessmentId}
-                                            assessmentDate={assessmentDate}
-                                        />
-                                    );
-                                }
-                                return null;
-                            }))}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <DataTable 
+                            section={section} 
+                            answers={answers} 
+                            isEditing={isEditing} 
+                            handleInputChange={handleInputChange} 
+                            onImageClick={onImageClick}
+                            onOpenDynamo={onOpenDynamo}
+                            onAnalyzeImage={onAnalyzeImage}
+                            isPrint={isPrint}
+                            assessmentDate={assessmentDate}
+                        />
+                        {['perimetria', 'forca', 'dinamometria', 'ndi_integracao', 'oswestry_integracao', 'quickdash_integracao', 'testes_especiais_resistidos'].includes(section.id) && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginTop: '1rem' }}>
+                                {section.rows?.map((row: any) => row.fields.map((f: any, fidx: number) => {
+                                    const fid = typeof f === 'string' ? f : f.id;
+                                    const col = section.columns?.[fidx + 1];
+                                    const colLabel = typeof col === 'string' ? col : (col?.label || "");
+                                    if (colLabel.includes('Esquerdo') || colLabel.includes('Direito') || fid.endsWith('_score')) {
+                                        return (
+                                            <AssessmentHistoryChart 
+                                                key={`hist-${fid}`}
+                                                fieldId={fid}
+                                                currentValue={Number(String(answers[fid] || '0').replace('%', '').replace(',', '.')) || 0}
+                                                chartTitle={`Evolução: ${row.label} (${colLabel})`}
+                                                unit={fid.endsWith('_score') ? '%' : (section.id.includes('forca') ? 'kgF' : 'cm')}
+                                                history={patientAssessments}
+                                                isPrint={isPrint}
+                                                assessmentId={assessmentId}
+                                            />
+                                        );
+                                    }
+                                    return null;
+                                }))}
+                            </div>
+                        )}
+                        <div style={{ display: 'grid', gridTemplateColumns: section.fields?.some((f:any)=> f.type === 'textarea') ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '0.5rem' }}>
+                            {section.fields?.filter(f => {
+                                if (isEditing) return true;
+                                if (f.type === 'button') return false;
+                                return hasVal(answers[f.id]);
+                            }).map((field: any) => (
+                                <FormField 
+                                    key={field.id}
+                                    field={field}
+                                    value={answers[field.id]}
+                                    isEditing={isEditing}
+                                    handleInputChange={handleInputChange}
+                                    onImageClick={onImageClick}
+                                    patientGender={patientGender}
+                                    patientAge={patientAge}
+                                    patientAssessments={patientAssessments}
+                                    patientId={patientId}
+                                    type={type}
+                                    assessmentId={assessmentId}
+                                    router={router}
+                                    isPrint={isPrint}
+                                    answers={answers}
+                                    assessmentDate={assessmentDate}
+                                    onAnalyzeImage={onAnalyzeImage}
+                                    onOpenYbt={onOpenYbt}
+                                />
+                            ))}
                         </div>
-                    )}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
-                        {section.fields?.filter(f => {
-                            if (isEditing) return true;
-                            if (f.type === 'button') return false;
-                            return hasVal(answers[f.id]);
-                        }).map((field: any) => (
-                            <FormField 
-                                key={field.id}
-                                field={field}
-                                value={answers[field.id]}
-                                isEditing={isEditing}
-                                handleInputChange={handleInputChange}
-                                onImageClick={onImageClick}
-                                patientGender={patientGender}
-                                patientAge={patientAge}
-                                patientAssessments={patientAssessments}
-                                patientId={patientId}
-                                type={type}
-                                assessmentId={assessmentId}
-                                router={router}
-                                isPrint={isPrint}
-                                answers={answers}
-                                assessmentDate={assessmentDate}
-                                onAnalyzeImage={onAnalyzeImage}
-                                onOpenYbt={onOpenYbt}
-                            />
-                        ))}
+                        {section.chart === 'normative_strength' && (
+                            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', width: '100%', pageBreakInside: 'avoid' }}>
+                                <AssessmentComparisonChart 
+                                    label={section.title}
+                                    leftValue={Number(answers['preensao_esq']) || 0}
+                                    rightValue={Number(answers['preensao_dir']) || 0}
+                                    unit="kg"
+                                    normValue={patientGender === 'Feminino' ? 16 : 27}
+                                    isPrint={isPrint}
+                                    history={patientAssessments}
+                                />
+                            </div>
+                        )}
                     </div>
                 </>
             ) : section.type === 'multi-table' ? (
@@ -2034,18 +2389,46 @@ const FormSection = memo(({
                             boxShadow: isPrint ? 'none' : '0 1px 3px rgba(0,0,0,0.05)'
                         }}>
                             <h4 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', color: 'var(--secondary)' }}>{sub.title}</h4>
-                            {sub.type === 'table' ? (
-                                <DataTable 
-                                    section={sub} 
-                                    answers={answers} 
-                                    isEditing={isEditing} 
-                                    handleInputChange={handleInputChange} 
-                                    onImageClick={onImageClick}
-                                    onOpenDynamo={onOpenDynamo}
-                                    onAnalyzeImage={onAnalyzeImage}
-                                    isPrint={isPrint}
-                                    assessmentDate={assessmentDate}
-                                />
+                             {sub.type === 'table' ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    <DataTable 
+                                        section={sub} 
+                                        answers={answers} 
+                                        isEditing={isEditing} 
+                                        handleInputChange={handleInputChange} 
+                                        onImageClick={onImageClick}
+                                        onOpenDynamo={onOpenDynamo}
+                                        onAnalyzeImage={onAnalyzeImage}
+                                        isPrint={isPrint}
+                                        assessmentDate={assessmentDate}
+                                    />
+                                    {sub.fields && sub.fields.length > 0 && (
+                                        <div style={{ display: 'grid', gridTemplateColumns: (sub.type === 'table' && sub.fields.some((f:any) => f.type === 'textarea')) ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                                            {sub.fields.filter((f: any) => isEditing || hasVal(answers[f.id])).map((field: any) => (
+                                                <FormField 
+                                                    key={field.id}
+                                                    field={field}
+                                                    value={answers[field.id]}
+                                                    isEditing={isEditing}
+                                                    handleInputChange={handleInputChange}
+                                                    onImageClick={onImageClick}
+                                                    patientGender={patientGender}
+                                                    patientAge={patientAge}
+                                                    patientAssessments={patientAssessments}
+                                                    patientId={patientId}
+                                                    type={type}
+                                                    assessmentId={assessmentId}
+                                                    router={router}
+                                                    isPrint={isPrint}
+                                                    answers={answers}
+                                                    assessmentDate={assessmentDate}
+                                                    onAnalyzeImage={onAnalyzeImage}
+                                                    onOpenYbt={onOpenYbt}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             ) : (
                                 <div style={{ display: 'grid', gridTemplateColumns: sub.fields?.some((f: any) => f.type === 'image-upload') ? '1fr 1fr' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
                                     {sub.fields?.map((field: any) => (
@@ -2561,6 +2944,159 @@ function AssessmentContent() {
             }
         }
 
+        // New Table-based calculations for afMao
+        if (type === 'afMao') {
+            const groups = [
+                ['peri_ant_sup', 'peri_ant_inf', 'peri_punho'],
+                ['flexao_pun_at', 'extensao_pun_at', 'desv_radial_at', 'desv_ulnar_at'],
+                ['flexao_pun_ps', 'extensao_pun_ps', 'desv_radial_ps', 'desv_ulnar_ps'],
+                ['flex_mcf_at', 'ext_mcf_at', 'flex_ifp_at', 'flex_ifd_at', 'oposicao_polegar_at'],
+                ['flex_mcf_ps', 'ext_mcf_ps', 'flex_ifp_ps', 'flex_ifd_ps', 'oposicao_polegar_ps'],
+                ['preensao', 'polpa', 'lateral', 'tripode']
+            ];
+            groups.flat().forEach(mId => {
+                const esqId = `${mId}_esq`;
+                const dirId = `${mId}_dir`;
+                if (fieldId === esqId || fieldId === dirId) {
+                    const esq = parseFloat(String(newAnswers[esqId] || '0').replace(',', '.'));
+                    const dir = parseFloat(String(newAnswers[dirId] || '0').replace(',', '.'));
+                    if (esq > 0 || dir > 0) {
+                        const max = Math.max(esq, dir);
+                        const min = Math.min(esq, dir);
+                        const deficit = Math.round(((max - min) / max) * 100);
+                        newAnswers[`${mId}_def`] = `${deficit}%`;
+                    } else {
+                        newAnswers[`${mId}_def`] = '';
+                    }
+                }
+            });
+        }
+
+        if (type === 'afGeriatria') {
+            const val = parseFloat(String(value).replace(',', '.'));
+            const resMap: Record<string, string> = {
+                'pes_juntos': 'pes_juntos_res',
+                'semi_tandem': 'semi_tandem_res',
+                'tandem': 'tandem_res',
+                'tug': 'tug_res',
+                'vel_marcha': 'vel_marcha_res',
+                'preensao': 'preensao_res',
+                'unipodal_dir': 'unipodal_dir_res',
+                'unipodal_esq': 'unipodal_esq_res',
+                'toques_valor': 'toques_res',
+                'sentar_levantar': 'sentar_levantar_res',
+                'preensao_esq': 'preensao_res_esq',
+                'preensao_dir': 'preensao_res_dir'
+            };
+
+            if (!isNaN(val)) {
+                if (fieldId === 'pes_juntos') newAnswers['pes_juntos_res'] = val >= 30 ? 'Normal' : 'Abaixo';
+                if (fieldId === 'semi_tandem') newAnswers['semi_tandem_res'] = val >= 30 ? 'Normal' : 'Abaixo';
+                if (fieldId === 'tandem') newAnswers['tandem_res'] = val > 17.56 ? 'Normal' : 'Abaixo';
+                if (fieldId === 'tug') newAnswers['tug_res'] = val < 12.47 ? 'Normal' : 'Abaixo';
+                if (fieldId === 'vel_marcha') newAnswers['vel_marcha_res'] = val >= 0.8 ? 'Normal' : 'Abaixo';
+                if (fieldId === 'preensao_esq' || fieldId === 'preensao_dir') {
+                    const threshold = patientGender === 'Feminino' ? 16 : 27;
+                    const esqVal = parseFloat(String(newAnswers['preensao_esq'] || '0').replace(',', '.'));
+                    const dirVal = parseFloat(String(newAnswers['preensao_dir'] || '0').replace(',', '.'));
+                    
+                    if (!isNaN(esqVal) && newAnswers['preensao_esq'] !== undefined && newAnswers['preensao_esq'] !== '') {
+                        newAnswers['preensao_res_esq'] = esqVal >= threshold ? 'Normal' : 'Abaixo';
+                    }
+                    if (!isNaN(dirVal) && newAnswers['preensao_dir'] !== undefined && newAnswers['preensao_dir'] !== '') {
+                        newAnswers['preensao_res_dir'] = dirVal >= threshold ? 'Normal' : 'Abaixo';
+                    }
+                }
+                if (fieldId === 'unipodal_dir') newAnswers['unipodal_dir_res'] = val > 10 ? 'Normal' : 'Abaixo';
+                if (fieldId === 'unipodal_esq') newAnswers['unipodal_esq_res'] = val > 10 ? 'Normal' : 'Abaixo';
+                if (fieldId === 'toques_valor') newAnswers['toques_res'] = val >= 8 ? 'Normal' : 'Abaixo';
+                if (fieldId === 'sentar_levantar') {
+                    const age = Number(patientAge);
+                    let threshold = 14.8; 
+                    if (age >= 60 && age <= 69) threshold = 11.4;
+                    else if (age >= 70 && age <= 79) threshold = 12.6;
+                    else if (age < 60) threshold = 11.4; 
+                    newAnswers['sentar_levantar_res'] = val < threshold ? 'Normal' : 'Abaixo';
+                }
+            } else if (resMap[fieldId]) {
+                newAnswers[resMap[fieldId]] = '';
+            }
+        }
+
+        if (type === 'afTornozelo') {
+            const groups = [
+                ['fig8', 'p_perna_tat'],
+                ['flex_pla_at', 'dorsi_at', 'inv_at', 'eve_at'],
+                ['flex_pla_ps', 'dorsi_ps', 'inv_ps', 'eve_ps'],
+                ['wblt'],
+                ['f_pla_tor', 'f_dor_tor', 'f_inv_tor', 'f_eve_tor']
+            ];
+            groups.flat().forEach(mId => {
+                const esqId = `${mId}_esq`;
+                const dirId = `${mId}_dir`;
+                if (fieldId === esqId || fieldId === dirId) {
+                    const esq = parseFloat(String(newAnswers[esqId] || '0').replace(',', '.'));
+                    const dir = parseFloat(String(newAnswers[dirId] || '0').replace(',', '.'));
+                    if (esq > 0 || dir > 0) {
+                        const max = Math.max(esq, dir);
+                        const min = Math.min(esq, dir);
+                        const deficit = Math.round(((max - min) / max) * 100);
+                        newAnswers[`${mId}_def`] = `${deficit}%`;
+                    } else {
+                        newAnswers[`${mId}_def`] = '';
+                    }
+                }
+            });
+
+            // SLHRT Classification
+            const esq = Number(newAnswers['slhrt_esq']);
+            const dir = Number(newAnswers['slhrt_dir']);
+            if (esq > 0 || dir > 0) {
+                const classify = (val: number) => {
+                    if (val >= 25) return "Adequado (≥25)";
+                    if (val >= 20) return "Limítrofe (20-24)";
+                    if (val >= 15) return "Déficit Moderado (15-19)";
+                    return "Déficit Importante (<15)";
+                };
+
+                const diff = Math.abs(esq - dir);
+                const max = Math.max(esq, dir);
+                const pctDiff = max > 0 ? (diff / max) * 100 : 0;
+                const isAsymmetric = diff > 5 || pctDiff > 10;
+
+                const statusEsq = esq > 0 ? classify(esq) : "Não realizado";
+                const statusDir = dir > 0 ? classify(dir) : "Não realizado";
+                const asymmetryText = isAsymmetric ? "SIM" : "NÃO";
+
+                newAnswers['slhrt_class'] = `ESQUERDO: ${statusEsq}\nDIREITO: ${statusDir}\nAssimetria Significativa: ${asymmetryText} (${diff} reps / ${pctDiff.toFixed(1)}%)`;
+            } else {
+                newAnswers['slhrt_class'] = '';
+            }
+
+            // YBT Asymmetry for afTornozelo
+            if (fieldId === 'ybt_esq' || fieldId === 'ybt_dir') {
+                const yesq = parseFloat(String(newAnswers['ybt_esq'] || '0').replace(',', '.'));
+                const ydir = parseFloat(String(newAnswers['ybt_dir'] || '0').replace(',', '.'));
+                if (yesq > 0 || ydir > 0) {
+                    const diff = Math.abs(yesq - ydir).toFixed(1);
+                    newAnswers['ybt_diff'] = `${diff}%`;
+                } else {
+                    newAnswers['ybt_diff'] = '';
+                }
+            }
+
+            // Step-Down Test Classification
+            const vEsq = parseFloat(String(newAnswers.sd_valgo_esq || '0').replace(',', '.'));
+            const vDir = parseFloat(String(newAnswers.sd_valgo_dir || '0').replace(',', '.'));
+            const qEsq = parseFloat(String(newAnswers.sd_queda_esq || '0').replace(',', '.'));
+            const qDir = parseFloat(String(newAnswers.sd_queda_dir || '0').replace(',', '.'));
+
+            if (vEsq > 0) newAnswers.sd_valgo_res_esq = (vEsq >= 3 && vEsq <= 13) ? 'Normal' : 'Déficit';
+            if (vDir > 0) newAnswers.sd_valgo_res_dir = (vDir >= 3 && vDir <= 13) ? 'Normal' : 'Déficit';
+            if (qEsq > 0) newAnswers.sd_queda_res_esq = (qEsq >= 5 && qEsq <= 15) ? 'Normal' : 'Déficit';
+            if (qDir > 0) newAnswers.sd_queda_res_dir = (qDir >= 5 && qDir <= 15) ? 'Normal' : 'Déficit';
+        }
+
         // Auto-calculate Hip Ratio for afLombar
         if (type === 'afLombar' && (fieldId === 'mmii_ri_esq' || fieldId === 'mmii_re_esq')) {
             const ri = Number(newAnswers['mmii_ri_esq']);
@@ -2779,6 +3315,10 @@ function AssessmentContent() {
     const returnTo = searchParams.get("returnTo");
 
     const handleReturn = () => {
+        if (!result) {
+            if (returnTo) router.push(`/dashboard/assessment/${patientId}/${returnTo}?returnTo=${type}`);
+            return;
+        }
         if (returnTo) {
             // For geriatric sub-questionnaires, save to specific field key
             const mmiiMapping: Record<string, string> = {
@@ -2825,7 +3365,22 @@ function AssessmentContent() {
 
         {renderFullPrintView()}
 
-        <div className="no-print print:hidden" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
+        {/* COMPARISON CHART FOR AOFAS */}
+        {type === 'aofas' && result && (
+            <div style={{ maxWidth: '800px', margin: '0 auto 2rem auto', padding: '0 1rem' }}>
+                <ComparisonChart 
+                    currentValue={result.score}
+                    chartTitle="Evolução Clínica - Score AOFAS"
+                    unit=" pts"
+                    history={patientAssessments.filter(a => a.assessment_type === 'aofas')}
+                    assessmentId={assessmentId}
+                    currentDate={assessmentDate}
+                    useScoreData={true}
+                />
+            </div>
+        )}
+
+        <div className="no-print print:hidden" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '1rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
             <button
                 className="btn-action-outline"
                 onClick={() => window.print()}

@@ -38,6 +38,7 @@ export type Section = {
   columns?: (string | { label: string, action?: { type: 'fill', value: any }, type?: 'checkbox' | 'text' | 'number' | 'select' | 'image-upload' | 'textarea' })[];
   rows?: TableRow[];
   subsections?: Section[];
+  chart?: string;
 };
 
 export type Questionnaire = {
@@ -869,21 +870,24 @@ export const questionnairesData: Record<string, Questionnaire> = {
         },
         {
             id: 'testes_equilibrio',
-            title: 'Testes de Equilíbrio (Tempo de permanência)',
-            fields: [
-                { id: 'pes_juntos', label: 'Pés Juntos (segundos - obj: 30s)', type: 'number' },
-                { id: 'semi_tandem', label: 'Semi-tandem (segundos - obj: 30s)', type: 'number' },
-                { id: 'tandem', label: 'Tandem (segundos - obj: >17.56s)', type: 'number' }
+            title: 'Testes de Equilíbrio Estático',
+            type: 'table',
+            columns: ['Teste', 'Tempo (s)', 'Resultado'],
+            rows: [
+                { id: 'pes_juntos_row', label: 'Pés Juntos (Obj: 30s)', fields: ['pes_juntos', 'pes_juntos_res'] },
+                { id: 'semi_tandem_row', label: 'Semi-tandem (Obj: 30s)', fields: ['semi_tandem', 'semi_tandem_res'] },
+                { id: 'tandem_row', label: 'Tandem (Obj: >17.56s)', fields: ['tandem', 'tandem_res'] }
             ]
         },
         {
             id: 'equilibrio_funcional',
-            title: 'Testes de Equilíbrio Funcional',
-            fields: [
-                { id: 'unipodal_dir', label: 'Apoio Unipodal Direita (segundos)', type: 'number' },
-                { id: 'unipodal_esq', label: 'Apoio Unipodal Esquerda (segundos)', type: 'number' },
-                { id: 'toques_tempo', label: 'Oito Toques Consecutivos - Tempo (segundos)', type: 'number' },
-                { id: 'toques_qualidade', label: 'Oito Toques Consecutivos - Qualidade (1 a 5)', type: 'number' }
+            title: 'Testes de Equilíbrio Unipodal / Dinâmico',
+            type: 'table',
+            columns: ['Teste', 'Valor', 'Resultado'],
+            rows: [
+                { id: 'unipodal_dir_row', label: 'Apoio Unipodal Direita (Obj: >10s)', fields: ['unipodal_dir', 'unipodal_dir_res'] },
+                { id: 'unipodal_esq_row', label: 'Apoio Unipodal Esquerda (Obj: >10s)', fields: ['unipodal_esq', 'unipodal_esq_res'] },
+                { id: 'toques_consecutivos_row', label: 'Oito Toques Consecutivos (Obj: 8 ou mais)', fields: ['toques_valor', 'toques_res'] }
             ]
         },
         {
@@ -896,32 +900,32 @@ export const questionnairesData: Record<string, Questionnaire> = {
         {
             id: 'testes_mobilidade',
             title: 'Testes de Mobilidade e Força',
-            fields: [
-                { id: 'tug', label: 'Timed Up and Go (TUG - seg, obj: <12.47s)', type: 'number' },
-                { id: 'vel_marcha', label: 'Velocidade da Marcha (m/s, obj: >0.8m/s)', type: 'number' },
-                { id: 'sentar_levantar', label: 'Teste de Sentar/Levantar 5x (segundos)', type: 'number' },
-                { id: 'preensao', label: 'Força de Preensão Palmar (kg - obj: >16kg Fem / >27kg Masc)', type: 'number' }
+            type: 'table',
+            columns: ['Teste', 'Resultado', 'Classificação'],
+            rows: [
+                { id: 'tug_row', label: 'TUG (Obj: <12.47s)', fields: ['tug', 'tug_res'] },
+                { id: 'vel_marcha_row', label: 'Velocidade da Marcha (Obj: >0.8m/s)', fields: ['vel_marcha', 'vel_marcha_res'] },
+                { id: 'sentar_levantar_row', label: 'Sentar/Levantar 5x', fields: ['sentar_levantar', 'sentar_levantar_res'] }
             ]
+        },
+        {
+            id: 'teste_forca',
+            title: 'Teste de Força',
+            type: 'table',
+            columns: ['Teste', 'Esq.', 'Resultado Esq.', 'Dir.', 'Resultado Dir.'],
+            rows: [
+                { id: 'preensao_palmar_row', label: 'Força de Preensão Palmar (Obj: >16kg F / >27kg M)', fields: ['preensao_esq', 'preensao_res_esq', 'preensao_dir', 'preensao_res_dir'] }
+            ],
+            chart: 'normative_strength'
         },
         {
             id: 'questionarios_geriatria_integracao',
             title: 'Questionários Complementares',
             fields: [
-                { id: 'man_score_previo', label: 'Score MAN Anterior', type: 'text' },
                 { id: 'man_novo', label: 'Preencher novo MAN', type: 'button' },
-                { id: 'man_score', label: 'Resultado MAN Atual', type: 'text' },
-
-                { id: 'ves13_score_previo', label: 'Score VES-13 Anterior', type: 'text' },
                 { id: 'ves13_novo', label: 'Preencher novo VES-13', type: 'button' },
-                { id: 'ves13_score', label: 'Resultado VES-13 Atual', type: 'text' },
-
-                { id: 'lbpq_score_previo', label: 'Score LBPQ Anterior', type: 'text' },
                 { id: 'lbpq_novo', label: 'Preencher novo LBPQ', type: 'button' },
-                { id: 'lbpq_score', label: 'Resultado LBPQ Atual', type: 'text' },
-
-                { id: 'brief_score_previo', label: 'Score BPI-SF Anterior', type: 'text' },
-                { id: 'brief_novo', label: 'Preencher novo BPI-SF', type: 'button' },
-                { id: 'brief_score', label: 'Resultado BPI-SF Atual', type: 'text' }
+                { id: 'brief_novo', label: 'Preencher novo BPI-SF', type: 'button' }
             ]
         },
         {
@@ -1416,7 +1420,23 @@ export const questionnairesData: Record<string, Questionnaire> = {
         { text: '8. Estabilidade do tornozelo-retropé', options: [{ value: 8, label: 'Estável' }, { value: 0, label: 'Definitivamente instável' }] },
         { text: 'ALINHAMENTO (10 pontos no máximo)', isInstruction: true },
         { text: '9. Alinhamento do tornozelo-retropé', options: [{ value: 10, label: 'Bom, pé plantígrado' }, { value: 5, label: 'Razoável, sintomático' }, { value: 0, label: 'Ruim, deformidade grave' }] }
-    ]
+    ],
+    calculateScore: (answers: Record<string, any>) => {
+        let score = 0;
+        Object.keys(answers).forEach(key => {
+            if (!isNaN(parseInt(key))) {
+                score += Number(answers[key]);
+            }
+        });
+        
+        let interpretation = '';
+        if (score >= 90) interpretation = 'Excelente';
+        else if (score >= 80) interpretation = 'Bom';
+        else if (score >= 70) interpretation = 'Razoável';
+        else interpretation = 'Ruim';
+
+        return { score, max: 100, percentage: score, interpretation, unit: 'pontos' };
+    }
   },
   afMmii: {
     id: 'afMmii',
@@ -1547,44 +1567,142 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'anamnese',
             title: 'Anamnese',
             fields: [
-                { id: 'queixa', label: 'Queixa Principal', type: 'textarea' },
+                { id: 'anamnese_texto', label: 'ANAMNESE', type: 'textarea' },
                 { id: 'intensidade_dor', label: 'Intensidade da Dor (EVA)', type: 'range', min: 0, max: 10, step: 1 },
                 { id: 'area_dor', label: 'Área da Dor', type: 'bodyschema', image: '/img/esquema_corpo_inteiro.png' },
-                { id: 'historia', label: 'História Atual / Mecanismo de Lesão', type: 'textarea' },
-                { id: 'exames', label: 'Exames Complementares', type: 'textarea' }
+                { id: 'exames_complementares', label: 'EXAMES COMPLEMENTARES', type: 'textarea' }
             ]
         },
         {
-            id: 'adm_tornozelo',
-            title: 'Amplitude de Movimento (Graus)',
-            type: 'table',
-            columns: ['Movimento', 'Esquerdo', 'Direito'],
-            rows: [
-                { id: 'flexao_plantar', label: 'Flexão Plantar', fields: ['flex_pla_esq', 'flex_pla_dir'] },
-                { id: 'dorsiflexao', label: 'Dorsiflexão', fields: ['dorsi_esq', 'dorsi_dir'] },
-                { id: 'inversao', label: 'Inversão', fields: ['inv_esq', 'inv_dir'] },
-                { id: 'eversao', label: 'Eversão', fields: ['eve_esq', 'eve_dir'] }
+            id: 'inspecao_testes_func',
+            title: 'Inspeção e Testes Especiais',
+            type: 'multi-table',
+            subsections: [
+                {
+                    id: 'perimetria_sub',
+                    title: 'Perimetria (cm)',
+                    type: 'table',
+                    columns: ['Local', 'Esquerdo (cm)', 'Direito (cm)', 'DÉFICIT %'],
+                    rows: [
+                        { id: 'figura_8', label: 'Figura em 8', fields: ['fig8_esq', 'fig8_dir', 'fig8_def'] },
+                        { id: 'p_perna_tat', label: 'Perimetria da perna (10 cm abaixo da TAT)', fields: ['p_perna_tat_esq', 'p_perna_tat_dir', 'p_perna_tat_def'] }
+                    ]
+                },
+                {
+                    id: 'testes_funcionais',
+                    title: 'Testes Especiais', // Título solicitado pelo usuário
+                    type: 'table',
+                    columns: ['Teste', 'Esquerdo (reps)', 'Direito (reps)'],
+                    rows: [
+                        { id: 'slhrt', label: 'Single Leg Heel Raise Test', fields: ['slhrt_esq', 'slhrt_dir'] }
+                    ],
+                    fields: [
+                        { id: 'slhrt_class', label: 'Classificação Single Leg Heel Raise', type: 'textarea' }
+                    ]
+                }
             ],
-            fields: [{ id: 'adm_tornozelo_obs', label: 'Observações', type: 'textarea' }]
+            fields: [
+                { id: 'inspecao_text', label: 'Inspeção (Deformidades, Edema, Trofismo)', type: 'textarea' },
+                { id: 'obs_perimetria', label: 'OBSERVAÇÕES', type: 'textarea' }
+            ]
         },
         {
-            id: 'perimetria',
-            title: 'Perimetria - Figura em 8 (cm)',
-            type: 'table',
-            columns: ['Local', 'Esquerdo', 'Direito', '% Déficit'],
-            rows: [
-                { id: 'figura_8', label: 'Figura em 8', fields: ['fig8_esq', 'fig8_dir', 'fig8_def'] }
+            id: 'palpacao',
+            title: 'Palpação',
+            type: 'multi-table',
+            subsections: [
+                {
+                    id: 'palpacao_articular',
+                    title: 'Palpação Articular',
+                    type: 'table',
+                    columns: ['Estrutura', 'Esquerdo', 'Direito'],
+                    rows: [
+                        { id: 'maleolo_lateral', label: 'Maléolo Lateral', fields: [{ id: 'palp_mlat_esq', type: 'checkbox' }, { id: 'palp_mlat_dir', type: 'checkbox' }] },
+                        { id: 'maleolo_medial', label: 'Maléolo Medial', fields: [{ id: 'palp_mmed_esq', type: 'checkbox' }, { id: 'palp_mmed_dir', type: 'checkbox' }] },
+                        { id: 'calcaneo', label: 'Calcâneo', fields: [{ id: 'palp_calcp_esq', type: 'checkbox' }, { id: 'palp_calcp_dir', type: 'checkbox' }] },
+                        { id: 'base_5_meta', label: 'Base do 5º Metatarso', fields: [{ id: 'palp_5meta_esq', type: 'checkbox' }, { id: 'palp_5meta_dir', type: 'checkbox' }] }
+                    ]
+                },
+                {
+                    id: 'palpacao_miofascial',
+                    title: 'Palpação Miofascial',
+                    type: 'table',
+                    columns: ['Estrutura', 'Esquerdo', 'Direito'],
+                    rows: [
+                        { id: 'aquiles', label: 'Tendão de Aquiles', fields: [{ id: 'palp_aquiles_esq', type: 'checkbox' }, { id: 'palp_aquiles_dir', type: 'checkbox' }] },
+                        { id: 'fascia_plantar', label: 'Fáscia Plantar', fields: [{ id: 'palp_fascia_esq', type: 'checkbox' }, { id: 'palp_fascia_dir', type: 'checkbox' }] },
+                        { id: 'tibial_anterior', label: 'Tibial Anterior', fields: [{ id: 'palp_tanterior_esq', type: 'checkbox' }, { id: 'palp_tanterior_dir', type: 'checkbox' }] },
+                        { id: 'tibial_posterior', label: 'Tibial posterior', fields: [{ id: 'palp_tpost_esq', type: 'checkbox' }, { id: 'palp_tpost_dir', type: 'checkbox' }] },
+                        { id: 'gastrocnemio', label: 'Gastrocnêmio', fields: [{ id: 'palp_gastro_esq', type: 'checkbox' }, { id: 'palp_gastro_dir', type: 'checkbox' }] },
+                        { id: 'soleo', label: 'Sóleo', fields: [{ id: 'palp_soleo_esq', type: 'checkbox' }, { id: 'palp_soleo_dir', type: 'checkbox' }] },
+                        { id: 'extensor_curto', label: 'Extensor curto dos dedos', fields: [{ id: 'palp_extcurto_esq', type: 'checkbox' }, { id: 'palp_extcurto_dir', type: 'checkbox' }] },
+                        { id: 'fibulares', label: 'Fibulares', fields: [{ id: 'palp_fibulares_esq', type: 'checkbox' }, { id: 'palp_fibulares_dir', type: 'checkbox' }] }
+                    ]
+                },
+                {
+                    id: 'obs_palpacao_sub',
+                    title: 'Observações - Palpação',
+                    fields: [{ id: 'obs_palpacao', label: 'OBSERVAÇÕES', type: 'textarea' }]
+                }
+            ]
+        },
+        {
+            id: 'amplitude_movimento',
+            title: 'Amplitude de Movimento',
+            type: 'multi-table',
+            subsections: [
+                {
+                    id: 'adm_tornozelo_at',
+                    title: 'Tornozelo (Ativo)',
+                    type: 'table',
+                    columns: ['Movimento', 'Esquerdo (°)', 'Direito (°)', 'DÉFICIT %'],
+                    rows: [
+                        { id: 'flex_pla_at', label: 'Flexão Plantar', fields: ['flex_pla_at_esq', 'flex_pla_at_dir', 'flex_pla_at_def'] },
+                        { id: 'dorsi_at', label: 'Dorsiflexão', fields: ['dorsi_at_esq', 'dorsi_at_dir', 'dorsi_at_def'] },
+                        { id: 'inv_at', label: 'Inversão', fields: ['inv_at_esq', 'inv_at_dir', 'inv_at_def'] },
+                        { id: 'eve_at', label: 'Eversão', fields: ['eve_at_esq', 'eve_at_dir', 'eve_at_def'] }
+                    ]
+                },
+                {
+                    id: 'adm_tornozelo_ps',
+                    title: 'Tornozelo (Passivo)',
+                    type: 'table',
+                    columns: ['Movimento', 'Esquerdo (°)', 'Direito (°)', 'DÉFICIT %'],
+                    rows: [
+                        { id: 'flex_pla_ps', label: 'Flexão Plantar', fields: ['flex_pla_ps_esq', 'flex_pla_ps_dir', 'flex_pla_ps_def'] },
+                        { id: 'dorsi_ps', label: 'Dorsiflexão', fields: ['dorsi_ps_esq', 'dorsi_ps_dir', 'dorsi_ps_def'] },
+                        { id: 'inv_ps', label: 'Inversão', fields: ['inv_ps_esq', 'inv_ps_dir', 'inv_ps_def'] },
+                        { id: 'eve_ps', label: 'Eversão', fields: ['eve_ps_esq', 'eve_ps_dir', 'eve_ps_def'] }
+                    ]
+                },
+                {
+                    id: 'wblt_test',
+                    title: 'Weight Bearing Lunge Test (cm)',
+                    type: 'table',
+                    columns: ['Teste', 'Esquerdo (cm)', 'Direito (cm)', 'DÉFICIT %'],
+                    rows: [
+                        { id: 'wblt', label: 'WBLT', fields: ['wblt_esq', 'wblt_dir', 'wblt_def'] }
+                    ]
+                },
+                {
+                    id: 'obs_adm_tornozelo_div',
+                    title: 'Observações - ADM',
+                    fields: [{ id: 'obs_adm_tornozelo', label: 'Observações', type: 'textarea' }]
+                }
             ]
         },
         {
             id: 'forca_tornozelo',
             title: 'Força Muscular (kgF)',
             type: 'table',
-            columns: ['Músculo/Movimento', 'Esquerdo', 'Direito', '% Déficit'],
+            columns: ['Movimento', 'Esquerdo', 'Direito', 'DÉFICIT %'],
             rows: [
-                { id: 'flex_pla_forca', label: 'Flexão Plantar', fields: ['f_pla_esq', 'f_pla_dir', 'f_pla_def'] },
-                { id: 'dorsi_forca', label: 'Dorsiflexão', fields: ['f_dor_esq', 'f_dor_dir', 'f_dor_def'] }
-            ]
+                { id: 'f_pla_tor', label: 'Flexão Plantar', fields: ['f_pla_tor_esq', 'f_pla_tor_dir', 'f_pla_tor_def'] },
+                { id: 'f_dor_tor', label: 'Dorsiflexão', fields: ['f_dor_tor_esq', 'f_dor_tor_dir', 'f_dor_tor_def'] },
+                { id: 'f_inv_tor', label: 'Inversão', fields: ['f_inv_tor_esq', 'f_inv_tor_dir', 'f_inv_tor_def'] },
+                { id: 'f_eve_tor', label: 'Eversão', fields: ['f_eve_tor_esq', 'f_eve_tor_dir', 'f_eve_tor_def'] }
+            ],
+            fields: [{ id: 'obs_forca_tornozelo', label: 'OBSERVAÇÕES', type: 'textarea' }]
         },
         {
             id: 'testes_especiais',
@@ -1594,12 +1712,36 @@ export const questionnairesData: Record<string, Questionnaire> = {
             rows: [
                 { id: 'gaveta_ant', label: 'Gaveta Anterior', fields: [{ id: 'test_gaveta_esq', type: 'checkbox' }, { id: 'test_gaveta_dir', type: 'checkbox' }] },
                 { id: 'talar_tilt', label: 'Talar Tilt', fields: [{ id: 'test_talar_esq', type: 'checkbox' }, { id: 'test_talar_dir', type: 'checkbox' }] },
-                { id: 'thompson', label: 'Teste de Thompson', fields: [{ id: 'test_thompson_esq', type: 'checkbox' }, { id: 'test_thompson_dir', type: 'checkbox' }] }
+                { id: 'thompson', label: 'Teste de Thompson', fields: [{ id: 'test_thompson_esq', type: 'checkbox' }, { id: 'test_thompson_dir', type: 'checkbox' }] },
+                { id: 'kleiger', label: 'Teste de Kleiger (Sindesmose)', fields: [{ id: 'test_kleiger_esq', type: 'checkbox' }, { id: 'test_kleiger_dir', type: 'checkbox' }] },
+                { id: 'squeeze', label: 'Squeeze Test (Sindesmose)', fields: [{ id: 'test_squeeze_esq', type: 'checkbox' }, { id: 'test_squeeze_dir', type: 'checkbox' }] }
+            ],
+            fields: [{ id: 'obs_testes_esp', label: 'OBSERVAÇÕES', type: 'textarea' }]
+        },
+        {
+            id: 'ybt',
+            title: 'Y-Balance Test (YBT)',
+            fields: [
+                { id: 'ybt_esq', label: 'Y Apoio Esq. (%)', type: 'number' },
+                { id: 'ybt_dir', label: 'Y Apoio Dir. (%)', type: 'number' },
+                { id: 'ybt_diff', label: 'Assimetria (%)', type: 'text' },
+                { id: 'ybt_calc', label: 'Calculadora YBT', type: 'button' },
+                { id: 'sd_estudio_esq', label: 'Estúdio Step-Down Esq.', type: 'angle_measurement' },
+                { id: 'sd_estudio_dir', label: 'Estúdio Step-Down Dir.', type: 'angle_measurement' },
+                { id: 'sd_valgo_esq', label: 'Valgo dinâmico Esq.', type: 'number' },
+                { id: 'sd_valgo_dir', label: 'Valgo dinâmico Dir.', type: 'number' },
+                { id: 'sd_queda_esq', label: 'Queda pélvica Esq.', type: 'number' },
+                { id: 'sd_queda_dir', label: 'Queda pélvica Dir.', type: 'number' },
+                { id: 'sd_valgo_res_esq', label: 'Res. Valgo Esq.', type: 'text' },
+                { id: 'sd_valgo_res_dir', label: 'Res. Valgo Dir.', type: 'text' },
+                { id: 'sd_queda_res_esq', label: 'Res. Queda Esq.', type: 'text' },
+                { id: 'sd_queda_res_dir', label: 'Res. Queda Dir.', type: 'text' },
+                { id: 'ybt_obs', label: 'OBSERVAÇÕES', type: 'textarea' }
             ]
         },
         {
-            id: 'integracao_aofas',
-            title: 'Escalas e Questionários',
+            id: 'questionarios',
+            title: 'Questionários e Escalas',
             fields: [
                 { id: 'aofas_novo', label: 'Escala AOFAS', type: 'button' }
             ]
@@ -1627,32 +1769,25 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'anamnese',
             title: 'Anamnese',
             fields: [
-                { id: 'queixa', label: 'Queixa Principal', type: 'textarea' },
+                { id: 'anamnese_texto', label: 'ANAMNESE', type: 'textarea' },
                 { id: 'intensidade_dor', label: 'Intensidade da Dor (EVA)', type: 'range', min: 0, max: 10, step: 1 },
                 { id: 'area_dor', label: 'Área da Dor', type: 'bodyschema', image: '/img/esquema_corpo_inteiro.png' },
-                { id: 'historia', label: 'História Atual / Mecanismo de Lesão', type: 'textarea' },
-                { id: 'piora', label: 'Atividade de Piora', type: 'textarea' },
-                { id: 'alivio', label: 'Atividade de Alívio', type: 'textarea' },
-                { id: 'doencas', label: 'Doenças Associadas e Medicamentos', type: 'textarea' },
-                { id: 'exames', label: 'Exames Complementares', type: 'textarea' }
-            ]
-        },
-        {
-            id: 'inspecao_palpacao',
-            title: 'Inspeção',
-            fields: [
-                { id: 'inspecao', label: 'Inspeção (Deformidades, Edema, Cicatrizes, Trofismo)', type: 'textarea' }
+                { id: 'exames_complementares', label: 'EXAMES COMPLEMENTARES', type: 'textarea' }
             ]
         },
         {
             id: 'perimetria',
-            title: 'Perimetria (cm)',
+            title: 'Inspeção e Perimetria',
             type: 'table',
             columns: ['Local', 'Esquerdo (cm)', 'Direito (cm)', 'DÉFICIT %'],
             rows: [
                 { id: 'p_ant_sup', label: 'Antebraço Superior', fields: ['peri_ant_sup_esq', 'peri_ant_sup_dir', 'peri_ant_sup_def'] },
                 { id: 'p_ant_inf', label: 'Antebraço Inferior', fields: ['peri_ant_inf_esq', 'peri_ant_inf_dir', 'peri_ant_inf_def'] },
                 { id: 'p_punho', label: 'Punho', fields: ['peri_punho_esq', 'peri_punho_dir', 'peri_punho_def'] }
+            ],
+            fields: [
+                { id: 'inspecao', label: 'Inspeção (Deformidades, Edema, Cicatrizes, Trofismo)', type: 'textarea' },
+                { id: 'obs_perimetria', label: 'OBSERVAÇÕES', type: 'textarea' }
             ]
         },
         {
@@ -1683,6 +1818,11 @@ export const questionnairesData: Record<string, Questionnaire> = {
                         { id: 'tenar', label: 'Musculatura Tênar', fields: [{ id: 'mio_tenar_esq', type: 'checkbox' }, { id: 'mio_tenar_dir', type: 'checkbox' }] },
                         { id: 'hipotenar', label: 'Musculatura Hipotênar', fields: [{ id: 'mio_hipo_esq', type: 'checkbox' }, { id: 'mio_hipo_dir', type: 'checkbox' }] }
                     ]
+                },
+                {
+                    id: 'obs_palpacao_sub',
+                    title: 'Observações - Palpação',
+                    fields: [{ id: 'obs_palpacao', label: 'OBSERVAÇÕES', type: 'textarea' }]
                 }
             ]
         },
@@ -1692,15 +1832,27 @@ export const questionnairesData: Record<string, Questionnaire> = {
             type: 'multi-table',
             subsections: [
                 {
-                    id: 'adm_punho',
-                    title: 'Punho (Graus)',
+                    id: 'adm_punho_at',
+                    title: 'Punho (Ativo)',
                     type: 'table',
                     columns: ['Movimento', 'Esquerdo (°)', 'Direito (°)', 'DÉFICIT %'],
                     rows: [
-                        { id: 'flexao_pun', label: 'Flexão', fields: ['flexao_pun_esq', 'flexao_pun_dir', 'flexao_pun_def'] },
-                        { id: 'extensao_pun', label: 'Extensão', fields: ['extensao_pun_esq', 'extensao_pun_dir', 'extensao_pun_def'] },
-                        { id: 'desv_radial', label: 'Desvio Radial', fields: ['desv_radial_esq', 'desv_radial_dir', 'desv_radial_def'] },
-                        { id: 'desv_ulnar', label: 'Desvio Ulnar', fields: ['desv_ulnar_esq', 'desv_ulnar_dir', 'desv_ulnar_def'] }
+                        { id: 'flexao_pun_at', label: 'Flexão', fields: ['flexao_pun_at_esq', 'flexao_pun_at_dir', 'flexao_pun_at_def'] },
+                        { id: 'extensao_pun_at', label: 'Extensão', fields: ['extensao_pun_at_esq', 'extensao_pun_at_dir', 'extensao_pun_at_def'] },
+                        { id: 'desv_radial_at', label: 'Desvio Radial', fields: ['desv_radial_at_esq', 'desv_radial_at_dir', 'desv_radial_at_def'] },
+                        { id: 'desv_ulnar_at', label: 'Desvio Ulnar', fields: ['desv_ulnar_at_esq', 'desv_ulnar_at_dir', 'desv_ulnar_at_def'] }
+                    ]
+                },
+                {
+                    id: 'adm_punho_ps',
+                    title: 'Punho (Passivo)',
+                    type: 'table',
+                    columns: ['Movimento', 'Esquerdo (°)', 'Direito (°)', 'DÉFICIT %'],
+                    rows: [
+                        { id: 'flexao_pun_ps', label: 'Flexão', fields: ['flexao_pun_ps_esq', 'flexao_pun_ps_dir', 'flexao_pun_ps_def'] },
+                        { id: 'extensao_pun_ps', label: 'Extensão', fields: ['extensao_pun_ps_esq', 'extensao_pun_ps_dir', 'extensao_pun_ps_def'] },
+                        { id: 'desv_radial_ps', label: 'Desvio Radial', fields: ['desv_radial_ps_esq', 'desv_radial_ps_dir', 'desv_radial_ps_def'] },
+                        { id: 'desv_ulnar_ps', label: 'Desvio Ulnar', fields: ['desv_ulnar_ps_esq', 'desv_ulnar_ps_dir', 'desv_ulnar_ps_def'] }
                     ]
                 },
                 {
@@ -1709,16 +1861,29 @@ export const questionnairesData: Record<string, Questionnaire> = {
                     fields: [{ id: 'obs_adm_punho', label: 'Observações', type: 'textarea' }]
                 },
                 {
-                    id: 'adm_mao',
-                    title: 'Mão e Dedos (Graus)',
+                    id: 'adm_mao_at',
+                    title: 'Mão e Dedos (Ativo)',
                     type: 'table',
                     columns: ['Articulação / Movimento', 'Esquerdo (°)', 'Direito (°)', 'DÉFICIT %'],
                     rows: [
-                        { id: 'flex_mcf', label: 'Flexão MCF (dedos)', fields: ['flex_mcf_esq', 'flex_mcf_dir', 'flex_mcf_def'] },
-                        { id: 'ext_mcf', label: 'Extensão MCF (dedos)', fields: ['ext_mcf_esq', 'ext_mcf_dir', 'ext_mcf_def'] },
-                        { id: 'flex_ifp', label: 'Flexão IFP', fields: ['flex_ifp_esq', 'flex_ifp_dir', 'flex_ifp_def'] },
-                        { id: 'flex_ifd', label: 'Flexão IFD', fields: ['flex_ifd_esq', 'flex_ifd_dir', 'flex_ifd_def'] },
-                        { id: 'oposicao_polegar', label: 'Oposição do Polegar', fields: ['oposicao_polegar_esq', 'oposicao_polegar_dir', 'oposicao_polegar_def'] }
+                        { id: 'flex_mcf_at', label: 'Flexão MCF (dedos)', fields: ['flex_mcf_at_esq', 'flex_mcf_at_dir', 'flex_mcf_at_def'] },
+                        { id: 'ext_mcf_at', label: 'Extensão MCF (dedos)', fields: ['ext_mcf_at_esq', 'ext_mcf_at_dir', 'ext_mcf_at_def'] },
+                        { id: 'flex_ifp_at', label: 'Flexão IFP', fields: ['flex_ifp_at_esq', 'flex_ifp_at_dir', 'flex_ifp_at_def'] },
+                        { id: 'flex_ifd_at', label: 'Flexão IFD', fields: ['flex_ifd_at_esq', 'flex_ifd_at_dir', 'flex_ifd_at_def'] },
+                        { id: 'oposicao_polegar_at', label: 'Oposição do Polegar', fields: ['oposicao_polegar_at_esq', 'oposicao_polegar_at_dir', 'oposicao_polegar_at_def'] }
+                    ]
+                },
+                {
+                    id: 'adm_mao_ps',
+                    title: 'Mão e Dedos (Passivo)',
+                    type: 'table',
+                    columns: ['Articulação / Movimento', 'Esquerdo (°)', 'Direito (°)', 'DÉFICIT %'],
+                    rows: [
+                        { id: 'flex_mcf_ps', label: 'Flexão MCF (dedos)', fields: ['flex_mcf_ps_esq', 'flex_mcf_ps_dir', 'flex_mcf_ps_def'] },
+                        { id: 'ext_mcf_ps', label: 'Extensão MCF (dedos)', fields: ['ext_mcf_ps_esq', 'ext_mcf_ps_dir', 'ext_mcf_ps_def'] },
+                        { id: 'flex_ifp_ps', label: 'Flexão IFP', fields: ['flex_ifp_ps_esq', 'flex_ifp_ps_dir', 'flex_ifp_ps_def'] },
+                        { id: 'flex_ifd_ps', label: 'Flexão IFD', fields: ['flex_ifd_ps_esq', 'flex_ifd_ps_dir', 'flex_ifd_ps_def'] },
+                        { id: 'oposicao_polegar_ps', label: 'Oposição do Polegar', fields: ['oposicao_polegar_ps_esq', 'oposicao_polegar_ps_dir', 'oposicao_polegar_ps_def'] }
                     ]
                 },
                 {
@@ -1741,6 +1906,9 @@ export const questionnairesData: Record<string, Questionnaire> = {
                 { id: 'finkelstein', label: 'Teste de Finkelstein (De Quervain)', fields: [{ id: 'test_fink_esq', type: 'checkbox' }, { id: 'test_fink_dir', type: 'checkbox' }] },
                 { id: 'allen', label: 'Teste de Allen (Vascularização)', fields: [{ id: 'test_allen_esq', type: 'checkbox' }, { id: 'test_allen_dir', type: 'checkbox' }] },
                 { id: 'watson', label: 'Teste de Watson (Instabilidade Escafoide)', fields: [{ id: 'test_watson_esq', type: 'checkbox' }, { id: 'test_watson_dir', type: 'checkbox' }] }
+            ],
+            fields: [
+                { id: 'obs_testes_esp', label: 'OBSERVAÇÕES', type: 'textarea' }
             ]
         },
         {
@@ -1753,6 +1921,16 @@ export const questionnairesData: Record<string, Questionnaire> = {
                 { id: 'pinca_polpa', label: 'Pinça Polpa a Polpa', fields: ['polpa_esq', 'polpa_dir', 'polpa_def'] },
                 { id: 'pinca_lateral', label: 'Pinça Lateral (Chave)', fields: ['lateral_esq', 'lateral_dir', 'lateral_def'] },
                 { id: 'pinca_tripode', label: 'Pinça Trípode (3 dedos)', fields: ['tripode_esq', 'tripode_dir', 'tripode_def'] }
+            ],
+            fields: [
+                { id: 'obs_forca_preensao', label: 'OBSERVAÇÕES', type: 'textarea' }
+            ]
+        },
+        {
+            id: 'quickdash_integracao',
+            title: 'Quick DASH (Braço, Ombro e Mão)',
+            fields: [
+                { id: 'quickdash_novo', label: 'Quick DASH', type: 'button' }
             ]
         },
         {
@@ -1761,13 +1939,6 @@ export const questionnairesData: Record<string, Questionnaire> = {
             fields: [
                 { id: 'diagnostico', label: 'Diagnóstico Cinético Funcional', type: 'textarea' },
                 { id: 'conclusao', label: 'Conclusões e Sugestões Terapêuticas', type: 'textarea' }
-            ]
-        },
-        {
-            id: 'quickdash_integracao',
-            title: 'Quick DASH (Braço, Ombro e Mão)',
-            fields: [
-                { id: 'quickdash_novo', label: 'Preencher novo Questionário Quick DASH', type: 'button' }
             ]
         }
     ],

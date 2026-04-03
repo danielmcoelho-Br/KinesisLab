@@ -264,7 +264,7 @@ export const DataTable = memo(({
                             {row.fields.map((field: any, fIdx: number) => {
                                 const fieldId = typeof field === 'string' ? field : field.id;
                                 let fieldType = typeof field === 'string' ? 'text' : field.type;
-                                if (typeof field === 'string' && (fieldId.includes('forca') || fieldId.includes('graus') || fieldId.includes('int'))) fieldType = 'number';
+                                if (typeof field === 'string' && (fieldId.includes('forca') || fieldId.includes('graus') || fieldId.includes('int') || fieldId.includes('preensao') || fieldId.includes('polpa') || fieldId.includes('lateral') || fieldId.includes('tripode'))) fieldType = 'number';
                                 
                                 const isDeficitField = fieldId.toLowerCase().includes('deficit');
                                 let val = answers[fieldId];

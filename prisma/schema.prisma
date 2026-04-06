@@ -19,6 +19,7 @@ model Patient {
   birth_date     DateTime?    @db.Timestamptz(6)
   created_by_id  String?
   change_logs    Json?
+  documents      Json?
   assessments    Assessment[]
   created_by     User?        @relation("PatientCreatedBy", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 

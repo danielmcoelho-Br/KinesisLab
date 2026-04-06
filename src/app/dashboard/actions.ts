@@ -189,3 +189,54 @@ export async function deleteAssessment(id: string) {
   }
 }
 
+export async function addPatientDocument(patientId: string, doc: { name: string; type: string; data: string; size: number }) {
+  try {
+    const patient = await prisma.patient.findUnique({ where: { id: patientId } });
+    if (!patient) throw new Error("Paciente não encontrado");
+
+    const currentDocs = Array.isArray(patient.documents) ? [...patient.documents as any[]] : [];
+    const newDoc = {
+      ...doc,
+      id: Math.random().toString(36).substring(2, 11),
+      uploaded_at: new Date().toISOString()
+    };
+
+    await prisma.patient.update({
+      where: { id: patientId },
+      data: {
+        documents: [...currentDocs, newDoc]
+      }
+    });
+
+    revalidatePath(`/dashboard/patient/${patientId}`);
+    return { success: true, data: newDoc };
+  } catch (error: any) {
+    console.error("Error adding document:", error);
+    return { success: false, error: `Falha ao anexar documento: ${error.message || "Erro desconhecido"}` };
+  }
+}
+
+export async function deletePatientDocument(patientId: string, documentId: string) {
+  try {
+    const patient = await prisma.patient.findUnique({ where: { id: patientId } });
+    if (!patient) throw new Error("Paciente não encontrado");
+
+    const currentDocs = Array.isArray(patient.documents) ? [...patient.documents as any[]] : [];
+    const filteredDocs = currentDocs.filter(d => d.id !== documentId);
+
+    await prisma.patient.update({
+      where: { id: patientId },
+      data: {
+        documents: filteredDocs
+      }
+    });
+
+    revalidatePath(`/dashboard/patient/${patientId}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error deleting document:", error);
+    return { success: false, error: `Falha ao excluir documento: ${error.message || "Erro desconhecido"}` };
+  }
+}
+
+

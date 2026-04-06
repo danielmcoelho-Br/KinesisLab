@@ -1,57 +1,4 @@
-export type Option = {
-  value: number;
-  label: string;
-};
-
-export type Question = {
-  id?: string;
-  text: string;
-  isInstruction?: boolean;
-  options?: Option[];
-};
-
-export type SectionField = {
-  id: string;
-  label: string;
-  type: 'textarea' | 'range' | 'text' | 'number' | 'date' | 'select' | 'checkbox' | 'table' | 'bodyschema' | 'image-upload' | 'button' | 'paintmap' | 'angle_measurement' | 'freecanvas';
-
-  min?: number;
-  max?: number;
-  step?: number;
-  image?: string;
-  options?: string[]; // for simple select
-  colors?: { hex: string, label: string }[]; // for paintmap
-  rows?: number; // for textarea height
-};
-
-export type TableRow = {
-  id: string;
-  label: string;
-  fields: (string | { id: string, type: 'checkbox' | 'text' | 'number' | 'select' | 'image-upload', options?: string[] })[];
-};
-
-export type Section = {
-  id: string;
-  title: string;
-  type?: 'default' | 'table' | 'multi-table';
-  fields?: SectionField[];
-  columns?: (string | { label: string, action?: { type: 'fill', value: any }, type?: 'checkbox' | 'text' | 'number' | 'select' | 'image-upload' | 'textarea' })[];
-  rows?: TableRow[];
-  subsections?: Section[];
-  chart?: string;
-};
-
-export type Questionnaire = {
-  id: string;
-  segment: string;
-  title: string;
-  description: string;
-  icon?: string;
-  type?: 'clinical' | 'questionnaire';
-  questions?: Question[];
-  sections?: Section[];
-  calculateScore?: (answers: Record<string, any>) => any;
-};
+export * from '@/types/clinical';
 
 const scores0to5 = ["0", "1", "2", "3", "4", "5"];
 const reflexOptions = ["Normal", "Hiperreflexia", "Hiporeflexia"];
@@ -63,6 +10,15 @@ export const questionnairesData: Record<string, Questionnaire> = {
     segment: 'lombar',
     title: 'Índice de Incapacidade de Oswestry (ODI)',
     description: 'Questionário para avaliar a incapacidade em pacientes com dor lombar.',
+    clinicalFlags: [
+      {
+        id: 'red_flag_bladder',
+        label: 'Red Flag: Disfunção Esfincteriana',
+        level: 'red',
+        message: 'Atenção: A perda de controle de bexiga ou intestino é um sinal clínico grave (ex: Síndrome da Cauda Equina). Encaminhamento urgente recomendado.',
+        criteria: (answers) => answers[8] === 5 // Item 9 do Oswestry (Função Intestinal/Bexiga) - Score 5
+      }
+    ],
     questions: [
       { text: '1. Intensidade da Dor', options: [
         { value: 0, label: 'Eu posso tolerar a dor que sinto sem ter que usar analgésicos.' },
@@ -263,6 +219,25 @@ export const questionnairesData: Record<string, Questionnaire> = {
     segment: 'cervical',
     title: 'Avaliação Funcional Cervical',
     description: 'Avaliação completa da coluna cervical, incluindo movimento e testes neurológicos.',
+    clinicalFlags: [
+      {
+        id: 'red_flag_neuro_cervical',
+        label: 'Red Flag: Déficit Neurológico Cervical',
+        level: 'red',
+        message: 'Atenção: Fraqueza muscular significativa detectada nos membros superiores (Grau < 3). Recomenda-se avaliação neurológica urgente para descartar compressão medular ou radiculopatia grave.',
+        criteria: (answers) => {
+          const mios = ['forca_c5_esq', 'forca_c5_dir', 'forca_c6_esq', 'forca_c6_dir', 'forca_c7_esq', 'forca_c7_dir', 'forca_c8_esq', 'forca_c8_dir', 'forca_t1_esq', 'forca_t1_dir'];
+          return mios.some(m => answers[m] && parseInt(answers[m]) < 3);
+        }
+      },
+      {
+        id: 'yellow_flag_pain_cervical',
+        label: 'Yellow Flag: Alta Intensidade de Dor',
+        level: 'yellow',
+        message: 'Intensidade de dor muito elevada (EVA >= 9). Considere o impacto da sensibilização central e fatores psicossociais no prognóstico.',
+        criteria: (answers) => answers['intensidade_dor'] >= 9
+      }
+    ],
     sections: [
         {
             id: 'anamnese',
@@ -318,25 +293,17 @@ export const questionnairesData: Record<string, Questionnaire> = {
         },
 
         {
-            id: 'postural',
-            title: 'Avaliação Postural',
-            fields: [
-                { id: 'postura_img', label: 'Registros Fotográficos', type: 'image-upload' },
-                { id: 'postura_obs', label: 'Vista Posterior / Anterior / Laterais (Observações)', type: 'textarea' }
-            ]
-        },
-        {
             id: 'movimento_cervical',
             title: 'Avaliação do Movimento (Graus)',
             type: 'table',
             columns: ['Movimento', 'Graus'],
             rows: [
-                { id: 'flexao', label: 'Flexão', fields: ['flexao_graus'] },
-                { id: 'extensao', label: 'Extensão', fields: ['extensao_graus'] },
-                { id: 'rot_esq', label: 'Rotação Esquerda', fields: ['rot_esq_graus'] },
-                { id: 'rot_dir', label: 'Rotação Direita', fields: ['rot_dir_graus'] },
-                { id: 'incl_esq', label: 'Inclinação Esquerda', fields: ['incl_esq_graus'] },
-                { id: 'incl_dir', label: 'Inclinação Direita', fields: ['incl_dir_graus'] }
+                { id: 'flexao', label: 'Flexão', fields: [{ id: 'flexao_graus', type: 'number', min: 0, max: 80 }] },
+                { id: 'extensao', label: 'Extensão', fields: [{ id: 'extensao_graus', type: 'number', min: 0, max: 70 }] },
+                { id: 'rot_esq', label: 'Rotação Esquerda', fields: [{ id: 'rot_esq_graus', type: 'number', min: 0, max: 90 }] },
+                { id: 'rot_dir', label: 'Rotação Direita', fields: [{ id: 'rot_dir_graus', type: 'number', min: 0, max: 90 }] },
+                { id: 'incl_esq', label: 'Inclinação Esquerda', fields: [{ id: 'incl_esq_graus', type: 'number', min: 0, max: 45 }] },
+                { id: 'incl_dir', label: 'Inclinação Direita', fields: [{ id: 'incl_dir_graus', type: 'number', min: 0, max: 45 }] }
             ],
             fields: [{ id: 'movimento_cervical_obs', label: 'OBSERVAÇÕES', type: 'textarea' }]
         },
@@ -450,6 +417,39 @@ export const questionnairesData: Record<string, Questionnaire> = {
     segment: 'lombar',
     title: 'Avaliação Funcional Lombar',
     description: 'Avaliação completa da coluna lombar, incluindo movimento, palpação e testes neurológicos.',
+    clinicalFlags: [
+      {
+        id: 'red_flag_neuro_lumbar_severe',
+        label: 'Red Flag: Déficit Neurológico Grave',
+        level: 'red',
+        message: 'Atenção: Fraqueza muscular severa (Grau < 3) em miótomos detectada. Risco de compressão radicular importante.',
+        criteria: (answers) => {
+          const mios = ['forca_l2_esq', 'forca_l2_dir', 'forca_l3_esq', 'forca_l3_dir', 'forca_l4_esq', 'forca_l4_dir', 'forca_l5_esq', 'forca_l5_dir', 'forca_s1_esq', 'forca_s1_dir'];
+          return mios.some(m => answers[m] && parseInt(answers[m]) < 3);
+        }
+      },
+      {
+        id: 'red_flag_cauda_equina_suspect',
+        label: 'Red Flag: Suspeita de Cauda Equina',
+        level: 'red',
+        message: 'Relato de alterações em sela ou disfunção esfincteriana associada a dor lombar súbita. Encaminhamento de EMERGÊNCIA necessário.',
+        criteria: (answers) => {
+            // This is a placeholder for specific anamnesis flags if they exist
+            return String(answers['anamnese_texto'] || '').toLowerCase().includes('esfincter') || 
+                   String(answers['anamnese_texto'] || '').toLowerCase().includes('sela');
+        }
+      },
+      {
+        id: 'yellow_flag_oswestry_high',
+        label: 'Yellow Flag: Incapacidade Funcional Elevada',
+        level: 'yellow',
+        message: 'Índice de Oswestry > 40%. Paciente apresenta limitações funcionais severas que podem retardar o prognóstico.',
+        criteria: (answers) => {
+            const score = parseFloat(String(answers['oswestry_score'] || '0').replace('%', ''));
+            return score > 40;
+        }
+      }
+    ],
     sections: [
         {
             id: 'anamnese',
@@ -504,14 +504,6 @@ export const questionnairesData: Record<string, Questionnaire> = {
         },
 
         {
-            id: 'postural',
-            title: 'Avaliação Postural',
-            fields: [
-                { id: 'postura_img', label: 'Registros Fotográficos', type: 'image-upload' },
-                { id: 'postura_obs', label: 'Vista Posterior / Anterior / Laterais (Observações)', type: 'textarea' }
-            ]
-        },
-        {
             id: 'avaliacao_do_movimento',
             title: 'Avaliação do Movimento',
             type: 'multi-table',
@@ -522,12 +514,12 @@ export const questionnairesData: Record<string, Questionnaire> = {
                     type: 'table',
                     columns: ['Movimento', 'Graus'],
                     rows: [
-                        { id: 'flexao', label: 'Flexão', fields: ['flexao_graus'] },
-                        { id: 'extensao', label: 'Extensão', fields: ['extensao_graus'] },
-                        { id: 'incl_esq', label: 'Inclinação Esquerda', fields: ['incl_esq_graus'] },
-                        { id: 'incl_dir', label: 'Inclinação Direita', fields: ['incl_dir_graus'] },
-                        { id: 'rot_esq', label: 'Rotação Esquerda', fields: ['rot_esq_graus'] },
-                        { id: 'rot_dir', label: 'Rotação Direita', fields: ['rot_dir_graus'] }
+                        { id: 'flexao', label: 'Flexão', fields: [{ id: 'flexao_graus', type: 'number', min: 0, max: 60 }] },
+                        { id: 'extensao', label: 'Extensão', fields: [{ id: 'extensao_graus', type: 'number', min: 0, max: 25 }] },
+                        { id: 'incl_esq', label: 'Inclinação Esquerda', fields: [{ id: 'incl_esq_graus', type: 'number', min: 0, max: 25 }] },
+                        { id: 'incl_dir', label: 'Inclinação Direita', fields: [{ id: 'incl_dir_graus', type: 'number', min: 0, max: 25 }] },
+                        { id: 'rot_esq', label: 'Rotação Esquerda', fields: [{ id: 'rot_esq_graus', type: 'number', min: 0, max: 30 }] },
+                        { id: 'rot_dir', label: 'Rotação Direita', fields: [{ id: 'rot_dir_graus', type: 'number', min: 0, max: 30 }] }
                     ]
                 },
                 {
@@ -689,6 +681,30 @@ export const questionnairesData: Record<string, Questionnaire> = {
     segment: 'ombro',
     title: 'Avaliação Funcional de Ombro',
     description: 'Protocolo completo de avaliação do complexo do ombro, escapulotorácica e força muscular.',
+    clinicalFlags: [
+      {
+        id: 'red_flag_instability',
+        label: 'Red Flag: Instabilidade Articular',
+        level: 'red',
+        message: 'Teste de apreensão positivo detectado. Alto risco de luxação ou lesão labral complexa. Evite manobras de amplitude extrema até diagnóstico por imagem.',
+        criteria: (answers) => answers['apreensao_esq'] === true || answers['apreensao_dir'] === true
+      },
+      {
+        id: 'yellow_flag_strength_deficit',
+        label: 'Yellow Flag: Déficit de Força Significativo',
+        level: 'yellow',
+        message: 'Déficit de força importante detectado entre os membros (> 25%). Pode indicar lesão tendínea parcial ou inibição por dor.',
+        criteria: (answers) => {
+          const deficits = ['forca_abd_deficit', 'forca_rl_deficit', 'forca_rm_deficit'];
+          return deficits.some(d => {
+            const val = answers[d];
+            if (!val) return false;
+            const num = parseInt(val.replace('%', ''));
+            return num >= 25;
+          });
+        }
+      }
+    ],
     sections: [
         {
             id: 'anamnese',
@@ -698,14 +714,6 @@ export const questionnairesData: Record<string, Questionnaire> = {
                 { id: 'intensidade_dor', label: 'Intensidade da Dor', type: 'range', min: 0, max: 10, step: 1 },
                 { id: 'area_dor', label: 'Área da Dor (Pinte as áreas afetadas)', type: 'bodyschema', image: '/img/esquema_corpo_inteiro.png' },
                 { id: 'exames_complementares', label: 'Exames Complementares', type: 'textarea' }
-            ]
-        },
-        {
-            id: 'postural',
-            title: 'Avaliação Postural e Inspeção',
-            fields: [
-                { id: 'postura_img', label: 'Registros Fotográficos', type: 'image-upload' },
-                { id: 'inspecao_obs', label: 'Observações (Simetria, Atrofia, Escápula Alada)', type: 'textarea' }
             ]
         },
         {
@@ -719,11 +727,11 @@ export const questionnairesData: Record<string, Questionnaire> = {
                     type: 'table',
                     columns: ['Movimento', 'Ativa', 'Passiva'],
                     rows: [
-                        { id: 'flexao_e', label: 'Flexão', fields: ['flexao_ativa_e', 'flexao_passiva_e'] },
-                        { id: 'extensao_e', label: 'Extensão', fields: ['extensao_ativa_e', 'extensao_passiva_e'] },
-                        { id: 'abd_frontal_e', label: 'Abdução Frontal', fields: ['abd_f_ativa_e', 'abd_f_passiva_e'] },
-                        { id: 'rot_med_e', label: 'Rotação Medial', fields: ['rm_ativa_e', 'rm_passiva_e'] },
-                        { id: 'rot_lat_e', label: 'Rotação Lateral', fields: ['rl_ativa_e', 'rl_passiva_e'] }
+                        { id: 'flexao_e', label: 'Flexão', fields: [{ id: 'flexao_ativa_e', type: 'number', min: 0, max: 180 }, { id: 'flexao_passiva_e', type: 'number', min: 0, max: 180 }] },
+                        { id: 'extensao_e', label: 'Extensão', fields: [{ id: 'extensao_ativa_e', type: 'number', min: 0, max: 60 }, { id: 'extensao_passiva_e', type: 'number', min: 0, max: 60 }] },
+                        { id: 'abd_frontal_e', label: 'Abdução Frontal', fields: [{ id: 'abd_f_ativa_e', type: 'number', min: 0, max: 180 }, { id: 'abd_f_passiva_e', type: 'number', min: 0, max: 180 }] },
+                        { id: 'rot_med_e', label: 'Rotação Medial', fields: [{ id: 'rm_ativa_e', type: 'number', min: 0, max: 90 }, { id: 'rm_passiva_e', type: 'number', min: 0, max: 90 }] },
+                        { id: 'rot_lat_e', label: 'Rotação Lateral', fields: [{ id: 'rl_ativa_e', type: 'number', min: 0, max: 90 }, { id: 'rl_passiva_e', type: 'number', min: 0, max: 90 }] }
                     ]
                 },
                 {
@@ -732,11 +740,11 @@ export const questionnairesData: Record<string, Questionnaire> = {
                     type: 'table',
                     columns: ['Movimento', 'Ativa', 'Passiva'],
                     rows: [
-                        { id: 'flexao_d', label: 'Flexão', fields: ['flexao_ativa_d', 'flexao_passiva_d'] },
-                        { id: 'extensao_d', label: 'Extensão', fields: ['extensao_ativa_d', 'extensao_passiva_d'] },
-                        { id: 'abd_frontal_d', label: 'Abdução Frontal', fields: ['abd_f_ativa_d', 'abd_f_passiva_d'] },
-                        { id: 'rot_med_d', label: 'Rotação Medial', fields: ['rm_ativa_d', 'rm_passiva_d'] },
-                        { id: 'rot_lat_d', label: 'Rotação Lateral', fields: ['rl_ativa_d', 'rl_passiva_d'] }
+                        { id: 'flexao_d', label: 'Flexão', fields: [{ id: 'flexao_ativa_d', type: 'number', min: 0, max: 180 }, { id: 'flexao_passiva_d', type: 'number', min: 0, max: 180 }] },
+                        { id: 'extensao_d', label: 'Extensão', fields: [{ id: 'extensao_ativa_d', type: 'number', min: 0, max: 60 }, { id: 'extensao_passiva_d', type: 'number', min: 0, max: 60 }] },
+                        { id: 'abd_frontal_d', label: 'Abdução Frontal', fields: [{ id: 'abd_f_ativa_d', type: 'number', min: 0, max: 180 }, { id: 'abd_f_passiva_d', type: 'number', min: 0, max: 180 }] },
+                        { id: 'rot_med_d', label: 'Rotação Medial', fields: [{ id: 'rm_ativa_d', type: 'number', min: 0, max: 90 }, { id: 'rm_passiva_d', type: 'number', min: 0, max: 90 }] },
+                        { id: 'rot_lat_d', label: 'Rotação Lateral', fields: [{ id: 'rl_ativa_d', type: 'number', min: 0, max: 90 }, { id: 'rl_passiva_d', type: 'number', min: 0, max: 90 }] }
                     ]
                 }
             ],
@@ -843,6 +851,30 @@ export const questionnairesData: Record<string, Questionnaire> = {
     segment: 'geriatria',
     title: 'Avaliação Funcional Geriátrica',
     description: 'Avaliação clínica e testes funcionais (mobilidade, força e equilíbrio) específicos para idosos.',
+    clinicalFlags: [
+      {
+        id: 'red_flag_fall_risk',
+        label: 'Red Flag: Alto Risco de Quedas',
+        level: 'red',
+        message: 'O paciente apresenta critérios de alto risco para quedas (TUG > 12.4s ou Apoio Unipodal < 10s). Recomenda-se intervenção imediata focada em equilíbrio e segurança domiciliar.',
+        criteria: (answers) => {
+          const tug = parseFloat(String(answers['tug'] || '0').replace(',', '.'));
+          const unipEsq = parseFloat(String(answers['unipodal_esq'] || '11').replace(',', '.'));
+          const unipDir = parseFloat(String(answers['unipodal_dir'] || '11').replace(',', '.'));
+          return (tug >= 12.4 && tug > 0) || (unipEsq < 10 && answers['unipodal_esq'] !== undefined) || (unipDir < 10 && answers['unipodal_dir'] !== undefined);
+        }
+      },
+      {
+        id: 'yellow_flag_frailty',
+        label: 'Yellow Flag: Sinais de Fragilidade',
+        level: 'yellow',
+        message: 'Velocidade de marcha reduzida (< 0.8 m/s). Indicativo de fragilidade física inicial e maior vulnerabilidade a desfechos negativos de saúde.',
+        criteria: (answers) => {
+          const vel = parseFloat(String(answers['vel_marcha'] || '1').replace(',', '.'));
+          return vel < 0.8 && vel > 0;
+        }
+      }
+    ],
     sections: [
         {
             id: 'anamnese',
@@ -1444,6 +1476,18 @@ export const questionnairesData: Record<string, Questionnaire> = {
     segment: 'mmii',
     title: 'Avaliação Funcional MMII',
     description: 'Protocolo completo de membros inferiores: MMII, joelho e quadril.',
+    clinicalFlags: [
+      {
+        id: 'red_flag_neuro_mmii',
+        label: 'Red Flag: Déficit Neurológico Significativo',
+        level: 'red',
+        message: 'Fraqueza muscular severa detectada (Grau < 3) em movimentos de quadril ou joelho. Necessária investigação de compressão radicular ou neuropatia periférica.',
+        criteria: (answers) => {
+          const mios = ['f_abd_q_esq', 'f_abd_q_dir', 'f_ext_q_esq', 'f_ext_q_dir', 'f_ext_j_esq', 'f_ext_j_dir', 'f_flex_j_esq', 'f_flex_j_dir', 'f_flex_j_p_esq', 'f_flex_j_p_dir'];
+          return mios.some(m => answers[m] && parseInt(answers[m]) < 3);
+        }
+      }
+    ],
     sections: [
         {
             id: 'anamnese',
@@ -1562,6 +1606,32 @@ export const questionnairesData: Record<string, Questionnaire> = {
     segment: 'tornozelo',
     title: 'Avaliação Funcional de Tornozelo e Pé',
     description: 'Protocolo clínico para avaliação de entorses, tendinopatias e disfunções do complexo tornozelo-pé.',
+    clinicalFlags: [
+      {
+        id: 'red_flag_thompson',
+        label: 'Red Flag: Ruptura do Tendão de Aquiles',
+        level: 'red',
+        message: 'Teste de Thompson positivo detectado. Alta suspeita de ruptura total do tendão de calcâneo. Encaminhamento ortopédico imediato é necessário.',
+        criteria: (answers) => answers['test_thompson_esq'] === true || answers['test_thompson_dir'] === true
+      },
+      {
+        id: 'red_flag_sindesmose',
+        label: 'Red Flag: Lesão da Sindesmose',
+        level: 'red',
+        message: 'Testes de Kleiger ou Squeeze positivos. Possível lesão da sindesmose tibiofibular (entorse alta). Recomenda-se cautela na descarga de peso inicial.',
+        criteria: (answers) => answers['test_kleiger_esq'] === true || answers['test_kleiger_dir'] === true || answers['test_squeeze_esq'] === true || answers['test_squeeze_dir'] === true
+      },
+      {
+        id: 'yellow_flag_wblt_asymmetry',
+        label: 'Yellow Flag: Assimetria na Dorsiflexão',
+        level: 'yellow',
+        message: 'Déficit significativo no teste WBLT detectado (> 22%). Restrição de mobilidade de tornozelo pode sobrecarregar outras articulações (joelho/quadril).',
+        criteria: (answers: any) => {
+            const def = parseFloat(String(answers['wblt_def'] || '0').replace('%', ''));
+            return def >= 22;
+        }
+      }
+    ],
     sections: [
         {
             id: 'anamnese',
@@ -1764,6 +1834,22 @@ export const questionnairesData: Record<string, Questionnaire> = {
     segment: 'mao',
     title: 'Avaliação Funcional de Mão e Punho',
     description: 'Protocolo clínico para avaliação de túnel do carpo, tendinites e outras disfunções da mão e punho.',
+    clinicalFlags: [
+      {
+        id: 'red_flag_carpal_tunnel_severe',
+        label: 'Red Flag: Túnel do Carpo Grave',
+        level: 'red',
+        message: 'Sinal de Tinel e Phalen positivos com relato de perda de força ou atrofia tênar. Risco de dano neurológico irreversível no nervo mediano.',
+        criteria: (answers) => (answers['test_phalen_esq'] === true || answers['test_phalen_dir'] === true) && (answers['test_tinelm_esq'] === true || answers['test_tinelm_dir'] === true)
+      },
+      {
+        id: 'red_flag_vascular',
+        label: 'Red Flag: Insuficiência Vascular',
+        level: 'red',
+        message: 'Teste de Allen positivo. Comprometimento da circulação colateral da mão (artéria radial ou ulnar). Necessita avaliação vascular.',
+        criteria: (answers) => answers['test_allen_esq'] === true || answers['test_allen_dir'] === true
+      }
+    ],
     sections: [
         {
             id: 'anamnese',

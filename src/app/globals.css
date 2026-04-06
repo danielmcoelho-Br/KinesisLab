@@ -316,12 +316,25 @@ body {
 
 /* Print Utilities */
 @media print {
-  body {
-    background-color: transparent !important;
-    font-size: 11pt !important;
+  @page {
+    size: A4;
+    margin: 12mm 15mm;
   }
   
-  /* Hide all generic app navigation */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    overflow: visible !important;
+  }
+
+  body {
+    background-color: transparent !important;
+    font-size: 10pt !important;
+    color: #000 !important;
+  }
+  
+  /* Hide UI elements that shouldn't be printed */
   header, 
   nav, 
   .nav-main-actions, 
@@ -331,12 +344,13 @@ body {
   .btn-nav-back, 
   .btn-nav-next, 
   .btn-finish,
-  button[type="button"], /* Hide ALL clickable buttons! They shouldn't appear in print anywhere */
+  .audit-log-section,
+  .section-navigator-aside,
+  button[type="button"],
   .hide-on-print {
     display: none !important;
   }
 
-  /* Don't hide radio/checkboxes inside forms if they're used to display results */
   .form-group button {
     display: none !important;
   }
@@ -350,5 +364,50 @@ body {
   .print-all-content {
     display: block !important;
     width: 100% !important;
+  }
+
+  /* Structural elements that shouldn't break across pages */
+  .visual-summary-section,
+  .print-section,
+  .assessment-card,
+  table,
+  tr,
+  .form-group,
+  .print-avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+  
+  table thead {
+    display: table-header-group !important;
+  }
+
+  /* Simplify tables for print */
+  table {
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  th {
+    background-color: #f1f5f9 !important;
+    color: #333 !important;
+    border-bottom: 2px solid #ccc !important;
+  }
+  td {
+    border-bottom: 1px solid #e2e8f0 !important;
+  }
+
+  /* Background fixes */
+  .background-gradient {
+    display: none !important;
+  }
+  
+  .assessment-page {
+    background: none !important;
   }
 }

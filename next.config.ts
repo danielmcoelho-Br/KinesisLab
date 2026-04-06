@@ -1,3 +1,4 @@
+// Reloadding to pick up prisma changes
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {

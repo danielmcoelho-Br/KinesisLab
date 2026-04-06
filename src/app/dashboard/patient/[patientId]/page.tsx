@@ -13,7 +13,8 @@ import {
   History,
   TrendingUp,
   Trash2,
-  Printer
+  Printer,
+  AlertTriangle
 } from "lucide-react";
 
 import { motion } from "framer-motion";
@@ -21,6 +22,7 @@ import { getPatientAssessments, deleteAssessment } from "../../actions";
 import { questionnairesData } from "@/data/questionnaires";
 import Header from "@/components/Header";
 import ConfirmModal from "@/components/ConfirmModal";
+import PatientDocuments from "@/components/PatientDocuments";
 import { toast } from "sonner";
 
 export default function PatientHistoryPage() {
@@ -167,8 +169,15 @@ export default function PatientHistoryPage() {
                         <Activity size={24} />
                       </div>
                       <div className="assessment-text" style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <h4 style={{ color: 'var(--primary)', margin: 0 }}>{qInfo?.title || item.assessment_type}</h4>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                          <h4 style={{ color: 'var(--primary)', margin: 0 }}>
+                            {qInfo?.title || item.assessment_type}
+                            {item.clinical_data?.activeFlags?.some((f: any) => f.level === 'red') && (
+                              <span className="red-flag-indicator" title="Alerta Crítico: Red Flag detectada">
+                                <AlertTriangle size={14} /> RED FLAG
+                              </span>
+                            )}
+                          </h4>
                           <div className="assessment-actions">
                             <button
                               className="btn-action-outline print-btn"
@@ -230,6 +239,13 @@ export default function PatientHistoryPage() {
             )}
           </div>
         </div>
+
+        {patient && (
+          <PatientDocuments 
+            patientId={patientId} 
+            initialDocuments={patient.documents} 
+          />
+        )}
       </main>
 
       <style jsx>{`
@@ -389,6 +405,26 @@ export default function PatientHistoryPage() {
           padding: 2px 8px;
           border-radius: 4px;
           font-weight: 600;
+        }
+        .red-flag-indicator {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          background-color: #fef2f2;
+          color: #dc2626;
+          padding: 2px 8px;
+          border-radius: 6px;
+          font-size: 0.7rem;
+          font-weight: 800;
+          margin-left: 0.75rem;
+          border: 1px solid #fecaca;
+          vertical-align: middle;
+          animation: pulse-red 2s infinite;
+        }
+        @keyframes pulse-red {
+          0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+          70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
         }
         .assessment-actions {
           display: flex;

@@ -172,7 +172,7 @@ export default function PatientEvolutionPage() {
             )}
 
             {/* Path */}
-            {points.length > 1 && (
+            {points.length > 1 ? (
               <motion.path
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 1 }}
@@ -184,6 +184,10 @@ export default function PatientEvolutionPage() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
+            ) : (
+                <text x="50%" y="85%" textAnchor="middle" fill="#94a3b8" fontSize="12" fontWeight="500">
+                    Aguardando segunda avaliação para traçar tendência
+                </text>
             )}
 
             {/* Data Points */}
@@ -258,11 +262,11 @@ export default function PatientEvolutionPage() {
              <div className="spinner" />
              <p>Analisando dados do histórico...</p>
           </div>
-        ) : evolutionData.length === 0 ? (
+        ) : evolutionData.length < 2 ? (
           <div className="empty-state">
             <Activity size={48} />
-            <h3>Sem dados suficientes</h3>
-            <p>Selecione um tipo de avaliação com múltiplos registros para ver a evolução.</p>
+            <h3>Dados Comparativos Insuficientes</h3>
+            <p>É necessária uma segunda avaliação do tipo <strong>{questionnairesData[selectedType]?.title}</strong> para gerar o gráfico evolutivo comparativo.</p>
           </div>
         ) : (
           <div className="dashboard-grid">
@@ -276,18 +280,20 @@ export default function PatientEvolutionPage() {
                         
                         return (
                             <>
-                            <motion.div whileHover={{ y: -5 }} className="stat-card-glass">
-                                <div className="stat-icon" style={{ backgroundColor: isGood ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: isGood ? '#10b981' : '#ef4444' }}>
-                                    <Target size={24} />
-                                </div>
-                                <div className="stat-info">
-                                    <span className="stat-label">Variação de Score</span>
-                                    <span className="stat-value">{diff > 0 ? '+' : ''}{diff}%</span>
-                                    <span className={`stat-status ${isGood ? 'positive' : 'negative'}`}>
-                                        {isGood ? 'Melhora Clínica' : 'Regressão'}
-                                    </span>
-                                </div>
-                            </motion.div>
+                            {evolutionData.length > 1 && (
+                                <motion.div whileHover={{ y: -5 }} className="stat-card-glass">
+                                    <div className="stat-icon" style={{ backgroundColor: isGood ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: isGood ? '#10b981' : '#ef4444' }}>
+                                        <Target size={24} />
+                                    </div>
+                                    <div className="stat-info">
+                                        <span className="stat-label">Variação de Score</span>
+                                        <span className="stat-value">{diff > 0 ? '+' : ''}{diff}%</span>
+                                        <span className={`stat-status ${isGood ? 'positive' : 'negative'}`}>
+                                            {isGood ? 'Melhora Clínica' : 'Regressão'}
+                                        </span>
+                                    </div>
+                                </motion.div>
+                            )}
 
                             <motion.div whileHover={{ y: -5 }} className="stat-card-glass">
                                 <div className="stat-icon" style={{ backgroundColor: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' }}>

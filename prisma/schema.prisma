@@ -52,6 +52,7 @@ model User {
   role                  String?              @default("ASSISTENTE")
   crefito               String?
   avatar_url            String?
+  signature             String?
   birth_date            DateTime?            @db.Timestamptz(6)
   is_active             Boolean?             @default(true)
   force_password_change Boolean?             @default(false)

@@ -24,12 +24,13 @@ import {
   Layout,
   User,
   Share2,
-  ExternalLink
+  ExternalLink,
+  AlertTriangle
 } from "lucide-react";
 
 
 import { motion, AnimatePresence } from "framer-motion";
-import { getPatients, createPatient, updatePatient, deletePatient } from "./actions";
+import { getPatients, createPatient, updatePatient, deletePatient, findPatientByName } from "./actions";
 import { toast } from "sonner";
 import Header from "@/components/Header";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -54,6 +55,10 @@ export default function DashboardPage() {
   // Deletion State
   const [patientToDelete, setPatientToDelete] = useState<any>(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
+  // Duplicate Check State
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicatePatient, setDuplicatePatient] = useState<any>(null);
 
   // Form state
   const [newName, setNewName] = useState("");
@@ -129,6 +134,22 @@ export default function DashboardPage() {
 
   const handleCreatePatient = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 1. Check for duplicates before creating
+    setLoading(true);
+    const dupCheck = await findPatientByName(newName);
+    setLoading(false);
+
+    if (dupCheck.success && dupCheck.data) {
+      setDuplicatePatient(dupCheck.data);
+      setShowDuplicateModal(true);
+      return;
+    }
+
+    await executeCreatePatient();
+  };
+
+  const executeCreatePatient = async () => {
     const ageDetails = calculateAgeDetails(birthDate);
     const result = await createPatient({
       name: newName,
@@ -142,6 +163,7 @@ export default function DashboardPage() {
 
     if (result.success) {
       setShowNewPatientModal(false);
+      setShowDuplicateModal(false);
       setNewName("");
       setBirthDate("");
       fetchPatients(search);
@@ -553,6 +575,92 @@ export default function DashboardPage() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+ 
+      {/* Duplicate Patient Warning Modal */}
+      <AnimatePresence>
+        {showDuplicateModal && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+              onClick={() => setShowDuplicateModal(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              style={{ 
+                position: 'relative', 
+                backgroundColor: '#ffffff', 
+                zIndex: 10001, 
+                padding: '2rem', 
+                borderRadius: '1.5rem', 
+                width: '100%', 
+                maxWidth: '450px', 
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+                textAlign: 'center'
+              }}
+            >
+              <div style={{ 
+                width: '64px', 
+                height: '64px', 
+                borderRadius: '16px', 
+                backgroundColor: '#FEF3C7', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                margin: '0 auto 1.5rem',
+                color: '#D97706'
+              }}>
+                <AlertTriangle size={32} />
+              </div>
+
+              <h3 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--text)' }}>
+                Paciente já existe!
+              </h3>
+              
+              <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', lineHeight: '1.6' }}>
+                Já existe um paciente cadastrado com o nome <strong>{newName}</strong>.<br/>
+                O que você deseja fazer?
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <button 
+                  onClick={() => router.push(`/dashboard/patient/${duplicatePatient?.id}`)} 
+                  className="btn-primary"
+                  style={{ backgroundColor: 'var(--secondary)', border: 'none' }}
+                >
+                  Ir para a ficha do paciente
+                </button>
+                
+                <button 
+                  onClick={executeCreatePatient} 
+                  className="btn-primary secondary-btn"
+                  style={{ border: '1px solid var(--border)' }}
+                >
+                  Criar mesmo assim
+                </button>
+
+                <button 
+                  onClick={() => setShowDuplicateModal(false)} 
+                  style={{ 
+                    padding: '0.75rem', 
+                    background: 'none', 
+                    border: 'none', 
+                    color: 'var(--text-muted)', 
+                    fontWeight: '600', 
+                    cursor: 'pointer' 
+                  }}
+                >
+                  Cancelar
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

@@ -66,6 +66,9 @@ import { AssessmentProvider } from "@/contexts/AssessmentContext";
 
 
 
+
+const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
 function AssessmentContent() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -120,8 +123,39 @@ function AssessmentContent() {
     handleInputChange,
     handleFinish,
     handleHeaderAction,
-    handleReturn
+    handleReturn,
+    handleExit,
+    confirmExitDiscard,
+    confirmExitSave,
+    showExitModal,
+    setShowExitModal
   } = state;
+
+  if (!patientId || !isValidUUID(patientId)) {
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', padding: '2rem', textAlign: 'center' }}>
+            <div style={{ backgroundColor: '#fee2e2', color: '#dc2626', padding: '2rem', borderRadius: '1.5rem', maxWidth: '500px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                <CheckCircle size={48} style={{ color: '#ef4444', marginBottom: '1rem', rotate: '45deg' }} />
+                <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '1rem' }}>Sessão de Avaliação Inválida</h2>
+                <p style={{ marginBottom: '2rem', lineHeight: '1.6' }}>
+                    Identificamos um problema com o identificador do paciente (ID malformado). Isso pode acontecer devido a rascunhos antigos salvos no navegador.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <button 
+                        onClick={() => {
+                            localStorage.clear();
+                            window.location.href = '/dashboard';
+                        }}
+                        className="btn-primary" 
+                        style={{ width: '100%', padding: '1rem', backgroundColor: '#dc2626' }}
+                    >
+                        Limpar Dados e Voltar ao Início
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+  }
 
   if (!questionnaire) {
     return <div style={{ padding: '3rem', textAlign: 'center' }}>Questionário não encontrado.</div>;
@@ -184,9 +218,9 @@ function AssessmentContent() {
             </div>
         )}
 
-        <div className="no-print print:hidden" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '1rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
+        <div className="no-print hide-on-print" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '1rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
             <button
-                className="btn-action-outline"
+                className="btn-action-outline no-print"
                 onClick={() => window.print()}
                 style={{ padding: '1rem 2rem', display: 'flex', alignItems: 'center', gap: '8px', border: '2px solid var(--border)', borderRadius: '0.75rem', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', backgroundColor: 'white' }}
             >
@@ -234,13 +268,7 @@ function AssessmentContent() {
             <div className="header-top stack-on-mobile">
                 <div className="header-left">
                     <button 
-                        onClick={() => {
-                            if (isDirty && isEditing) {
-                                const confirmed = window.confirm('Você possui alterações não salvas. Deseja sair mesmo assim? Suas alterações serão perdidas.');
-                                if (!confirmed) return;
-                            }
-                            router.back();
-                        }}
+                        onClick={handleExit}
                         className="btn-exit"
                         style={{ position: 'relative' }}
                     >
@@ -326,7 +354,7 @@ function AssessmentContent() {
                 isClinical={isClinical}
             />
 
-            <div className="assessment-form-container">
+            <div className="continuous-screen-view">
             {/* Progress Bar */}
             <div className="progress-bar-wrapper">
                 <motion.div 
@@ -461,7 +489,6 @@ function AssessmentContent() {
                 </div>
             )}
       </main>
-
       <div className="print-restricted-wrapper">
          <PrintSummaryView 
             forScreen={false}
@@ -470,6 +497,7 @@ function AssessmentContent() {
             isClinical={isClinical}
         />
       </div>
+
 
       <AnimatePresence>
                 {dynamoModal && 
@@ -798,6 +826,56 @@ function AssessmentContent() {
         )}
       </AnimatePresence>
 
+      {/* Exit Confirmation Modal */}
+      <AnimatePresence>
+        {showExitModal && (
+            <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, backdropFilter: 'blur(4px)' }}
+            >
+                <motion.div 
+                    initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                    className="modal-content" 
+                    style={{ maxWidth: '450px', width: '90%', padding: '2rem', textAlign: 'center', backgroundColor: 'white', borderRadius: '1.5rem', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)' }}
+                >
+                    <div style={{ backgroundColor: '#fef3c7', color: '#d97706', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                        <X size={30} />
+                    </div>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--secondary)' }}>Sair da Avaliação?</h2>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: '2.25rem', lineHeight: '1.6' }}>
+                        Você possui alterações que ainda não foram salvas permanentemente. Deseja salvar um rascunho para continuar depois?
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <button 
+                            onClick={confirmExitSave}
+                            className="btn-primary"
+                            style={{ width: '100%', padding: '1rem', borderRadius: '1rem', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                        >
+                            <Save size={18} /> Sim, Salvar Rascunho
+                        </button>
+                        <button 
+                            onClick={confirmExitDiscard}
+                            className="btn-action-outline"
+                            style={{ width: '100%', padding: '1rem', borderRadius: '1rem', fontWeight: '700', color: '#ef4444', borderColor: '#ef4444' }}
+                        >
+                            Não, Descartar e Sair
+                        </button>
+                        <button 
+                            onClick={() => setShowExitModal(false)}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', marginTop: '0.5rem', padding: '0.5rem' }}
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </motion.div>
+            </motion.div>
+        )}
+      </AnimatePresence>
+
       <style jsx>{`
         .print-restricted-wrapper {
           display: none;
@@ -925,7 +1003,7 @@ function AssessmentContent() {
           gap: 1.5rem;
         }
         
-        .assessment-form-container {
+        .continuous-screen-view {
           width: 100%;
           max-width: 850px;
           padding-bottom: 5rem;
@@ -1177,7 +1255,7 @@ function AssessmentContent() {
           .section-navigator-aside {
             display: none;
           }
-          .assessment-form-container {
+          .continuous-screen-view {
             max-width: 100%;
           }
         }
@@ -1247,7 +1325,11 @@ function AssessmentContent() {
         @media print {
             @page { margin: 0.8cm; }
             .no-print { display: none !important; }
-            .print-all-content { display: block !important; width: 100% !important; background: white !important; color: black !important; }
+            .print-all-content {
+                display: block !important;
+                width: 100% !important;
+                padding: 2.5cm 2.5cm !important;
+            }
             body { background: white !important; padding: 0 !important; overflow: visible !important; }
             .background-gradient { display: none !important; }
             .form-group { break-inside: avoid; margin-bottom: 0.5rem !important; }

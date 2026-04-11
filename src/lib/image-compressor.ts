@@ -10,7 +10,8 @@
 export async function compressImage(
   input: string | File,
   maxWidth: number = 1200,
-  quality: number = 0.7
+  quality: number = 0.7,
+  format: 'image/jpeg' | 'image/png' | 'image/webp' = 'image/jpeg'
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const processImage = (base64: string) => {
@@ -43,8 +44,8 @@ export async function compressImage(
         }
 
         ctx.drawImage(img, 0, 0, width, height);
-        // Using image/jpeg for consistency and better compression vs png
-        resolve(canvas.toDataURL('image/jpeg', quality));
+        // Use the specified format to preserve transparency (png) or optimize (jpeg)
+        resolve(canvas.toDataURL(format, quality));
       };
       img.onerror = () => resolve(base64); // Fallback
     };

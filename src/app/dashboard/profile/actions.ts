@@ -28,6 +28,7 @@ export async function updateProfile(id: string, data: any) {
                 crefito: data.crefito,
                 birth_date: data.birth_date ? new Date(data.birth_date) : null,
                 password: updatedPassword,
+                signature: data.signature,
                 change_logs: logs
             }
         });
@@ -44,6 +45,7 @@ export async function updateProfile(id: string, data: any) {
                 role: updated.role, 
                 crefito: updated.crefito, 
                 avatar_url: updated.avatar_url,
+                signature: updated.signature
             } 
         };
     } catch (error) {

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import { updateProfile } from "./actions";
 import { toast } from "sonner";
-import { User, Key, Save } from "lucide-react";
+import { User, Key, Save, PenTool } from "lucide-react";
+import SignaturePad from "@/components/SignaturePad";
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -17,6 +18,7 @@ export default function ProfilePage() {
         email: "",
         crefito: "",
         birth_date: "",
+        signature: "",
         newPassword: "",
         confirmPassword: ""
     });
@@ -32,6 +34,7 @@ export default function ProfilePage() {
                 email: parsed.email || "",
                 crefito: parsed.crefito || "",
                 birth_date: parsed.birth_date ? new Date(parsed.birth_date).toISOString().split('T')[0] : "",
+                signature: parsed.signature || "",
             }));
         } else {
             router.push("/login");
@@ -96,6 +99,20 @@ export default function ProfilePage() {
                             <div className="form-group">
                                 <label className="form-label">Data de Nascimento</label>
                                 <input type="date" className="form-input" value={formData.birth_date} onChange={e => setFormData({...formData, birth_date: e.target.value})} />
+                            </div>
+                        </div>
+                        
+                        <div style={{ marginTop: '1rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
+                            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <PenTool size={18} /> Assinatura Digital
+                            </h3>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Sua assinatura será incluída automaticamente ao final de todos os seus relatórios e avaliações.</p>
+                            
+                            <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                <SignaturePad 
+                                    value={formData.signature}
+                                    onChange={(val) => setFormData(prev => ({ ...prev, signature: val }))}
+                                />
                             </div>
                         </div>
 

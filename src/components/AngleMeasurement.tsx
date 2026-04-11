@@ -269,12 +269,12 @@ export default function AngleMeasurement({
 
                         if (el.angle) {
                             const vertex = el.points[1];
-                            ctx.font = "bold 20px Arial";
+                            ctx.font = "bold 50px Arial";
                             ctx.fillStyle = "white";
                             ctx.shadowBlur = 4;
                             ctx.shadowColor = "black";
                             ctx.textAlign = "center";
-                            ctx.fillText(`${el.angle}°`, vertex.x, vertex.y - 20);
+                            ctx.fillText(`${el.angle}°`, vertex.x, vertex.y - 40);
                             ctx.shadowBlur = 0;
                         }
                     }

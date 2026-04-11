@@ -1,10 +1,12 @@
 "use client";
 
 import { memo } from "react";
+import { CheckCircle2 } from "lucide-react";
+import { useParams } from "next/navigation";
 import DataTableCell from "./DataTableCell";
 import { useAssessmentContext } from "@/contexts/AssessmentContext";
-
-import { Section, SectionColumn, TableRow } from "@/types/clinical";
+import { getEnduranceThreshold, getPatientProfileString } from "@/utils/clinicalThresholds";
+import { Section, TableRow } from "@/types/clinical";
 
 interface DataTableProps {
     section: Section; 
@@ -12,7 +14,9 @@ interface DataTableProps {
 }
 
 const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) => {
+    const params = useParams();
     const state = useAssessmentContext();
+    const { patientGender, patientAge, patientActivityLevel } = state;
     
     const answers = state.answers;
     const isEditing = state.isEditing;
@@ -21,138 +25,172 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
     const onAnalyzeImage = state.handleAnalyzeImage;
     const assessmentDate = state.assessmentDate;
     const onOpenDynamo = (fieldId: string, label: string) => state.setDynamoModal({ fieldId, label });
+    const handleHeaderAction = state.handleHeaderAction;
+    const type = state.type || (params.type as string);
     
     const isPrint = overrideIsPrint !== undefined ? overrideIsPrint : state.isPrint;
 
     const reflexOptions = ['Normal', 'Aumentado', 'Diminuído', 'Abolido'];
     
-    const isNarrowTable = isPrint && ['movimento', 'irritabilidade', 'teste_fadiga'].some(id => section.id?.includes(id));
-    
-    return (
-        <div className="table-wrapper print-avoid-break" style={{ overflowX: 'auto', marginBottom: '2rem', pageBreakInside: 'avoid', breakInside: 'avoid', maxWidth: isNarrowTable ? '50%' : '100%' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--border)', borderRadius: '1rem', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-                <thead>
-                    <tr style={{ backgroundColor: 'var(--primary)', color: 'white' }}>
-                        {section.columns?.map((col: SectionColumn, idx: number) => {
-                            const label = typeof col === 'string' ? col : col.label;
-                            const action = typeof col === 'string' ? null : col.action;
-                            
-                            if (isPrint && (label === 'Imagem' || label?.includes('Intensidade') || label?.includes('Observações'))) {
-                                const hasAnyData = section.rows?.some((r: TableRow) => {
-                                    const f = r.fields[idx - 1];
-                                    const fid = typeof f === 'string' ? f : (f as any)?.id;
-                                    const val = answers[fid];
-                                    return val !== undefined && val !== '' && val !== null && val !== false && (!Array.isArray(val) || val.length > 0);
-                                });
-                                if (!hasAnyData) return null;
-                            }
+    const hasValue = (val: any) => val !== undefined && val !== null && val !== "" && val !== "null" && val !== false;
 
-                            return (
-                                <th key={idx} style={{ padding: '0.75rem 0.6rem', textAlign: 'center', fontSize: '0.85rem' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-                                        <span>{label}</span>
-                                        {isEditing && action?.type === 'fill' && (
-                                            <button 
-                                                type="button"
-                                                onClick={() => {
-                                                    section.rows?.forEach((r: TableRow) => {
-                                                        const f = r.fields[idx - 1];
-                                                        const fid = typeof f === 'string' ? f : (f as any).id;
-                                                        handleInputChange(fid, action.value);
-                                                    });
-                                                }}
-                                                style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: 'pointer' }}
-                                            >
-                                                Preencher {action.value}
-                                            </button>
-                                        )}
-                                    </div>
-                                </th>
-                            );
-                        })}
+    return (
+        <div className="table-responsive" style={{ 
+            marginTop: '0.5rem', 
+            width: '100%',
+            borderRadius: '1.25rem', 
+            border: isPrint ? '1px solid #e2e8f0' : '1px solid var(--border)', 
+            overflow: 'hidden',
+            backgroundColor: 'white',
+            boxShadow: isPrint ? 'none' : '0 4px 6px -1px rgba(163, 22, 33, 0.05), 0 2px 4px -1px rgba(163, 22, 33, 0.03)'
+        }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                    <tr style={{ 
+                        backgroundColor: 'var(--bg-secondary)',
+                        borderTop: '3px solid var(--primary)' // PREMIUM ACCENT
+                    }}>
+                        {section.columns?.map((col, idx) => (
+                            <th 
+                                key={idx} 
+                                style={{ 
+                                    padding: isPrint ? '0.6rem 0.75rem' : '1.1rem 1rem', 
+                                    textAlign: idx === 0 ? 'left' : 'center', 
+                                    fontSize: isPrint ? '0.65rem' : '0.75rem', 
+                                    fontWeight: '800', 
+                                    color: 'var(--primary)', // BRAND RED TEXT
+                                    letterSpacing: '0.025em',
+                                    textTransform: 'uppercase', 
+                                    borderBottom: '1px solid var(--border)',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: idx === 0 ? 'flex-start' : 'center', gap: '0.5rem' }}>
+                                    <span>{typeof col === "string" ? col : col.label}</span>
+                                    {isEditing && typeof col !== "string" && col.action?.type === 'fill' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleHeaderAction(col.action, idx, section)}
+                                            title={`Preencher tudo como ${col.action.value}`}
+                                            className="fill-all-btn"
+                                            style={{
+                                                background: 'var(--primary-light)',
+                                                border: '1px solid var(--primary)',
+                                                color: 'var(--primary)',
+                                                borderRadius: '30px',
+                                                padding: '2px 8px',
+                                                fontSize: '0.65rem',
+                                                fontWeight: '900',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                boxShadow: 'var(--shadow-sm)',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            <CheckCircle2 size={12} />
+                                            {col.action.value}
+                                        </button>
+                                    )}
+                                </div>
+                            </th>
+                        ))}
                     </tr>
                 </thead>
                 <tbody>
                     {section.rows?.filter((row: TableRow) => {
-                        if (!isPrint) return true;
-                        return row.fields.some((f: any) => {
-                            const fid = typeof f === 'string' ? f : f.id;
-                            const val = answers[fid];
-                            return val !== undefined && val !== '' && val !== null && val !== false;
+                        if (isEditing) return true;
+                        return row.fields.some(f => {
+                            const fid = typeof f === "string" ? f : (f as any).id;
+                            return hasValue(answers[fid]);
                         });
-                    }).map((row: TableRow, rIdx: number) => {
+                    }).map((row: TableRow, rIdx) => {
+                        let displayLabel = row.label;
+                        
+                        if (type === 'afLombar' || type === 'afCervical') {
+                            const mainField = row.fields[0];
+                            const fieldId = typeof mainField === 'string' ? mainField : (mainField as any)?.id;
+                            
+                            if (['flexao_60', 'sorensen', 'resist_flexora', 'resist_extensora'].includes(fieldId)) {
+                                const threshold = getEnduranceThreshold({
+                                    testId: fieldId,
+                                    gender: patientGender,
+                                    age: patientAge,
+                                    activityLevel: patientActivityLevel
+                                });
+                                const profile = getPatientProfileString(patientGender, patientAge, patientActivityLevel);
+                                displayLabel = `${displayLabel} (Ref: ${threshold}s - ${profile})`;
+                            }
+                        }
+
                         return (
-                            <tr key={row.id} style={{ borderBottom: '1px solid var(--border)', backgroundColor: rIdx % 2 === 0 ? 'white' : 'var(--bg-secondary)', transition: 'background-color 0.2s' }}>
-                                <td style={{ padding: '0.75rem 0.6rem', fontWeight: '600', fontSize: '0.82rem', color: 'var(--secondary)', width: '30%' }}>
-                                    {row.label}
+                            <tr key={rIdx} style={{ transition: 'background-color 0.2s' }}>
+                                <td style={{ 
+                                    padding: isPrint ? '0.5rem 0.75rem' : '1.25rem 1rem', 
+                                    fontSize: isPrint ? '0.75rem' : '0.82rem', 
+                                    fontWeight: '700', 
+                                    color: 'var(--secondary)', 
+                                    borderBottom: '1px solid #f8fafc',
+                                    backgroundColor: '#fafafa', // SUBTLE CONTRAST
+                                    width: '35%',
+                                    minWidth: '180px',
+                                    lineHeight: '1.3'
+                                }}>
+                                    {displayLabel}
                                 </td>
-                                {row.fields.map((field: any, fIdx: number) => {
-                                    const fieldId = typeof field === 'string' ? field : field.id;
-                                    const col = section.columns![fIdx + 1];
-                                    const colLabel = (typeof col === 'string' ? col : col.label) || "";
-                                    
-                                    let fieldType = typeof field === 'string' ? 'text' : field.type;
-                                    
-                                    if (typeof field === 'string') {
-                                        const lowerId = fieldId.toLowerCase();
-                                        const lowerCol = colLabel.toLowerCase();
-                                        
-                                        if (
-                                            lowerId.includes('forca') || 
-                                            lowerId.startsWith('f_') || 
-                                            lowerId.includes('preensao') || 
-                                            lowerId.includes('polpa') || 
-                                            lowerId.includes('lateral') || 
-                                            lowerId.includes('tripode') || 
-                                            lowerId.includes('resist') || 
-                                            lowerId.includes('peri') || 
-                                            lowerId.includes('graus') ||
-                                            lowerId.includes('int') ||
-                                            lowerCol.includes('graus') ||
-                                            lowerCol.includes('kgf') ||
-                                            lowerCol.includes('cm') ||
-                                            lowerCol.includes('segundos')
-                                        ) {
-                                            fieldType = 'number';
-                                        }
-                                    }
-                                    
-                                    const fieldOptions = typeof field === 'string' ? [] : (field.options || []);
-                                    const min = typeof field === 'string' ? undefined : (field as any).min;
-                                    const max = typeof field === 'string' ? undefined : (field as any).max;
-                                    
-                                    // Automatic deficit calculation
-                                    const isDeficitField = fieldId.toLowerCase().includes('deficit') || fieldId.toLowerCase().includes('_def');
+                                {row.fields.map((f, fIdx) => {
+                                    const fieldId = typeof f === "string" ? f : (f as any).id;
+                                    const fieldType = typeof f === "string" ? "number" : ((f as any).type || "number");
+                                    const fieldOptions = typeof f === "string" ? (fieldType === 'select' ? reflexOptions : []) : (f as any).options || [];
+                                    const min = typeof f === "string" ? undefined : (f as any).min;
+                                    const max = typeof f === "string" ? undefined : (f as any).max;
+
                                     let calculatedValue = answers[fieldId];
-                                    
+                                    const isDeficitField = fieldId.endsWith('_deficit') || fieldId.endsWith('_def');
+
                                     if (isDeficitField) {
-                                        const esqFieldId = row.fields.find((f: any) => {
-                                            const id = typeof f === 'string' ? f : f.id;
-                                            return id.toLowerCase().includes('_esq') || id.toLowerCase().includes('esquerdo');
-                                        });
-                                        const dirFieldId = row.fields.find((f: any) => {
-                                            const id = typeof f === 'string' ? f : f.id;
-                                            return id.toLowerCase().includes('_dir') || id.toLowerCase().includes('direito');
-                                        });
+                                        const sidePrefix = fieldId.replace('_deficit', '').replace('_def', '');
+                                        const valE = parseFloat(String(answers[`${sidePrefix}_esq`] || '0').replace(',', '.'));
+                                        const valD = parseFloat(String(answers[`${sidePrefix}_dir`] || '0').replace(',', '.'));
                                         
-                                        if (esqFieldId && dirFieldId) {
-                                            const esqFid = typeof esqFieldId === 'string' ? esqFieldId : esqFieldId.id;
-                                            const dirFid = typeof dirFieldId === 'string' ? dirFieldId : dirFieldId.id;
-                                            const esqVal = Number(String(answers[esqFid] || '0').replace(',', '.')) || 0;
-                                            const dirVal = Number(String(answers[dirFid] || '0').replace(',', '.')) || 0;
-                                            
-                                            if (esqVal > 0 || dirVal > 0) {
-                                                const maxVal = Math.max(esqVal, dirVal);
-                                                const diff = Math.abs(esqVal - dirVal);
+                                        if (valE > 0 || valD > 0) {
+                                            const maxVal = Math.max(valE, valD);
+                                            const minVal = Math.min(valE, valD);
+                                            if (maxVal > 0) {
+                                                const diff = maxVal - minVal;
                                                 calculatedValue = ((diff / maxVal) * 100).toFixed(1) + '%';
                                             } else {
                                                 calculatedValue = '0%';
                                             }
                                         }
+                                    } else if (fieldId.endsWith('_res')) {
+                                        let sourceValFieldId = '';
+                                        if (fieldId === 'resist_flexora_res') sourceValFieldId = 'resist_flexora';
+                                        else if (fieldId === 'resist_extensora_res') sourceValFieldId = 'resist_extensora';
+                                        else if (fieldId === 'flexao_60_res') sourceValFieldId = 'flexao_60';
+                                        else if (fieldId === 'sorensen_res') sourceValFieldId = 'sorensen';
+                                        
+                                        if (sourceValFieldId) {
+                                            const valStr = answers[sourceValFieldId];
+                                            if (valStr && valStr.trim() !== '') {
+                                                const numVal = parseFloat(valStr.replace(',', '.'));
+                                                const threshold = getEnduranceThreshold({
+                                                    testId: sourceValFieldId,
+                                                    gender: patientGender,
+                                                    age: patientAge,
+                                                    activityLevel: patientActivityLevel
+                                                });
+                                                const isNormal = numVal >= threshold;
+                                                calculatedValue = isNormal ? 'Normal' : 'Reduzido';
+                                            } else {
+                                                calculatedValue = '';
+                                            }
+                                        }
                                     }
 
                                     return (
-                                        <td key={fIdx} style={{ padding: '0.5rem 0.6rem' }}>
+                                        <td key={fIdx} style={{ padding: isPrint ? '0.4rem' : '0.6rem', borderBottom: '1px solid #f8fafc' }}>
                                             <DataTableCell 
                                                 fieldId={fieldId}
                                                 fieldType={fieldType}

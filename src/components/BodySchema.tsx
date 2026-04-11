@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { RotateCcw, Paintbrush, Undo2, Eraser } from "lucide-react";
+import { compressImage } from "@/lib/image-compressor";
 
 interface BodySchemaProps {
   image: string;
@@ -19,6 +20,8 @@ const COLORS = [
   { id: "green", hex: "#00ff00", label: "Parestesia" },
 ];
 
+import { motion, AnimatePresence } from "framer-motion";
+
 export default function BodySchema({ image, value, onChange, colors: customColors, mode = "draw", readOnly = false }: BodySchemaProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -28,6 +31,8 @@ export default function BodySchema({ image, value, onChange, colors: customColor
   const [activeColor, setActiveColor] = useState(colors[0].hex);
   const [isEraser, setIsEraser] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
+  const [isHovered, setIsHovered] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // Constants for fixed canvas logical size
   const CANVAS_WIDTH = 700;
@@ -47,15 +52,18 @@ export default function BodySchema({ image, value, onChange, colors: customColor
 
     // Load initial value if exists
     if (value && value.startsWith("data:image")) {
-      // Avoid re-drawing if the value is what we just saved
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
       const currentData = canvas.toDataURL();
       if (value === currentData) return;
 
       const img = new Image();
       img.onload = () => {
+        ctx.globalCompositeOperation = "source-over";
         ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         ctx.drawImage(img, 0, 0);
-        if (history.length <= 1) {
+        if (history.length === 0) {
             setHistory([value]);
         }
       };
@@ -173,76 +181,69 @@ export default function BodySchema({ image, value, onChange, colors: customColor
     const ctx = contextRef.current;
     if (!canvas || !ctx) return;
     
-    // Save current state before clearing if you want undo for clear too
     setHistory(prev => [...prev, canvas.toDataURL()]);
 
     ctx.globalCompositeOperation = "source-over";
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     save();
+    setShowClearConfirm(false);
   };
 
-  const save = () => {
+  const save = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    // Create an offscreen canvas to merge the background image + drawing
-    const offscreen = document.createElement('canvas');
-    offscreen.width = CANVAS_WIDTH;
-    offscreen.height = CANVAS_HEIGHT;
-    const offCtx = offscreen.getContext('2d');
-    if (!offCtx) {
-        onChange(canvas.toDataURL());
-        return;
-    }
-
-    const bgImg = new Image();
-    bgImg.onload = () => {
-        // Draw base image filling exactly the canvas dimensions
-        offCtx.drawImage(bgImg, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-        // Draw the user strokes on top
-        offCtx.drawImage(canvas, 0, 0);
-        onChange(offscreen.toDataURL());
-    };
-    bgImg.onerror = () => {
-        // Fallback: just save the strokes
-        onChange(canvas.toDataURL());
-    };
-    bgImg.src = image;
+    
+    const dataUrl = canvas.toDataURL();
+    const compressed = await compressImage(dataUrl, 1000, 0.7, 'image/png');
+    onChange(compressed);
   };
 
   return (
-    <div className="flex flex-col items-center gap-8 w-full">
-      {/* Drawing Area */}
-      <div className="flex flex-col gap-6 items-center w-full max-w-[1000px]">
-        <div 
-            style={{ 
+    <div 
+        style={{ 
+            display: "flex", 
+            flexDirection: "column", 
+            alignItems: "center", 
+            width: "100%", 
+            position: "relative" 
+        }}
+    >
+      
+      {/* Container do Desenho (Canvas + Background) */}
+      <div 
+        style={{ 
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gridTemplateRows: '1fr',
             position: "relative", 
-            width: "100%",
+            width: "100%", 
+            maxWidth: "800px", 
             backgroundColor: "white", 
-            borderRadius: "2rem",
-            overflow: "hidden",
-            border: "2px solid var(--border)",
+            borderRadius: "2rem", 
+            overflow: "hidden", 
+            border: "2px solid var(--border)", 
+            boxShadow: "var(--shadow-lg)",
             cursor: readOnly ? "default" : (isEraser ? "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"black\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m20 20-7-7 3-3 7 7Z\"/><path d=\"M14 14 6 6l-3 3 8 8Z\"/></svg>') 12 12, auto" : "crosshair"),
-            touchAction: readOnly ? "auto" : "none",
-            boxShadow: "var(--shadow-xl)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center"
-            }}
-        >
-            <img 
+            touchAction: readOnly ? "auto" : "none"
+        }}
+      >
+          {/* Imagem de Fundo (Esquema Corporal) */}
+          <img 
             src={image} 
             alt="Corpo" 
             style={{ 
+                gridArea: '1/1',
                 width: "100%", 
                 height: "auto", 
-                objectFit: "contain", 
-                pointerEvents: "none",
-                opacity: 0.9,
-                display: "block"
+                display: "block",
+                pointerEvents: "none", 
+                opacity: 0.95,
+                zIndex: 1
             }} 
-            />
-            <canvas
+          />
+          
+          {/* Camada de Desenho (Canvas) */}
+          <canvas
             ref={canvasRef}
             width={CANVAS_WIDTH}
             height={CANVAS_HEIGHT}
@@ -254,108 +255,272 @@ export default function BodySchema({ image, value, onChange, colors: customColor
             onTouchMove={draw}
             onTouchEnd={stopDrawing}
             style={{ 
-                position: "absolute", 
-                top: 0, 
-                left: 0, 
+                gridArea: '1/1',
                 width: "100%", 
-                height: "100%",
+                height: "100%", 
+                zIndex: 10,
                 touchAction: "none"
             }}
-            />
-        </div>
+          />
 
+          {/* Barra de Ferramentas (Toolbar) */}
+          {!readOnly && (
+            <AnimatePresence>
+                <motion.div 
+                    initial={{ opacity: 0, y: 30, x: "-50%" }}
+                    animate={{ opacity: 1, y: 0, x: "-50%" }}
+                    exit={{ opacity: 0, y: 30, x: "-50%" }}
+                    style={{ 
+                        position: "absolute", 
+                        bottom: "25px", 
+                        left: "50%", 
+                        transform: "translateX(-50%)", 
+                        zIndex: 30,
+                        display: "flex", 
+                        alignItems: "center", 
+                        gap: "12px", 
+                        padding: "10px 18px", 
+                        backgroundColor: "rgba(255, 255, 255, 0.9)", 
+                        backdropFilter: "blur(12px)", 
+                        WebkitBackdropFilter: "blur(12px)",
+                        border: "1px solid rgba(255, 255, 255, 0.5)", 
+                        borderRadius: "2.5rem", 
+                        boxShadow: "0 15px 35px rgba(0,0,0,0.15), 0 5px 15px rgba(0,0,0,0.08)",
+                        minWidth: "max-content"
+                    }}
+                >
+                    {/* Grupo de Cores (Círculo + Label) */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        {colors.map((item: any, idx: number) => {
+                            const isActive = !isEraser && activeColor === item.hex;
+                            return (
+                                <motion.button
+                                    key={idx}
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => {
+                                        setActiveColor(item.hex);
+                                        setIsEraser(false);
+                                    }}
+                                    style={{ 
+                                        display: "flex", 
+                                        alignItems: "center", 
+                                        gap: "8px", 
+                                        padding: "8px 14px", 
+                                        borderRadius: "1.25rem", 
+                                        border: "none",
+                                        backgroundColor: isActive ? "white" : "transparent",
+                                        boxShadow: isActive ? "0 4px 6px rgba(0,0,0,0.05)" : "none",
+                                        cursor: "pointer",
+                                        transition: "all 0.2s"
+                                    }}
+                                >
+                                    <div 
+                                        style={{ 
+                                            width: "18px", 
+                                            height: "18px", 
+                                            borderRadius: "50%", 
+                                            backgroundColor: item.hex, 
+                                            border: "2px solid white", 
+                                            boxShadow: isActive ? "0 0 0 2px var(--primary)" : "0 0 0 1px rgba(0,0,0,0.1)",
+                                            flexShrink: 0
+                                        }} 
+                                    />
+                                    <span style={{ 
+                                        fontSize: "13px", 
+                                        fontWeight: "800", 
+                                        color: isActive ? "var(--primary)" : "var(--text-muted)",
+                                        whiteSpace: "nowrap"
+                                    }}>
+                                        {item.label}
+                                    </span>
+                                </motion.button>
+                            );
+                        })}
+                    </div>
 
+                    <div style={{ width: "1px", height: "32px", backgroundColor: "rgba(0,0,0,0.08)", margin: "0 4px" }} />
 
-        {/* Horizontal Legend - Expanded to full width */}
-        {!readOnly && (
-        <div className="w-full flex flex-col items-center gap-6 py-8 border-t border-border mt-4">
-            <div className="flex w-full justify-between items-center px-2">
-                {colors.map((item: any, idx: number) => {
-                    const hex = item.hex;
-                    const label = item.label;
-                    const isActive = !isEraser && activeColor === hex;
-
-                    return (
-                        <button
-                            key={idx}
-                            onClick={() => {
-                                setActiveColor(hex);
-                                setIsEraser(false);
-                            }}
-                            className="flex items-center gap-3 px-6 py-3 rounded-xl transition-all"
+                    {/* Grupo de Ferramentas (Somente Ícones) */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => setIsEraser(!isEraser)}
                             style={{ 
-                                backgroundColor: isActive ? "var(--primary-light)" : "white",
-                                border: isActive ? `2px solid var(--primary)` : "2px solid var(--border)",
+                                display: "flex", 
+                                alignItems: "center", 
+                                justifyContent: "center", 
+                                width: "42px", 
+                                height: "42px", 
+                                borderRadius: "50%", 
+                                border: "none",
+                                backgroundColor: isEraser ? "var(--primary)" : "transparent",
+                                color: isEraser ? "white" : "var(--text-muted)",
                                 cursor: "pointer",
-                                boxShadow: isActive ? "var(--shadow-md)" : "none"
+                                transition: "all 0.2s"
                             }}
+                            title="Borracha"
                         >
-                            <div style={{ width: "20px", height: "20px", borderRadius: "50%", backgroundColor: hex, border: "2px solid white", boxShadow: "0 0 0 1px rgba(0,0,0,0.1)" }} />
-                            <span style={{ fontSize: "1rem", fontWeight: "700", color: isActive ? "var(--primary)" : "var(--text)" }}>{label}</span>
-                        </button>
-                    );
-                })}
-            </div>
-        </div>
-        )}
+                            <Eraser size={22} />
+                        </motion.button>
+
+                        <motion.button
+                            whileHover={history.length > 1 ? { scale: 1.1 } : {}}
+                            whileTap={history.length > 1 ? { scale: 0.9 } : {}}
+                            onClick={undo}
+                            disabled={history.length <= 1}
+                            style={{ 
+                                display: "flex", 
+                                alignItems: "center", 
+                                justifyContent: "center", 
+                                width: "42px", 
+                                height: "42px", 
+                                borderRadius: "50%", 
+                                border: "none",
+                                backgroundColor: "transparent",
+                                color: "var(--text-muted)",
+                                opacity: history.length <= 1 ? 0.3 : 1,
+                                cursor: history.length <= 1 ? "not-allowed" : "pointer",
+                                transition: "all 0.2s"
+                            }}
+                            title="Desfazer"
+                        >
+                            <Undo2 size={22} />
+                        </motion.button>
+
+                        {/* Limpar Tudo */}
+                        <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => setShowClearConfirm(true)}
+                            style={{ 
+                                display: "flex", 
+                                alignItems: "center", 
+                                justifyContent: "center", 
+                                width: "42px", 
+                                height: "42px", 
+                                borderRadius: "50%", 
+                                border: "none",
+                                backgroundColor: "transparent",
+                                color: "#ef4444",
+                                cursor: "pointer",
+                                transition: "all 0.2s"
+                            }}
+                            title="Limpar Tudo"
+                        >
+                            <RotateCcw size={22} />
+                        </motion.button>
+                    </div>
+                </motion.div>
+            </AnimatePresence>
+          )}
+
+          {/* Dialogo de Confirmação Customizado */}
+          <AnimatePresence>
+            {showClearConfirm && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    style={{
+                        position: "absolute",
+                        inset: 0,
+                        backgroundColor: "rgba(0,0,0,0.4)",
+                        backdropFilter: "blur(4px)",
+                        zIndex: 100,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "20px"
+                    }}
+                >
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                        style={{
+                            backgroundColor: "white",
+                            padding: "30px",
+                            borderRadius: "2rem",
+                            maxWidth: "340px",
+                            width: "100%",
+                            textAlign: "center",
+                            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+                            border: "1px solid #f1f5f9"
+                        }}
+                    >
+                        <div style={{ 
+                            width: "60px", 
+                            height: "60px", 
+                            backgroundColor: "#fef2f2", 
+                            borderRadius: "50%", 
+                            display: "flex", 
+                            alignItems: "center", 
+                            justifyContent: "center",
+                            margin: "0 auto 20px",
+                            color: "#ef4444"
+                        }}>
+                            <RotateCcw size={30} />
+                        </div>
+                        
+                        <h3 style={{ fontSize: "1.25rem", fontWeight: "750", color: "#1e293b", marginBottom: "12px" }}>
+                            Limpar tudo?
+                        </h3>
+                        
+                        <p style={{ fontSize: "0.95rem", color: "#64748b", lineHeight: "1.5", marginBottom: "25px" }}>
+                            Deseja realmente apagar todas as marcações do esquema corporal? Esta ação não pode ser desfeita.
+                        </p>
+                        
+                        <div style={{ display: "flex", gap: "10px" }}>
+                            <button
+                                onClick={() => setShowClearConfirm(false)}
+                                style={{
+                                    flex: 1,
+                                    padding: "12px",
+                                    borderRadius: "1rem",
+                                    border: "1px solid #e2e8f0",
+                                    backgroundColor: "white",
+                                    color: "#64748b",
+                                    fontSize: "0.9rem",
+                                    fontWeight: "700",
+                                    cursor: "pointer"
+                                }}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={clear}
+                                style={{
+                                    flex: 1,
+                                    padding: "12px",
+                                    borderRadius: "1rem",
+                                    border: "none",
+                                    backgroundColor: "#ef4444",
+                                    color: "white",
+                                    fontSize: "0.9rem",
+                                    fontWeight: "700",
+                                    cursor: "pointer",
+                                    boxShadow: "0 4px 6px -1px rgba(239, 68, 68, 0.2)"
+                                }}
+                            >
+                                Apagar
+                            </button>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+          </AnimatePresence>
       </div>
 
-      {/* Tools Section - Expanded spacing and matching Próxima button */}
+      {/* Instrução Inferior */}
       {!readOnly && (
-      <div className="flex flex-wrap justify-center gap-8 w-full max-w-4xl pt-16 border-t-2 border-border">
-            <button
-                type="button"
-                onClick={() => setIsEraser(!isEraser)}
-                className="flex items-center gap-3 px-8 py-3 rounded-[0.75rem] transition-all"
-                style={{ 
-                    backgroundColor: isEraser ? "var(--primary)" : "var(--primary-light)",
-                    color: isEraser ? "white" : "var(--primary)",
-                    border: "none",
-                    cursor: "pointer",
-                    fontWeight: "700",
-                    fontSize: "1rem",
-                    boxShadow: isEraser ? "var(--shadow-lg)" : "none"
-                }}
-            >
-                <Eraser size={20} /> Borracha
-            </button>
-
-            <button
-                type="button"
-                onClick={undo}
-                disabled={history.length <= 1}
-                className="flex items-center gap-3 px-8 py-3 rounded-[0.75rem] transition-all"
-                style={{ 
-                    backgroundColor: "var(--primary-light)",
-                    color: "var(--primary)",
-                    border: "none",
-                    cursor: history.length <= 1 ? "not-allowed" : "pointer",
-                    opacity: history.length <= 1 ? 0.3 : 1,
-                    fontWeight: "700",
-                    fontSize: "1rem",
-                }}
-            >
-                <Undo2 size={20} /> Desfazer
-            </button>
-
-            <button
-                type="button"
-                onClick={clear}
-                className="flex items-center gap-3 px-8 py-3 rounded-[0.75rem] transition-all hover:opacity-90 active:scale-95"
-                style={{ 
-                    backgroundColor: "#ef4444",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "white",
-                    fontWeight: "700",
-                    fontSize: "1rem",
-                    boxShadow: "var(--shadow-md)"
-                }}
-            >
-                <RotateCcw size={20} /> Apagar Tudo
-            </button>
-      </div>
+          <div style={{ marginTop: "1rem", opacity: 0.5, fontSize: "11px", fontWeight: "700", textAlign: "center", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Clique ou toque para marcar no esquema corporal
+          </div>
       )}
     </div>
   );
 }
+
+

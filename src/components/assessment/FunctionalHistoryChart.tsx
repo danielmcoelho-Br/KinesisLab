@@ -74,7 +74,7 @@ const FunctionalHistoryChart = ({
         };
     });
 
-    if (processedData.length === 0 && !isPrint) return null;
+    if (processedData.length < 2) return null;
 
     return (
         <div className={`history-chart-container ${isEmbedded ? 'embedded' : ''}`}>

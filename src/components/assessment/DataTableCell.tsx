@@ -49,13 +49,13 @@ const DataTableCell = memo(({
         return (
             <div style={{ 
                 textAlign: 'center', 
-                padding: '0.4rem', 
+                padding: isPrint ? '0.2rem 0.1rem' : '0.4rem', 
                 backgroundColor: 'var(--bg-secondary)', 
                 borderRadius: '0.4rem',
                 border: '1px solid var(--border)',
                 fontWeight: '700',
                 color: 'var(--primary)',
-                fontSize: '0.85rem'
+                fontSize: isPrint ? '0.75rem' : '0.85rem'
             }}>
                 {value || "0%"}
             </div>
@@ -86,7 +86,7 @@ const DataTableCell = memo(({
 
     if (fieldType === 'select') {
         return isPrint ? (
-            <div style={{ textAlign: 'center' }}>
+            <div style={{ textAlign: 'center', fontSize: '0.78rem' }}>
                 <span style={{ fontWeight: '600' }}>{value || "-"}</span>
             </div>
         ) : (
@@ -140,29 +140,29 @@ const DataTableCell = memo(({
 
     if (fieldType === 'static') {
         return (
-            <div style={{ textAlign: 'center', fontWeight: '800', color: '#64748b', fontSize: '0.82rem' }}>
+            <div style={{ textAlign: 'center', fontWeight: '800', color: '#64748b', fontSize: isPrint ? '0.75rem' : '0.82rem' }}>
                 {fieldOptions.find((o: string | { id: string, value: string }) => typeof o !== 'string' && o.id === fieldId)?.value || (fieldId.includes('obj') ? fieldId.split('_obj')[0] : value) || '-'} 
             </div>
         );
     }
 
-    if (fieldId.endsWith('_res') || fieldId.endsWith('_res_esq') || fieldId.endsWith('_res_dir')) {
+    if (fieldId.endsWith('_res') || fieldId.endsWith('_res_esq') || fieldId.endsWith('_res_dir') || fieldId.endsWith('_class') || fieldId.endsWith('_status')) {
         const isNormal = value === 'Normal';
-        const isAbaixo = value === 'Abaixo';
+        const isReduced = value === 'Reduzido' || value === 'Abaixo' || value === 'Déficit' || value?.includes('Déficit');
         
         return (
             <div style={{ textAlign: 'center' }}>
                 <span style={{ 
-                    color: isNormal ? '#059669' : (isAbaixo ? '#dc2626' : '#94a3b8'), 
+                    color: isNormal ? '#059669' : (isReduced ? '#991b1b' : '#64748b'), 
                     fontWeight: '800',
-                    fontSize: '0.7rem',
+                    fontSize: isPrint ? '0.65rem' : '0.7rem',
                     textTransform: 'uppercase',
-                    backgroundColor: isNormal ? '#ecfdf5' : (isAbaixo ? '#fef2f2' : '#f8fafc'),
-                    padding: '4px 8px',
+                    backgroundColor: isNormal ? '#ecfdf5' : (isReduced ? '#fee2e2' : '#f1f5f9'),
+                    padding: isPrint ? '2px 6px' : '4px 8px',
                     borderRadius: '6px',
-                    border: `1px solid ${isNormal ? '#10b981' : (isAbaixo ? '#f87171' : '#e2e8f0')}`,
+                    border: `1px solid ${isNormal ? '#10b981' : (isReduced ? '#991b1b' : '#cbd5e1')}`,
                     display: 'inline-block',
-                    minWidth: '60px'
+                    minWidth: isPrint ? '45px' : '65px'
                 }}>
                     {value || "-"}
                 </span>
@@ -171,7 +171,7 @@ const DataTableCell = memo(({
     }
 
     return isPrint ? (
-        <div style={{ textAlign: 'center' }}>
+        <div style={{ textAlign: 'center', fontSize: '0.78rem' }}>
             <span style={{ fontWeight: '600' }}>{value || "-"}</span>
         </div>
     ) : (

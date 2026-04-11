@@ -1,7 +1,8 @@
 "use client";
 
 import { memo } from "react";
-import { Calculator } from "lucide-react";
+import { Calculator, Sparkles } from "lucide-react";
+import { generateTherapeuticText, generateDiagnosticText } from "@/utils/therapeuticRules";
 import BodySchema from "@/components/BodySchema";
 import FreeCanvas from "@/components/FreeCanvas";
 import AngleMeasurement from "@/components/AngleMeasurement";
@@ -13,6 +14,7 @@ import { SectionField } from "@/types/clinical";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAssessmentContext } from "@/contexts/AssessmentContext";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { getEnduranceThreshold, getPatientProfileString } from "@/utils/clinicalThresholds";
 
 interface FormFieldProps {
     field: SectionField; 
@@ -30,6 +32,7 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
     const assessmentId = searchParams.get('id');
 
     const state = useAssessmentContext();
+    const { questionnaire } = state;
 
     const answers = state.answers;
     const isEditing = state.isEditing;
@@ -180,14 +183,104 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                     {value || "Nenhuma informação registrada."}
                 </div>
             ) : (
-                <textarea 
-                    {...commonProps}
-                    rows={field.rows || 3} 
-                    value={value || ""} 
-                    onChange={(e) => handleInputChange(field.id, e.target.value)}
-                    placeholder="Descreva aqui..."
-                    style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)', fontSize: '0.85rem' }}
-                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <textarea 
+                        {...commonProps}
+                        rows={['diagnostico', 'conclusao'].includes(field.id) ? 8 : (field.rows || 3)} 
+                        value={value || ""} 
+                        onChange={(e) => handleInputChange(field.id, e.target.value)}
+                        placeholder="Descreva aqui..."
+                        style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)', fontSize: '0.85rem' }}
+                    />
+                    {field.id === 'conclusao' && isEditing && (['afLombar', 'afCervical'].includes(type)) && (
+                        <div style={{ marginTop: '0.5rem' }}>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const suggestedText = generateTherapeuticText(type, answers);
+                                    handleInputChange(field.id, suggestedText);
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    padding: '0.5rem 1rem',
+                                    backgroundColor: 'var(--primary)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '0.5rem',
+                                    fontSize: '0.8rem',
+                                    fontWeight: '800',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 6px -1px rgba(139, 0, 0, 0.2)'
+                                }}
+                            >
+                                <Sparkles size={16} />
+                                Sugerir Terapia
+                            </button>
+                        </div>
+                    )}
+                    {field.id === 'diagnostico' && isEditing && (['afLombar', 'afCervical'].includes(type)) && (
+                        <div style={{ marginTop: '0.5rem' }}>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const suggestedText = generateDiagnosticText(type, answers);
+                                    handleInputChange(field.id, suggestedText);
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    padding: '0.5rem 1rem',
+                                    backgroundColor: 'var(--secondary)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '0.5rem',
+                                    fontSize: '0.8rem',
+                                    fontWeight: '800',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 6px -1px rgba(15, 23, 42, 0.2)'
+                                }}
+                            >
+                                <Sparkles size={16} />
+                                Sugestão Diagnóstico
+                            </button>
+                        </div>
+                    )}
+                    {field.id === 'diagnostico' && questionnaire?.diagnosisRules && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const suggestions = questionnaire.diagnosisRules
+                                    ?.filter(rule => rule.criteria(answers))
+                                    .map(rule => `• ${rule.message}`);
+                                
+                                if (suggestions && suggestions.length > 0) {
+                                    handleInputChange(field.id, suggestions.join('\n'));
+                                } else {
+                                    handleInputChange(field.id, "Nenhuma alteração clínica significativa detectada automaticamente.");
+                                }
+                            }}
+                            className="btn-secondary"
+                            style={{ 
+                                alignSelf: 'flex-start', 
+                                padding: '0.5rem 1rem', 
+                                fontSize: '0.75rem', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '0.5rem',
+                                background: '#f1f5f9',
+                                border: '1px solid #cbd5e1',
+                                color: '#475569',
+                                fontWeight: '700'
+                            }}
+                        >
+                            <Calculator size={14} />
+                            Sugerir Diagnóstico
+                        </button>
+                    )}
+                </div>
             )}
           </div>
         );
@@ -319,9 +412,9 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
           </div>
         );
       case 'number': {
-        const isForce = field.id.includes('forca_') || field.id.includes('resist_');
+        const isEndurance = ['flexao_60', 'sorensen', 'resist_flexora', 'resist_extensora'].includes(field.id);
+        const isForce = (field.id.includes('forca_') || field.id.includes('resist_')) && !isEndurance;
         const isPerimetry = field.id.includes('perimetria_');
-        const isEndurance = ['flexao_60', 'sorensen'].includes(field.id);
         const isGeriatriaTest = ['pes_juntos', 'semi_tandem', 'tandem', 'toques_tempo', 'tug', 'vel_marcha', 'sentar_levantar', 'preensao'].includes(field.id) || 
                                field.id.startsWith('unipodal_');
         
@@ -343,15 +436,19 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                 referenceValue = (patientGender || "").toLowerCase() === 'masculino' ? 27 : 16;
                 referenceLabel = `Ref (${(patientGender || "").toLowerCase() === 'masculino' ? 'Masc' : 'Fem'})`;
             }
-            if (field.id === 'resist_flexora') {
-                referenceValue = (patientGender || "").toLowerCase() === 'masculino' ? 38 : 29;
-                referenceLabel = `Ref (${(patientGender || "").toLowerCase() === 'masculino' ? 'Masc' : 'Fem'})`;
+            
+            // Dynamic thresholds for endurance tests
+            if (isEndurance) {
+                referenceValue = getEnduranceThreshold({ 
+                    testId: field.id, 
+                    gender: patientGender, 
+                    age: patientAge, 
+                    activityLevel: state.patientActivityLevel 
+                });
+                const profile = getPatientProfileString(patientGender, patientAge, state.patientActivityLevel);
+                referenceLabel = `Normativa (${profile})`;
+                unit = 'seg';
             }
-            if (field.id === 'resist_extensora' || field.id === 'sorensen') {
-                referenceValue = (patientGender || "").toLowerCase() === 'masculino' ? 120 : 120;
-                referenceLabel = 'Ref';
-            }
-            if (field.id === 'flexao_60') referenceValue = 60;
         }
 
         return (
@@ -441,33 +538,17 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                 <label className="form-label" style={{ marginBottom: '1rem', display: 'block', fontWeight: '800', color: isPrint ? '#8b0000' : 'var(--secondary)' }}>
                     {(isPrint || !isEditing) ? field.label.split('(')[0].trim() : field.label}
                 </label>
-                <div style={{ width: '100%', display: 'flex', justifyContent: 'center', backgroundColor: isPrint ? 'transparent' : 'white', borderRadius: '1rem', padding: isPrint ? '0' : '1rem', border: isPrint ? 'none' : '1px solid var(--border)' }}>
-                    {isImageUrl ? (
-                        <img 
-                            src={value} 
-                            alt="Esquema Corporal" 
-                            style={{ 
-                                width: 'auto', 
-                                height: 'auto', 
-                                maxWidth: '100%', 
-                                maxHeight: isPrint ? '450px' : '550px', 
-                                objectFit: 'contain',
-                                display: 'block',
-                                borderRadius: '0.5rem'
-                            }} 
-                        />
-                    ) : (value ? (
-                        <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-                            <BodySchema 
-                                image={field.image || "/img/esquema_corpo_inteiro.png"}
-                                value={value} 
-                                onChange={() => {}}
-                                readOnly={true}
-                            />
-                        </div>
+                <div style={{ width: '100%', maxWidth: '1000px', margin: '0 auto' }}>
+                    {value ? (
+                            <div style={{ position: 'relative', width: '100%', maxWidth: '700px', margin: '0 auto', borderRadius: '2rem', overflow: 'hidden', border: isPrint ? '1px solid #eee' : 'none' }}>
+                                <img src={field.image || "/img/esquema_corpo_inteiro.png"} style={{ width: '100%', height: 'auto', display: 'block' }} alt="Background" />
+                                <img src={value as string} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="Marks" />
+                            </div>
                     ) : (
-                        <div style={{ color: '#ccc', fontSize: '0.9rem', padding: '2rem', fontStyle: 'italic' }}>Nenhuma marcação realizada</div>
-                    ))}
+                        <div style={{ color: '#ccc', fontSize: '0.9rem', padding: '2rem', fontStyle: 'italic', textAlign: 'center', backgroundColor: 'white', borderRadius: '1rem', border: '1px solid var(--border)' }}>
+                            Nenhuma marcação realizada
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -492,32 +573,29 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
             <div key={field.id} className="form-group">
                 <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block', fontWeight: (isPrint || !isEditing) ? '800' : 'inherit' }}>{field.label}</label>
                 <div style={{ pointerEvents: isEditing ? 'auto' : 'none', opacity: 1 }}>
-                    {(isPrint || !isEditing) && isDataUrl ? (
-                        <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
-                            <img 
-                                src={value} 
-                                style={{ 
-                                    width: '100%', 
-                                    maxWidth: '600px', 
-                                    borderRadius: '1rem', 
-                                    border: '1px solid var(--border)',
-                                    boxShadow: 'var(--shadow-md)',
-                                    display: 'block'
-                                }} 
-                                alt="Esquema Corporal" 
-                            />
-                        </div>
-                    ) : (
-                        <BodySchema 
-                            key={field.id}
-                            image={field.image || ""} 
-                            value={value} 
-                            onChange={(val) => handleInputChange(field.id, val)} 
-                            colors={field.colors}
-                            mode="stamp"
-                            readOnly={!isEditing}
+                    <div style={{ 
+                        display: 'grid',
+                        gridTemplateColumns: '1fr',
+                        gridTemplateRows: '1fr',
+                        position: 'relative', 
+                        width: '100%', 
+                        maxWidth: '700px', 
+                        margin: '0 auto', 
+                        borderRadius: '2rem', 
+                        overflow: 'hidden', 
+                        border: isPrint ? '1px solid #eee' : 'none' 
+                    }}>
+                        <img 
+                            src={field.image || ""} 
+                            style={{ gridArea: '1/1', width: '100%', height: 'auto', display: 'block' }} 
+                            alt="Background" 
                         />
-                    )}
+                        <img 
+                            src={value as string} 
+                            style={{ gridArea: '1/1', width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none' }} 
+                            alt="Marks" 
+                        />
+                    </div>
                 </div>
             </div>
         );

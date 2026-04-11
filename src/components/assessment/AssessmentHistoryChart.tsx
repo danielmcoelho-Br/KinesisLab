@@ -32,37 +32,55 @@ const AssessmentHistoryChart = ({
     isEndurance = false,
     useScoreData = false
 }: AssessmentHistoryChartProps) => {
+    
+    // Safer number parsing for questionnaires (handles "40%" or empty strings)
+    const parseVal = (v: any) => {
+        if (!v && v !== 0) return 0;
+        const clean = String(v).replace('%', '').replace(',', '.').trim();
+        const num = parseFloat(clean);
+        return isNaN(num) ? 0 : num;
+    };
+
     // Filter history for the specific field, score > 0, and NOT the current assessment being viewed
     const validHistory = history.filter(h => {
-        const val = useScoreData ? Number(h.scoreData?.score) : Number(h.answers?.[fieldId || '']);
+        const val = useScoreData ? parseVal(h.scoreData?.percentage || h.scoreData?.score) : parseVal(h.answers?.[fieldId || '']);
         return val > 0 && h.id !== assessmentId;
     });
 
-    if (!currentValue && validHistory.length === 0 && !isPrint) return null;
+    const parsedCurrentValue = parseVal(currentValue);
+    const totalDataPoints = validHistory.length + (parsedCurrentValue > 0 ? 1 : 0);
+    
+    // EXCLUSION LOGIC: Hide chart if there's only 1 measurement and no reference threshold (e.g., questionnaires)
+    if (totalDataPoints < 2 && !referenceValue) return null;
 
     const maxValue = Math.max(
-        currentValue || 0,
+        parsedCurrentValue,
         referenceValue || 0,
         ...validHistory.map(h => {
-            const val = useScoreData ? Number(h.scoreData?.score) : Number(h.answers?.[fieldId || '']);
+            const val = useScoreData ? parseVal(h.scoreData?.percentage || h.scoreData?.score) : parseVal(h.answers?.[fieldId || '']);
             return val || 0;
         })
     ) * 1.2 || 60;
     
     const validHistoryData = validHistory.map(h => ({
         id: h.id,
-        value: useScoreData ? Number(h.scoreData?.score) : Number(h.answers?.[fieldId || '']),
+        value: useScoreData ? parseVal(h.scoreData?.percentage || h.scoreData?.score) : parseVal(h.answers?.[fieldId || '']),
         date: new Date(h.created_at).toLocaleDateString('pt-BR'),
         timestamp: new Date(h.created_at).getTime()
     })).sort((a, b) => a.timestamp - b.timestamp);
 
-    const totalBars = validHistoryData.length + (currentValue ? 1 : 0) + (referenceValue ? 1 : 0);
-    const chartMaxWidth = isPrint ? (isEndurance ? '100%' : `${Math.min(50, Math.max(25, totalBars * 12))}%`) : '100%';
+    const totalBars = validHistoryData.length + (parsedCurrentValue > 0 ? 1 : 0) + (referenceValue ? 1 : 0);
+    
+    // ALWAYS FILL THE GRID CELL
+    const chartMaxWidth = '100%';
+
+    // DETERMINISTIC OFFSET: matches Bar.tsx (gap: 8px + label block: 32px = 40px)
+    const labelOffset = 40; 
 
     return (
         <div className="chart-container">
             <h4 className="chart-title">
-                <ImageIcon size={18} /> {chartTitle}
+                {chartTitle}
             </h4>
             <div className="chart-scroll-wrapper">
                 <div className="chart-bars-container" style={{ position: 'relative' }}>
@@ -71,7 +89,7 @@ const AssessmentHistoryChart = ({
                             position: 'absolute', 
                             left: 0, 
                             right: 0, 
-                            bottom: `calc(${(referenceValue / (maxValue || 1)) * 150}px + 30px)`, 
+                            bottom: `calc(${(referenceValue / (maxValue || 1)) * 140}px + ${labelOffset}px)`, 
                             borderTop: '2px dashed #94a3b8',
                             zIndex: 5,
                             pointerEvents: 'none'
@@ -123,8 +141,7 @@ const AssessmentHistoryChart = ({
                                     key={d.id} 
                                     value={d.value} 
                                     maxValue={maxValue}
-                                    label={`Avaliação`} 
-                                    subLabel={displayDate}
+                                    label={displayDate}
                                     unit={unit}
                                     color={isPrint ? "#fee2e2" : "var(--primary-light)"} 
                                     isPrint={isPrint}
@@ -133,14 +150,16 @@ const AssessmentHistoryChart = ({
                         });
                     })()}
 
-                    <Bar 
-                        value={Number(currentValue) || 0} 
-                        maxValue={maxValue}
-                        label={assessmentId ? currentDate : new Date().toLocaleDateString('pt-BR')} 
-                        unit={unit}
-                        color={isPrint ? "#8B0000" : "var(--primary)"} 
-                        isPrint={isPrint}
-                    />
+                    {parsedCurrentValue > 0 && (
+                        <Bar 
+                            value={parsedCurrentValue} 
+                            maxValue={maxValue}
+                            label={assessmentId ? currentDate : new Date().toLocaleDateString('pt-BR')} 
+                            unit={unit}
+                            color={isPrint ? "#8B0000" : "var(--primary)"} 
+                            isPrint={isPrint}
+                        />
+                    )}
                 </div>
             </div>
             <style jsx>{`
@@ -151,18 +170,21 @@ const AssessmentHistoryChart = ({
                     border-radius: 1rem;
                     border: 1px solid var(--border);
                     box-shadow: ${isPrint ? 'none' : 'var(--shadow-sm)'};
-                    max-width: ${isPrint ? chartMaxWidth : '100%'};
+                    max-width: ${chartMaxWidth};
+                    padding: ${isPrint ? '0.75rem' : '1.25rem'};
                     overflow-x: ${isPrint ? 'hidden' : 'auto'};
                     -webkit-overflow-scrolling: touch;
                 }
                 .chart-title {
-                    font-size: 0.85rem;
+                    font-size: ${isPrint ? '0.75rem' : '0.85rem'};
                     font-weight: 700;
-                    margin-bottom: 1.25rem;
+                    margin-bottom: 1rem;
                     color: var(--secondary);
                     display: flex;
                     align-items: center;
                     gap: 0.5rem;
+                    line-height: 1.3;
+                    word-break: break-word;
                 }
                 .chart-scroll-wrapper {
                     overflow-x: ${isPrint ? 'hidden' : 'auto'};
@@ -170,11 +192,12 @@ const AssessmentHistoryChart = ({
                 }
                 .chart-bars-container {
                     display: flex;
-                    gap: ${isPrint ? '0.5rem' : '0.75rem'};
+                    gap: 16px;
                     align-items: flex-end;
                     min-height: 180px;
-                    min-width: ${isPrint ? 'auto' : '250px'};
-                    width: ${isPrint ? '100%' : 'auto'};
+                    min-width: ${isPrint ? 'auto' : '220px'};
+                    width: 100%; // ALWAYS FILL
+                    justify-content: flex-start;
                 }
             `}</style>
         </div>

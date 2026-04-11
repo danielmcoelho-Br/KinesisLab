@@ -8,6 +8,7 @@ import { evaluateClinicalFlags } from "@/utils/clinicalIntelligence";
 import { compressImage } from "@/lib/image-compressor";
 import { calculateAssessmentScore, CalculationType } from "@/lib/calculations";
 import localforage from "localforage";
+import { getEnduranceThreshold } from "@/utils/clinicalThresholds";
 
 interface UseAssessmentStateProps {
     patientId: string;
@@ -17,6 +18,8 @@ interface UseAssessmentStateProps {
     router: any;
     searchParams: any;
 }
+
+const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
 export function useAssessmentState({ 
     patientId, 
@@ -65,9 +68,11 @@ export function useAssessmentState({
     const [patientName, setPatientName] = useState<string>("");
     const [patientGender, setPatientGender] = useState<string>("");
     const [patientAge, setPatientAge] = useState<number>(0);
+    const [patientActivityLevel, setPatientActivityLevel] = useState<string>("Inativo");
     const [patientAssessments, setPatientAssessments] = useState<any[]>([]);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [showDraftModal, setShowDraftModal] = useState(false);
+    const [showExitModal, setShowExitModal] = useState(false);
     const [pendingDraft, setPendingDraft] = useState<Record<string, any> | null>(null);
     const [dynamoModal, setDynamoModal] = useState<{ fieldId: string, label: string } | null>(null);
     const [dynamoValues, setDynamoValues] = useState<[string, string, string]>(['', '', '']);
@@ -128,12 +133,15 @@ export function useAssessmentState({
     // Main load effect
     useEffect(() => {
         async function load() {
+            if (!patientId || !isValidUUID(patientId)) return;
+            
             // Fetch Patient Data
             const pRes = await assessmentService.fetchPatient(patientId);
             if (pRes.success && pRes.data) {
                 setPatientName(pRes.data.name);
                 setPatientGender(pRes.data.gender || "");
                 setPatientAge(pRes.data.age || 0);
+                if (pRes.data.activity_level) setPatientActivityLevel(pRes.data.activity_level);
             }
 
             if (!assessmentDate) {
@@ -256,7 +264,12 @@ export function useAssessmentState({
                         }
                     }
                 }
+                const hasRealDraftData = Object.keys(currentAnswers).some(k => !k.endsWith('_score_previo') && !k.endsWith('_data_previo'));
                 setAnswers(currentAnswers);
+                
+                if (hasRealDraftData && !pendingDraft) {
+                    setIsDirty(true);
+                }
             }
 
             // GLOBAL RETURN SCORE CHECK
@@ -328,17 +341,7 @@ export function useAssessmentState({
             
             if (hasRealData) {
                 const draftKey = `assessment_draft_${patientId}_${type}`;
-                const cleanAnswers: Record<string, any> = {};
-                Object.keys(answers).forEach(k => {
-                    const val = answers[k];
-                    if (typeof val === 'string' && val.startsWith('data:image')) return;
-                    if (Array.isArray(val)) {
-                        cleanAnswers[k] = val.filter(v => typeof v !== 'string' || !v.startsWith('data:image'));
-                        if (cleanAnswers[k].length === 0) delete cleanAnswers[k];
-                        return;
-                    }
-                    cleanAnswers[k] = val;
-                });
+                const cleanAnswers: Record<string, any> = { ...answers };
 
                 try {
                     localforage.setItem(draftKey, JSON.stringify(cleanAnswers)).catch(() => {
@@ -419,7 +422,6 @@ export function useAssessmentState({
                 if (rl && rm) newAnswers['rl_rm_ratio'] = `${Math.round((rl / rm) * 100)}%`;
                 else newAnswers['rl_rm_ratio'] = '';
             }
-
             if (type === 'afOmbro') {
                 const movements = ['forca_abd', 'forca_rl', 'forca_rm'];
                 movements.forEach(mId => {
@@ -431,7 +433,11 @@ export function useAssessmentState({
                             const min = Math.min(esq, dir);
                             const deficit = Math.round(((max - min) / max) * 100);
                             newAnswers[`${mId}_deficit`] = `${deficit}%`;
-                        } else newAnswers[`${mId}_deficit`] = '';
+                            newAnswers[`${mId}_deficit_res`] = deficit <= 15 ? 'Normal' : 'Reduzido';
+                        } else {
+                            newAnswers[`${mId}_deficit`] = '';
+                            newAnswers[`${mId}_deficit_res`] = '';
+                        }
                     }
                 });
 
@@ -469,7 +475,11 @@ export function useAssessmentState({
                             const min = Math.min(esq, dir);
                             const deficit = Math.round(((max - min) / max) * 100);
                             newAnswers[`${mId}_def`] = `${deficit}%`;
-                        } else newAnswers[`${mId}_def`] = '';
+                            newAnswers[`${mId}_def_res`] = deficit <= 15 ? 'Normal' : 'Reduzido';
+                        } else {
+                            newAnswers[`${mId}_def`] = '';
+                            newAnswers[`${mId}_def_res`] = '';
+                        }
                     }
                 });
             }
@@ -515,7 +525,11 @@ export function useAssessmentState({
                             const min = Math.min(esq, dir);
                             const deficit = Math.round(((max - min) / max) * 100);
                             newAnswers[`${mId}_def`] = `${deficit}%`;
-                        } else newAnswers[`${mId}_def`] = '';
+                            newAnswers[`${mId}_def_res`] = deficit <= 15 ? 'Normal' : 'Reduzido';
+                        } else {
+                            newAnswers[`${mId}_def`] = '';
+                            newAnswers[`${mId}_def_res`] = '';
+                        }
                     }
                 });
 
@@ -549,7 +563,11 @@ export function useAssessmentState({
                             const min = Math.min(esq, dir);
                             const deficit = Math.round(((max - min) / max) * 100);
                             newAnswers[`${mId}_def`] = `${deficit}%`;
-                        } else newAnswers[`${mId}_def`] = '';
+                            newAnswers[`${mId}_def_res`] = deficit <= 15 ? 'Normal' : 'Reduzido';
+                        } else {
+                            newAnswers[`${mId}_def`] = '';
+                            newAnswers[`${mId}_def_res`] = '';
+                        }
                     }
                 });
 
@@ -568,19 +586,47 @@ export function useAssessmentState({
                 }
             }
 
-            if (type === 'afLombar' && (fieldId === 'hip_flexion_esq' || fieldId === 'hip_flexion_dir')) {
-                const esq = Number(newAnswers['hip_flexion_esq']);
-                const dir = Number(newAnswers['hip_flexion_dir']);
-                if (esq && dir) {
-                    newAnswers['hip_flexion_ratio'] = `${Math.round((esq / dir) * 100)}%`;
-                } else {
-                    newAnswers['hip_flex_ratio'] = '';
+            if (type === 'afLombar') {
+                const val = parseFloat(String(value).replace(',', '.'));
+                if (!isNaN(val)) {
+                    if (fieldId === 'flexao_60') {
+                        const threshold = getEnduranceThreshold({ testId: 'flexao_60', gender: patientGender, age: patientAge, activityLevel: patientActivityLevel });
+                        newAnswers['flexao_60_res'] = val >= threshold ? 'Normal' : 'Reduzido';
+                    }
+                    if (fieldId === 'sorensen') {
+                        const threshold = getEnduranceThreshold({ testId: 'sorensen', gender: patientGender, age: patientAge, activityLevel: patientActivityLevel });
+                        newAnswers['sorensen_res'] = val >= threshold ? 'Normal' : 'Reduzido';
+                    }
+                }
+
+                if (fieldId === 'hip_flexion_esq' || fieldId === 'hip_flexion_dir') {
+                    const esq = Number(newAnswers['hip_flexion_esq']);
+                    const dir = Number(newAnswers['hip_flexion_dir']);
+                    if (esq && dir) {
+                        newAnswers['hip_flexion_ratio'] = `${Math.round((esq / dir) * 100)}%`;
+                    } else {
+                        newAnswers['hip_flex_ratio'] = '';
+                    }
+                }
+            }
+
+            if (type === 'afCervical') {
+                const val = parseFloat(String(value).replace(',', '.'));
+                if (!isNaN(val)) {
+                    if (fieldId === 'resist_flexora') {
+                        const threshold = getEnduranceThreshold({ testId: 'resist_flexora', gender: patientGender, age: patientAge, activityLevel: patientActivityLevel });
+                        newAnswers['resist_flexora_res'] = val >= threshold ? 'Normal' : 'Reduzido';
+                    }
+                    if (fieldId === 'resist_extensora') {
+                        const threshold = getEnduranceThreshold({ testId: 'resist_extensora', gender: patientGender, age: patientAge, activityLevel: patientActivityLevel });
+                        newAnswers['resist_extensora_res'] = val >= threshold ? 'Normal' : 'Reduzido';
+                    }
                 }
             }
 
             return newAnswers;
         });
-    }, [isEditing, type, patientGender, patientAge]);
+    }, [isEditing, type, patientGender, patientAge, fieldMap]);
 
     const handleFinish = async () => {
         setSaving(true);
@@ -643,16 +689,18 @@ export function useAssessmentState({
 
     const handleHeaderAction = (action: any, columnIndex: number, section: any) => {
         if (action.type === 'fill') {
-            const newAnswers = { ...answers };
-            section.rows?.forEach((row: any) => {
-                const field = row.fields[columnIndex - 1];
-                if (field) {
-                    const fieldId = typeof field === 'string' ? field : field.id;
-                    newAnswers[fieldId] = action.value;
-                }
+            setIsDirty(true);
+            setAnswers(prev => {
+                const newAnswers = { ...prev };
+                section.rows?.forEach((row: any) => {
+                    const field = row.fields[columnIndex - 1];
+                    if (field) {
+                        const fieldId = typeof field === 'string' ? field : field.id;
+                        newAnswers[fieldId] = action.value;
+                    }
+                });
+                return { ...newAnswers, _lastModified: Date.now() };
             });
-            setAnswers(newAnswers);
-            if (!isEditing) setIsEditing(true);
             toast.info(`Coluna preenchida com ${action.value}`);
         }
     };
@@ -674,7 +722,34 @@ export function useAssessmentState({
                 localStorage.setItem(`return_score_${patientId}_${returnTo}`, String(result.percentage));
             }
             router.push(`/dashboard/assessment/${patientId}/${returnTo}?returnTo=${type}`);
+        } else {
+            router.push(`/dashboard/patient/${patientId}`);
         }
+    };
+
+    const handleExit = () => {
+        if (isDirty && isEditing && !isFinished) {
+            setShowExitModal(true);
+        } else {
+            handleReturn();
+        }
+    };
+
+    const confirmExitDiscard = async () => {
+        const draftKey = `assessment_draft_${patientId}_${type}`;
+        const checkpointKey = `checkpoint_${patientId}_${type}`;
+        await localforage.removeItem(draftKey);
+        await localforage.removeItem(checkpointKey);
+        setIsDirty(false);
+        setShowExitModal(false);
+        handleReturn();
+    };
+
+    const confirmExitSave = () => {
+        // Draft is already auto-saving by effect, so we just exit
+        setIsDirty(false);
+        setShowExitModal(false);
+        handleReturn();
     };
 
     return {
@@ -693,9 +768,12 @@ export function useAssessmentState({
         patientName,
         patientGender,
         patientAge,
+        patientActivityLevel,
+        patientAssessments,
         patientAssessments,
         selectedImage, setSelectedImage,
         showDraftModal, setShowDraftModal,
+        showExitModal, setShowExitModal,
         pendingDraft,
         dynamoModal, setDynamoModal,
         dynamoValues, setDynamoValues,
@@ -713,6 +791,11 @@ export function useAssessmentState({
         handleInputChange,
         handleFinish,
         handleHeaderAction,
-        handleReturn
+        handleReturn,
+        handleExit,
+        confirmExitDiscard,
+        confirmExitSave,
+        questionnaire,
+        type
     };
 }

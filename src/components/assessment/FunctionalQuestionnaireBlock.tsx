@@ -48,6 +48,11 @@ const FunctionalQuestionnaireBlock = ({
         const cleanAnswers: Record<string, any> = {};
         Object.keys(answers).forEach(k => {
             const val = answers[k];
+            // Allow area_dor (Body Schema) to be saved in draft even if base64/heavy
+            if (k === 'area_dor') {
+                cleanAnswers[k] = val;
+                return;
+            }
             if (typeof val === 'string' && val.startsWith('data:image')) return;
             if (Array.isArray(val)) {
                 cleanAnswers[k] = val.filter(v => typeof v !== 'string' || !v.startsWith('data:image'));
@@ -110,40 +115,11 @@ const FunctionalQuestionnaireBlock = ({
                         <p className="no-history" style={{ color: '#94a3b8', fontStyle: 'italic', margin: '1rem 0' }}>Sem avaliação prévia</p>
                     )}
 
-                    {!isEditing && (
-                        <div className="current-results-section" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed var(--border)' }}>
-                            <div className="result-main" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                                    <span className="result-label" style={{ fontWeight: 700, color: 'var(--secondary)', fontSize: '0.85rem' }}>RESULTADO ATUAL:</span>
-                                    <span className="result-value" style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--primary)' }}>{currentScoreRaw || '0%'}</span>
-                                </div>
-                                {(() => {
-                                    const latest = history.find(h => h.assessment_type === questType);
-                                    if (latest?.scoreData?.interpretation) {
-                                        return (
-                                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                                                Classificação: <span style={{ color: 'var(--primary)' }}>{latest.scoreData.interpretation}</span>
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                })()}
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 <div className="history-chart-wrapper-print">
                     {(currentScore > 0 || !isEditing) && (
                         <div style={{ height: '100%' }}>
-                            {!isPrint && isEditing && (
-                                <div className="current-results-section" style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px dashed var(--border)' }}>
-                                    <div className="result-main" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
-                                        <span className="result-label" style={{ fontWeight: 700, color: 'var(--secondary)' }}>Resultado Atual:</span>
-                                        <span className="result-value" style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--primary)' }}>{currentScoreRaw || '0%'}</span>
-                                    </div>
-                                </div>
-                            )}
                             <div className="history-chart-container-wrapper" style={{ marginTop: isPrint ? '1rem' : '0' }}>
                                 <FunctionalHistoryChart 
                                     history={history}
@@ -160,16 +136,7 @@ const FunctionalQuestionnaireBlock = ({
                 </div>
             </div>
 
-            {isEditing && (
-                <button 
-                    type="button"
-                    onClick={handleNavigate}
-                    className="btn-premium-red"
-                    style={{ marginTop: '1.5rem' }}
-                >
-                    Preencher Novo Questionário
-                </button>
-            )}
+            {/* Button removed as part of UI test to decouple functional assessment and questionnaire entry */}
 
             <style jsx>{`
                 .functional-block {

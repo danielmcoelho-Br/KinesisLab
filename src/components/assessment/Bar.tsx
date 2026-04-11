@@ -22,9 +22,17 @@ const Bar = ({ value, maxValue, label, color, subLabel, unit = 's', isPrint = fa
     }
     
     return (
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ 
+            flex: 1, 
+            minWidth: 0, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            gap: '8px',
+            height: '180px' // FIXED TOTAL HEIGHT
+        }}>
             <div style={{ 
-                height: '150px', 
+                height: '140px', // FIXED BAR CONTAINER HEIGHT
                 width: '100%', 
                 backgroundColor: 'var(--bg-secondary)', 
                 borderRadius: '8px', 
@@ -54,10 +62,10 @@ const Bar = ({ value, maxValue, label, color, subLabel, unit = 's', isPrint = fa
                 <div style={{ 
                     position: 'absolute', 
                     top: value / (maxValue || 1) > 0.5 ? '50%' : 'auto',
-                    bottom: value / (maxValue || 1) > 0.5 ? 'auto' : '10px',
+                    bottom: value / (maxValue || 1) > 0.5 ? 'auto' : '8px',
                     left: '50%', 
                     transform: 'translateX(-50%)',
-                    fontSize: '0.8rem',
+                    fontSize: isPrint ? '0.6rem' : '0.8rem',
                     fontWeight: '800',
                     color: value / (maxValue || 1) > 0.5 ? '#fff' : 'var(--text)',
                     textShadow: value / (maxValue || 1) > 0.5 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none',
@@ -68,9 +76,15 @@ const Bar = ({ value, maxValue, label, color, subLabel, unit = 's', isPrint = fa
                     {value}{unit}
                 </div>
             </div>
-            <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text)', lineHeight: 1.2 }}>{label}</div>
-                {subLabel && <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{subLabel}</div>}
+            <div style={{ 
+                textAlign: 'center', 
+                height: '32px', // FIXED LABEL AREA HEIGHT
+                display: 'flex', 
+                flexDirection: 'column', 
+                justifyContent: 'center' 
+            }}>
+                <div style={{ fontSize: isPrint ? '0.6rem' : '0.75rem', fontWeight: '700', color: 'var(--text)', lineHeight: 1.1 }}>{label}</div>
+                {subLabel && <div style={{ fontSize: isPrint ? '0.55rem' : '0.65rem', color: 'var(--text-muted)' }}>{subLabel}</div>}
             </div>
         </div>
     );

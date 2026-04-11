@@ -285,6 +285,18 @@ export const questionnairesData: Record<string, Questionnaire> = {
                         { id: 'ref_estilorradial', label: 'Estilorradial (C6)', fields: [{ id: 'ref_est_esq', type: 'select', options: reflexOptions }, { id: 'ref_est_dir', type: 'select', options: reflexOptions }] },
                         { id: 'ref_triciptal', label: 'Triciptal (C7)', fields: [{ id: 'ref_tri_esq', type: 'select', options: reflexOptions }, { id: 'ref_tri_dir', type: 'select', options: reflexOptions }] }
                     ]
+                },
+                {
+                    id: 'testes_especiais_neuro',
+                    title: 'Testes Especiais',
+                    type: 'table',
+                    columns: ['', 'Esquerdo', 'Direito'],
+                    rows: [
+                        { id: 'hoffmann', label: 'Hoffmann', fields: [{ id: 'hoffmann_esq', type: 'checkbox' }, { id: 'hoffmann_dir', type: 'checkbox' }] },
+                        { id: 'babinski', label: 'Babinski', fields: [{ id: 'babinski_esq', type: 'checkbox' }, { id: 'babinski_dir', type: 'checkbox' }] },
+                        { id: 'clonus', label: 'Clonus', fields: [{ id: 'clonus_esq', type: 'checkbox' }, { id: 'clonus_dir', type: 'checkbox' }] },
+                        { id: 'claudicacao_neuro', label: 'Claudicação Neurogênica', fields: [{ id: 'claudicacao_esq', type: 'checkbox' }, { id: 'claudicacao_dir', type: 'checkbox' }] }
+                    ]
                 }
             ],
             fields: [
@@ -495,6 +507,18 @@ export const questionnairesData: Record<string, Questionnaire> = {
                     rows: [
                         { id: 'ref_patelar', label: 'Patelar (L4)', fields: [{ id: 'ref_pat_esq', type: 'select', options: reflexOptions }, { id: 'ref_pat_dir', type: 'select', options: reflexOptions }] },
                         { id: 'ref_aquileu', label: 'Aquileu (S1)', fields: [{ id: 'ref_aqui_esq', type: 'select', options: reflexOptions }, { id: 'ref_aqui_dir', type: 'select', options: reflexOptions }] }
+                    ]
+                },
+                {
+                    id: 'testes_especiais_lombar',
+                    title: 'Testes Especiais',
+                    type: 'table',
+                    columns: ['', 'Esquerdo', 'Direito'],
+                    rows: [
+                        { id: 'hoffmann_l', label: 'Hoffmann', fields: [{ id: 'hoffmann_esq_l', type: 'checkbox' }, { id: 'hoffmann_dir_l', type: 'checkbox' }] },
+                        { id: 'babinski_l', label: 'Babinski', fields: [{ id: 'babinski_esq_l', type: 'checkbox' }, { id: 'babinski_dir_l', type: 'checkbox' }] },
+                        { id: 'clonus_l', label: 'Clonus', fields: [{ id: 'clonus_esq_l', type: 'checkbox' }, { id: 'clonus_dir_l', type: 'checkbox' }] },
+                        { id: 'claudicacao_neuro_l', label: 'Claudicação Neurogênica', fields: [{ id: 'claudicacao_esq_l', type: 'checkbox' }, { id: 'claudicacao_dir_l', type: 'checkbox' }] }
                     ]
                 }
             ],

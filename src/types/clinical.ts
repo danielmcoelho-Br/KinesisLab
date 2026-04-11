@@ -62,6 +62,13 @@ export type Section = {
     chart?: string;
 };
   
+export type DiagnosisRule = {
+    id: string;
+    label: string;
+    criteria: (answers: Record<string, any>) => boolean;
+    message: string;
+};
+
 export type Questionnaire = {
     id: string;
     segment: string;
@@ -73,6 +80,9 @@ export type Questionnaire = {
     sections?: Section[];
     structure?: any; 
     flags?: ClinicalFlag[];
+    clinicalFlags?: ClinicalFlag[];
+    diagnosisRules?: DiagnosisRule[];
+    calculateScore?: (answers: Record<string, any>) => AssessmentResult;
 };
 
 export type AssessmentResult = {

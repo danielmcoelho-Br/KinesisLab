@@ -1,5 +1,6 @@
 import { Section } from "@/data/questionnaires";
 import FormSection from "../FormSection";
+import FormField from "../FormField";
 import { calculateAssessmentScore, CalculationType } from "@/lib/calculations";
 
 interface PrintSummaryViewProps {
@@ -101,6 +102,50 @@ export default function PrintSummaryView({
                 const section = item as Section;
                 const nextSection = arr[idx + 1] as Section;
                 
+                // Group Anamnese text AT TOP, then Body Schema (L) and Neuro Exam (R) below it
+                if (section.id === 'anamnese' && nextSection?.id === 'exame_neurologico') {
+                    const areaDorField = section.fields?.find((f: any) => typeof f !== 'string' && f.id === 'area_dor');
+                    acc.push(
+                        <div key={`group-top-${section.id}`} style={{ width: '100%', marginBottom: '1.5rem' }}>
+                            {/* Part 1: Anamnese Text (everything except Body Schema) */}
+                            <FormSection 
+                                section={section}
+                                isPrint={true}
+                                excludeFields={['area_dor']}
+                            />
+                            
+                            {/* Part 2: Body Schema and Neurological Exam side-by-side */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 1.5fr', gap: '2rem', marginTop: '1rem' }}>
+                                <div style={{ pageBreakInside: 'avoid' }}>
+                                    <h4 style={{ fontSize: '1rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--secondary)' }}>Esquema Corporal</h4>
+                                    {areaDorField && (
+                                        <FormField 
+                                            field={areaDorField as any}
+                                            isPrint={true}
+                                        />
+                                    )}
+                                </div>
+                                <div style={{ pageBreakInside: 'avoid' }}>
+                                    <FormSection 
+                                        section={nextSection}
+                                        isPrint={true}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    );
+                    return acc;
+                }
+
+                // Skip exame_neurologico if it was already grouped with anamnese
+                const isGroupedNeuro = section.id === 'exame_neurologico' && 
+                                      arr[idx - 1] && 
+                                      (arr[idx - 1] as Section).id === 'anamnese';
+                
+                if (isGroupedNeuro) {
+                    return acc;
+                }
+                
                 const SYMMETRICAL_PAIRS: Record<string, string> = {
                     'movimento_cervical': 'irritabilidade',
                     'adm_ombro_esq': 'adm_ombro_dir',
@@ -162,6 +207,7 @@ export default function PrintSummaryView({
             return acc;
         }, [])}
 
+
         {isFinished && !isClinical && (
             <div style={{ marginTop: '2rem', padding: '1rem', border: '2px solid #8B0000', borderRadius: '0.5rem' }}>
                 <h4 style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>Resultado da Avaliação:</h4>
@@ -175,6 +221,21 @@ export default function PrintSummaryView({
                         const displayInterpretation = res.interpretation === 'Avaliação Concluída' ? '' : ` — ${res.interpretation}`;
                         return `Pontuação: ${scoreStr}${displayInterpretation}`;
                     })()}
+                </div>
+            </div>
+        )}
+
+        {/* Signature Section */}
+        {(assessmentOwner?.signature || user?.signature) && (
+            <div style={{ marginTop: '4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', breakInside: 'avoid' }}>
+                <img 
+                    src={assessmentOwner?.signature || user?.signature} 
+                    alt="Assinatura" 
+                    style={{ maxHeight: '80px', maxWidth: '250px', marginBottom: '0.5rem' }} 
+                />
+                <div style={{ width: '300px', borderTop: '1px solid #333', textAlign: 'center', paddingTop: '0.5rem' }}>
+                    <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1rem' }}>{assessmentOwner?.name || user?.name}</p>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#444', fontWeight: 'bold' }}>FISIOTERAPEUTA - CREFITO: {assessmentOwner?.crefito || user?.crefito}</p>
                 </div>
             </div>
         )}

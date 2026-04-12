@@ -55,7 +55,36 @@ export function getEnduranceThreshold({ testId, gender, age, activityLevel = 'In
         return 109.5;
     }
 
+    // Geriatric Thresholds
+    if (testId === 'pes_juntos' || testId === 'semi_tandem') return 30;
+    if (testId === 'tandem') return 17.56;
+    if (testId === 'unipodal_dir' || testId === 'unipodal_esq' || testId === 'unipodal') return 10;
+    if (testId === 'tug') return 12.47;
+    if (testId === 'vel_marcha') return 0.8;
+    if (testId === 'preensao') return isMale ? 27 : 16;
+    if (testId === 'sentar_levantar') return 12; // Generic geriatric cutoff for 5x Sit-to-Stand
+
     return 0; // Default fallback
+}
+
+/**
+ * Specifically for geriatrics, determines if a value is "clinicaly suspicious" (Yellow)
+ */
+export function isValueBelowStandard(testId: string, value: number, gender?: Gender): boolean {
+    if (isNaN(value) || value === 0) return false;
+
+    if (testId === 'pes_juntos' || testId === 'semi_tandem') return value < 30;
+    if (testId === 'tandem') return value < 17.56;
+    if (testId.includes('unipodal')) return value < 10;
+    if (testId === 'tug') return value > 12.47; // For TUG, higher is worse
+    if (testId === 'vel_marcha') return value < 0.8;
+    if (testId === 'preensao') {
+        const threshold = (gender || "").toLowerCase() === 'masculino' ? 27 : 16;
+        return value < threshold;
+    }
+    if (testId === 'sentar_levantar') return value > 12; // Higher is worse
+
+    return false;
 }
 
 export function getPatientProfileString(gender: Gender, age: number, activityLevel: ActivityLevel = 'Inativo'): string {

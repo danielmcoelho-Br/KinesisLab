@@ -939,7 +939,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             type: 'table',
             columns: ['Movimento', 'Esquerdo', 'Direito'],
             rows: [
-                { id: 'adm_quadril', label: 'ADM de Quadril', fields: ['adm_quadril_esq', 'adm_quadril_dir'] },
+                { id: 'adm_quadril', label: 'Flexão de Quadril', fields: ['adm_quadril_esq', 'adm_quadril_dir'] },
                 { id: 'extensao_joelho', label: 'Extensão do Joelho', fields: ['ext_joelho_esq', 'ext_joelho_dir'] },
                 { id: 'flexao_joelho', label: 'Flexão do Joelho', fields: ['flex_joelho_esq', 'flex_joelho_dir'] },
                 { id: 'dorsiflexao', label: 'Dorsiflexão', fields: ['dorsi_esq', 'dorsi_dir'] },

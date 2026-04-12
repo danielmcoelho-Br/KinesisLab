@@ -145,7 +145,7 @@ export default function PrintSummaryView({
 
             return checkFieldsData(section.fields) || hasTableData || hasSubData || hasHistoryData || hasTableHistoryData;
         }).reduce((acc: any[], item, idx, arr) => {
-            const isClinicalAssessment = ['afOmbro', 'afCervical', 'afLombar'].includes(type);
+            const isClinicalAssessment = ['afOmbro', 'afCervical', 'afLombar', 'afGeriatria'].includes(type);
             const section = item as Section;
 
             if (isClinicalAssessment) {
@@ -157,6 +157,8 @@ export default function PrintSummaryView({
                     'testes_especiais_resistidos',
                     'conclusoes',
                     'diagnostico_conclusoes',
+                    'resultados_diagnostico',
+                    'sugestoes',
                     'oswestry_integracao',
                     'ndi_integracao',
                     'quickdash_integracao'

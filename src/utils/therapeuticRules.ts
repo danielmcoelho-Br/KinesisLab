@@ -164,8 +164,37 @@ export function getTherapeuticSuggestions(questionnaireId: string, answers: Reco
     });
   }
 
-  // -- LOGIC FOR GERIATRICS (afGeriatria) -- (Already exists)
-  
+  // -- LOGIC FOR GERIATRICS (afGeriatria) -- 
+  if (questionnaireId === 'afGeriatria') {
+    const tug = safeParse(answers['tug']);
+    const gaitSpeed = safeParse(answers['vel_marcha']);
+    const unipDir = safeParse(answers['unipodal_dir']);
+    const unipEsq = safeParse(answers['unipodal_esq']);
+    const sits = safeParse(answers['sentar_levantar']);
+    const gripE = safeParse(answers['preensao_esq']);
+    const gripD = safeParse(answers['preensao_dir']);
+
+    // 1. Fall Risk & Balance
+    if (tug > 12.47 || unipDir < 10 || unipEsq < 10 || safeParse(answers['tandem']) < 17.56) {
+      suggestions.push({ id: 'ger_balance', title: 'Treino de Equilíbrio e Propriocepção', description: 'Exercícios de transferência de peso, marcha em tandem e apoio unipodal desafiado.', category: 'Mobilidade' });
+      suggestions.push({ id: 'ger_home_safety', title: 'Educação: Segurança Domiciliar', description: 'Orientar sobre retirada de tapetes, iluminação adequada e uso de barras de apoio para prevenir quedas.', category: 'Educação' });
+    }
+
+    // 2. Strength / Sarcopenia Risk
+    if (sits > 12 || gripE < 16 || gripD < 16) {
+      suggestions.push({ id: 'ger_strength', title: 'Fortalecimento de Membros Inferiores', description: 'Focar em grandes grupos musculares (quadríceps, glúteos) para melhorar funcionalidade e independência.', category: 'Fortalecimento' });
+    }
+
+    // 3. Mobility / ADM
+    if (safeParse(answers['adm_quadril_esq']) < 90 || safeParse(answers['adm_quadril_dir']) < 90) {
+      suggestions.push({ id: 'ger_hip_mob', title: 'Mobilidade de Quadril', description: 'Exercícios para ganho de amplitude em flexão e rotações de quadril.', category: 'Mobilidade' });
+    }
+
+    // 4. Manual Therapy
+    if (hasValue(answers['adm_geriatria_obs'])) {
+      suggestions.push({ id: 'ger_manual', title: 'Terapia Manual Assistida', description: 'Mobilização articular suave e liberação miofascial se houver pontos gatilhos detectados.', category: 'Manual' });
+    }
+  }
   // -- LOGIC FOR SHOULDER (afOmbro) --
   if (questionnaireId === 'afOmbro') {
     // 1. ADM / Capsular
@@ -482,6 +511,37 @@ export function generateDiagnosticText(questionnaireId: string, answers: Record<
   });
   if (hyperReflexes.length > 0) {
     findings.push(`Presença de HIPERREFLEXIA (${hyperReflexes.join(', ')}). Sugere-se realizar Testes Especiais para sinais de liberação piramidal.`);
+  }
+
+  // 9. Geriatrics Specific (New)
+  if (questionnaireId === 'afGeriatria') {
+    const tug = safeParse(answers['tug']);
+    const gaitSpeed = safeParse(answers['vel_marcha']);
+    const unipE = safeParse(answers['unipodal_esq']);
+    const unipD = safeParse(answers['unipodal_dir']);
+
+    // Fall Risk Classification
+    if (tug > 0 || unipE > 0 || unipD > 0) {
+      const isHighRisk = tug > 15 || unipE < 5 || unipD < 5;
+      const isModRisk = (tug > 12.47 && tug <= 15) || (unipE >= 5 && unipE < 10) || (unipD >= 5 && unipD < 10);
+      
+      if (isHighRisk) findings.push("ALTO RISCO DE QUEDAS: Paciente apresenta déficits críticos de mobilidade e equilíbrio.");
+      else if (isModRisk) findings.push("RISCO MODERADO DE QUEDAS: Monitorar equilíbrio dinâmico e sugerir adaptações ambientais.");
+      else findings.push("Risco de Quedas: Baixo/Dentro da normalidade para a idade.");
+    }
+
+    // Frailty / Sarcopenia
+    if (gaitSpeed > 0 && gaitSpeed < 0.8) findings.push("Sinais de Fragilidade: Velocidade de marcha reduzida (< 0.8 m/s).");
+    
+    const sits = safeParse(answers['sentar_levantar']);
+    if (sits > 12) findings.push(`Déficit de Força Funcional (MMII): Teste Sentar/Levantar elevado (${sits}s).`);
+
+    const gripE = safeParse(answers['preensao_esq']);
+    const gripD = safeParse(answers['preensao_dir']);
+    const gripRef = 16; // Simple shared ref for logic check
+    if ((gripE > 0 && gripE < gripRef) || (gripD > 0 && gripD < gripRef)) {
+      findings.push("Sugerido rastreio de Sarcopenia devido à baixa força de preensão palmar.");
+    }
   }
 
   if (findings.length === 0) return "DIAGNÓSTICO CINÉTICO FUNCIONAL:\n\n• Quadro de estabilidade e funcionalidade dentro dos padrões de normalidade.";

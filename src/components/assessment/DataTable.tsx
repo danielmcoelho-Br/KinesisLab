@@ -54,9 +54,9 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                             <th 
                                 key={idx} 
                                 style={{ 
-                                    padding: isPrint ? '0.6rem 0.75rem' : '1.1rem 1rem', 
+                                    padding: isPrint ? '0.35rem 0.5rem' : '1.1rem 1rem', 
                                     textAlign: idx === 0 ? 'left' : 'center', 
-                                    fontSize: isPrint ? '0.65rem' : '0.75rem', 
+                                    fontSize: isPrint ? '0.6rem' : '0.75rem', 
                                     fontWeight: '800', 
                                     color: 'var(--primary)', // BRAND RED TEXT
                                     letterSpacing: '0.025em',
@@ -127,8 +127,8 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                         return (
                             <tr key={rIdx} style={{ transition: 'background-color 0.2s' }}>
                                 <td style={{ 
-                                    padding: isPrint ? '0.5rem 0.75rem' : '1.25rem 1rem', 
-                                    fontSize: isPrint ? '0.75rem' : '0.82rem', 
+                                    padding: isPrint ? '0.3rem 0.5rem' : '1.25rem 1rem', 
+                                    fontSize: isPrint ? '0.7rem' : '0.82rem', 
                                     fontWeight: '700', 
                                     color: 'var(--secondary)', 
                                     borderBottom: '1px solid #f8fafc',
@@ -164,33 +164,39 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                                                 calculatedValue = '0%';
                                             }
                                         }
-                                    } else if (fieldId.endsWith('_res')) {
-                                        let sourceValFieldId = '';
-                                        if (fieldId === 'resist_flexora_res') sourceValFieldId = 'resist_flexora';
-                                        else if (fieldId === 'resist_extensora_res') sourceValFieldId = 'resist_extensora';
-                                        else if (fieldId === 'flexao_60_res') sourceValFieldId = 'flexao_60';
-                                        else if (fieldId === 'sorensen_res') sourceValFieldId = 'sorensen';
+                                    } else if (fieldId.endsWith('_res') || fieldId.endsWith('_res_esq') || fieldId.endsWith('_res_dir')) {
+                                        const sourceValFieldId = fieldId.replace('_res_esq', '').replace('_res_dir', '').replace('_res', '');
+                                        const valStr = answers[sourceValFieldId];
                                         
-                                        if (sourceValFieldId) {
-                                            const valStr = answers[sourceValFieldId];
-                                            if (valStr && valStr.trim() !== '') {
-                                                const numVal = parseFloat(valStr.replace(',', '.'));
-                                                const threshold = getEnduranceThreshold({
-                                                    testId: sourceValFieldId,
-                                                    gender: patientGender,
-                                                    age: patientAge,
-                                                    activityLevel: patientActivityLevel
-                                                });
+                                        if (valStr && valStr.trim() !== '') {
+                                            const numVal = parseFloat(valStr.replace(',', '.'));
+                                            const threshold = getEnduranceThreshold({
+                                                testId: sourceValFieldId,
+                                                gender: patientGender,
+                                                age: patientAge,
+                                                activityLevel: patientActivityLevel
+                                            });
+
+                                            if (threshold > 0) {
                                                 const isNormal = numVal >= threshold;
-                                                calculatedValue = isNormal ? 'Normal' : 'Reduzido';
+                                                calculatedValue = isNormal ? 'NORMAL' : 'ABAIXO';
                                             } else {
-                                                calculatedValue = '';
+                                                // Check for other types of thresholds (e.g. static tests in geriatrics)
+                                                // For now, if no endurance threshold, keep the original behavior if it was defined
+                                                if (['pes_juntos', 'semi_tandem', 'tandem', 'unipodal_dir', 'unipodal_esq'].includes(sourceValFieldId)) {
+                                                    const ref = sourceValFieldId.includes('tandem') ? 17.56 : (sourceValFieldId.includes('unipodal') ? 10 : 30);
+                                                    calculatedValue = numVal >= ref ? 'NORMAL' : 'ABAIXO';
+                                                } else if (sourceValFieldId === 'tug') {
+                                                    calculatedValue = numVal <= 12.47 ? 'NORMAL' : 'ABAIXO';
+                                                } else if (sourceValFieldId === 'vel_marcha') {
+                                                    calculatedValue = numVal >= 0.8 ? 'NORMAL' : 'ABAIXO';
+                                                }
                                             }
                                         }
                                     }
 
                                     return (
-                                        <td key={fIdx} style={{ padding: isPrint ? '0.4rem' : '0.6rem', borderBottom: '1px solid #f8fafc' }}>
+                                        <td key={fIdx} style={{ padding: isPrint ? '0.2rem' : '0.6rem', borderBottom: '1px solid #f8fafc' }}>
                                             <DataTableCell 
                                                 fieldId={fieldId}
                                                 fieldType={fieldType}

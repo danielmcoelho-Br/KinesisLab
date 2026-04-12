@@ -16,6 +16,7 @@ interface AssessmentHistoryChartProps {
     currentDate?: string;
     isEndurance?: boolean;
     useScoreData?: boolean;
+    maxWidth?: string;
 }
 
 const AssessmentHistoryChart = ({ 
@@ -30,7 +31,8 @@ const AssessmentHistoryChart = ({
     assessmentId,
     currentDate = new Date().toLocaleDateString('pt-BR'),
     isEndurance = false,
-    useScoreData = false
+    useScoreData = false,
+    maxWidth: overrideMaxWidth
 }: AssessmentHistoryChartProps) => {
     
     // Safer number parsing for questionnaires (handles "40%" or empty strings)
@@ -72,7 +74,7 @@ const AssessmentHistoryChart = ({
     const totalBars = validHistoryData.length + (parsedCurrentValue > 0 ? 1 : 0) + (referenceValue ? 1 : 0);
     
     // ALWAYS FILL THE GRID CELL
-    const chartMaxWidth = '100%';
+    const chartMaxWidth = overrideMaxWidth || '100%';
 
     // DETERMINISTIC OFFSET: matches Bar.tsx (gap: 8px + label block: 32px = 40px)
     const labelOffset = 40; 
@@ -170,20 +172,21 @@ const AssessmentHistoryChart = ({
                     border-radius: 1rem;
                     border: 1px solid var(--border);
                     box-shadow: ${isPrint ? 'none' : 'var(--shadow-sm)'};
+                    width: 100%;
                     max-width: ${chartMaxWidth};
                     padding: ${isPrint ? '0.75rem' : '1.25rem'};
                     overflow-x: ${isPrint ? 'hidden' : 'auto'};
                     -webkit-overflow-scrolling: touch;
                 }
                 .chart-title {
-                    font-size: ${isPrint ? '0.75rem' : '0.85rem'};
+                    font-size: ${isPrint ? '0.7rem' : '0.85rem'};
                     font-weight: 700;
-                    margin-bottom: 1rem;
+                    margin-bottom: 0.75rem;
                     color: var(--secondary);
                     display: flex;
                     align-items: center;
                     gap: 0.5rem;
-                    line-height: 1.3;
+                    line-height: 1.2;
                     word-break: break-word;
                 }
                 .chart-scroll-wrapper {
@@ -192,11 +195,11 @@ const AssessmentHistoryChart = ({
                 }
                 .chart-bars-container {
                     display: flex;
-                    gap: 16px;
+                    gap: 12px;
                     align-items: flex-end;
-                    min-height: 180px;
-                    min-width: ${isPrint ? 'auto' : '220px'};
-                    width: 100%; // ALWAYS FILL
+                    min-height: 150px;
+                    min-width: ${isPrint ? 'auto' : '200px'};
+                    width: 100%; 
                     justify-content: flex-start;
                 }
             `}</style>

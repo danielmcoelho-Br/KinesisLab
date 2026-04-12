@@ -147,8 +147,8 @@ const DataTableCell = memo(({
     }
 
     if (fieldId.endsWith('_res') || fieldId.endsWith('_res_esq') || fieldId.endsWith('_res_dir') || fieldId.endsWith('_class') || fieldId.endsWith('_status')) {
-        const isNormal = value === 'Normal';
-        const isReduced = value === 'Reduzido' || value === 'Abaixo' || value === 'Déficit' || value?.includes('Déficit');
+        const isNormal = value === 'Normal' || value === 'NORMAL';
+        const isReduced = value === 'Reduzido' || value === 'Abaixo' || value === 'Déficit' || value === 'ABAIXO' || value?.includes('Déficit');
         
         return (
             <div style={{ textAlign: 'center' }}>
@@ -193,7 +193,7 @@ const DataTableCell = memo(({
                     boxShadow: isOutOfRange ? '0 0 0 2px #ffedd5' : 'none'
                 }}
             />
-            {isEditing && fieldType === 'number' && (fieldId.includes('forca') || fieldId.startsWith('f_') || fieldId.includes('preensao') || fieldId.includes('polpa') || fieldId.includes('lateral') || fieldId.includes('tripode') || fieldId.includes('resist')) && onOpenDynamo && (
+            {isEditing && state.type !== 'afLombar' && state.type !== 'afCervical' && fieldType === 'number' && (fieldId.includes('forca') || fieldId.startsWith('f_') || fieldId.includes('preensao') || fieldId.includes('polpa') || fieldId.includes('lateral') || fieldId.includes('tripode') || fieldId.includes('resist')) && onOpenDynamo && (
                 <button
                     type="button"
                     onClick={() => onOpenDynamo(fieldId, rowLabel || "")}

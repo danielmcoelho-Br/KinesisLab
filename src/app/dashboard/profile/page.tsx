@@ -50,6 +50,13 @@ export default function ProfilePage() {
         }
 
         setLoading(true);
+        
+        if (!user?.id) {
+            toast.error("Sessão expirada. Por favor, saia e entre novamente.");
+            setLoading(false);
+            return;
+        }
+
         const res = await updateProfile(user.id, formData);
         setLoading(false);
 

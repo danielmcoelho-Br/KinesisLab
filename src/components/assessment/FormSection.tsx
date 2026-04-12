@@ -78,10 +78,10 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
             initial={isPrint ? {} : { opacity: 0, x: 20 }}
             animate={isPrint ? {} : { opacity: 1, x: 0 }}
             className="section-container"
-            style={{ marginBottom: hideTitle ? '1rem' : '2.5rem', pageBreakInside: 'avoid' }}
+            style={{ marginBottom: isPrint ? (hideTitle ? '0.5rem' : '1.25rem') : (hideTitle ? '1rem' : '2.5rem'), pageBreakInside: 'avoid' }}
         >
             {!hideTitle && (
-                <h3 style={{ fontSize: '1.25rem', fontWeight: '800', marginBottom: '1.5rem', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: isPrint ? '0.75rem' : '1.5rem', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     {section.title}
                 </h3>
             )}
@@ -337,54 +337,61 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                     </div>
                 </div>
             ) : section.type === 'table' ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
                     <DataTable 
                         section={section} 
                         isPrint={isPrint}
-                    />
-                    {['perimetria', 'forca', 'dinamometria', 'ndi_integracao', 'oswestry_integracao', 'quickdash_integracao', 'testes_especiais_resistidos'].includes(section.id) && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginTop: '1rem' }}>
-                    {section.rows?.map((row: TableRow) => row.fields.map((f, fidx: number) => {
+                    />                    {/* 1. SIDE-BY-SIDE EVOLUTION CHARTS (Data-heavy sections) */}
+                    {['perimetria', 'forca', 'dinamometria', 'ndi_integracao', 'oswestry_integracao', 'quickdash_integracao', 'resistencia', 'testes_especiais_resistidos', 'resistencia_tronco', 'testes_equilibrio', 'adm', 'movimento_cervical', 'movimento_lombar'].includes(section.id) && (
+                        <div style={{ 
+                            display: (isPrint && (type === 'afLombar' || type === 'afCervical')) ? 'grid' : 'flex', 
+                            gridTemplateColumns: (isPrint && (type === 'afLombar' || type === 'afCervical')) ? '1fr 1fr' : 'none',
+                            gridAutoRows: 'auto',
+                            flexWrap: (isPrint && (type === 'afLombar' || type === 'afCervical')) ? 'nowrap' : 'wrap', 
+                            gap: (isPrint && (type === 'afLombar' || type === 'afCervical')) ? '2.5%' : '1.5rem', 
+                            marginTop: '1.5rem',
+                            width: '100%',
+                            pageBreakInside: 'avoid'
+                        }}>
+                            {section.rows?.map((row: TableRow) => row.fields.map((f, fidx: number) => {
                                 const fid = typeof f === "string" ? f : (f as any).id;
                                 if (excludeFields.includes(fid)) return null;
                                 
-                                // Filter out non-measurement fields
+                                // Render ONLY charts here, not individual fields (DataTable handles the inputs)
                                 if (fid.endsWith('_res') || fid.endsWith('_status') || fid.endsWith('_obs')) return null;
 
-                                const col = section.columns?.[fidx + 1];
-                                const colLabel = typeof col === "string" ? col : (col?.label || "");
+                                const colLabel = typeof section.columns?.[fidx + 1] === "string" 
+                                    ? section.columns?.[fidx + 1] 
+                                    : (section.columns?.[fidx + 1] as any)?.label || "";
                                 
-                                // Normalize value for chart
-                                const currentValue = answers[fid];
-                                
-                                // Define reference values for clinical tests
                                 const referenceValue = ['resist_flexora', 'resist_extensora', 'flexao_60', 'sorensen'].includes(fid) 
-                                    ? getEnduranceThreshold({ testId: fid, gender: patientGender, age: patientAge, activityLevel: state.patientActivityLevel })
+                                    ? getEnduranceThreshold({ testId: fid, gender: state.patientGender, age: state.patientAge, activityLevel: state.patientActivityLevel })
                                     : undefined;
 
                                 const isClinicalTest = ['resist_flexora', 'resist_extensora', 'flexao_60', 'sorensen'].includes(fid);
-                                const isSideSpecific = colLabel.includes("Esquerdo") || colLabel.includes("Direito");
+                                const isTime = colLabel.includes("Tempo") || colLabel.includes("segundos");
+                                const isValue = colLabel.includes("Valor") || colLabel.includes("Tentativa");
                                 const isScore = fid.endsWith("_score");
 
-                                const profile = getPatientProfileString(patientGender, patientAge, state.patientActivityLevel);
-                                const chartTitle = isClinicalTest 
-                                    ? `${row.label.replace('(Ref: Normativa)', '').trim()} (${profile}: ${referenceValue}s)`
-                                    : `Evolução: ${row.label} (${colLabel})`;
+                                if ((isScore || isClinicalTest || isTime || isValue) && (patientAssessments.length > 1 || referenceValue)) {
+                                    const profile = getPatientProfileString(state.patientGender, state.patientAge, state.patientActivityLevel);
+                                    const chartTitle = isClinicalTest 
+                                        ? `${row.label.replace('(Ref: Normativa)', '').trim()} (${profile}: ${referenceValue}s)`
+                                        : `Evolução: ${row.label} (${colLabel})`;
 
-                                if ((isSideSpecific || isScore || isClinicalTest) && (patientAssessments.length > 1 || referenceValue)) {
                                     return (
                                         <AssessmentHistoryChart 
                                             key={`hist-${fid}`}
                                             fieldId={fid}
-                                            currentValue={currentValue || 0}
+                                            currentValue={answers[fid] || 0}
                                             chartTitle={chartTitle}
-                                            unit={isScore ? "%" : ((section.id.includes("forca") || section.id.includes("dinamometria")) && !isClinicalTest ? "kgF" : "s")}
+                                            unit={isScore ? "%" : ((section.id.includes("forca") || section.id.includes("dinamometria")) && !isClinicalTest ? "kgF" : (isTime ? "s" : "un"))}
                                             history={patientAssessments}
                                             isPrint={isPrint}
                                             assessmentId={assessmentId}
                                             referenceValue={referenceValue}
                                             referenceLabel="Normalidade"
-                                            isEndurance={true}
+                                            isEndurance={isClinicalTest}
                                             useScoreData={isScore}
                                         />
                                     );
@@ -393,22 +400,25 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                             }))}
                         </div>
                     )}
-                    <div style={{ display: 'grid', gridTemplateColumns: section.fields?.some((f:any)=> f.type === 'textarea') ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '0.5rem' }}>
-                        {section.fields?.filter((f: any) => {
-                            if (excludeFields.includes(f.id)) return false;
-                            if (isEditing) return true;
-                            if (f.type === 'button') return f.id?.endsWith('_novo');
-                            // HIDE REDUNDANT SCORE FIELDS IN VIEW MODES
-                            if (!isEditing && (f.id === 'oswestry_score' || f.id === 'ndi_score')) return false;
-                            return hasVal(answers[f.id]);
-                        }).map((field: any) => (
-                            <FormField 
-                                key={field.id}
-                                field={field}
-                                isPrint={isPrint}
-                            />
-                        ))}
-                    </div>
+
+                    {/* 2. FULL-WIDTH TEXT FIELDS (Anamnese, Diagnóstico, etc.) */}
+                    {section.fields && section.fields.length > 0 && (
+                        <div style={{ display: 'grid', gridTemplateColumns: section.fields.some((f: any) => f.type === 'textarea') ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '0.5rem', width: '100%' }}>
+                            {section.fields.filter((f: any) => {
+                                if (excludeFields.includes(f.id)) return false;
+                                if (isEditing) return true;
+                                if (f.type === 'button') return f.id?.endsWith('_novo');
+                                if (!isEditing && (f.id === 'oswestry_score' || f.id === 'ndi_score')) return false;
+                                return hasVal(answers[f.id]);
+                            }).map((field: any) => (
+                                <FormField 
+                                    key={field.id}
+                                    field={field}
+                                    isPrint={isPrint}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
             ) : section.type === 'multi-table' ? (
                 <div style={{ 
@@ -424,11 +434,11 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                         return checkFields(sub.fields) || (sub.type === "table" && checkRows(sub.rows));
                     }).map((sub: Section, sidx: number) => (
                         <div key={sidx} style={{ 
-                            padding: isPrint ? '0.75rem' : '1.5rem', 
+                            padding: isPrint ? '0.5rem' : '1.5rem', 
                             backgroundColor: 'white', 
                             borderRadius: '0.75rem', 
                             border: '1px solid var(--border)',
-                            pageBreakInside: 'avoid'
+                            pageBreakInside: 'auto'
                         }}>
                             <h4 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', color: 'var(--secondary)' }}>{sub.title}</h4>
                              {sub.type === 'table' ? (
@@ -437,8 +447,8 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                                         /* UNIFIED Layout for Endurance/Muscular Resistance Tests: 1 Table (50%) + 2 Charts (25% each) */
                                          <div style={{ 
                                              display: 'grid', 
-                                             gridTemplateColumns: (isEditing && !isPrint) ? '1fr' : '2fr 1fr 1fr', 
-                                             gap: isPrint ? '1rem' : '1.5rem',
+                                             gridTemplateColumns: (isEditing && !isPrint) ? '1fr' : (isPrint ? '1fr' : '2fr 1fr 1fr'), 
+                                             gap: isPrint ? '0.75rem' : '1.5rem',
                                              alignItems: 'flex-start',
                                              width: '100%'
                                          }}>
@@ -451,10 +461,11 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                                              
                                              {/* Render Charts as direct children of the grid in summary mode */}
                                              <div style={{ 
-                                                 display: (isEditing && !isPrint) ? 'grid' : 'contents', 
-                                                 gridTemplateColumns: (isEditing && !isPrint) ? '1fr 1fr' : 'none',
-                                                 gap: isPrint ? '1rem' : '1.5rem',
-                                                 width: '100%'
+                                                 display: (isEditing && !isPrint || isPrint) ? 'grid' : 'contents', 
+                                                 gridTemplateColumns: (isEditing && !isPrint || isPrint) ? '1fr 1fr' : 'none',
+                                                 gap: isPrint ? '4%' : '1.5rem',
+                                                 width: '100%',
+                                                 marginTop: isPrint ? '0.5rem' : '0'
                                              }}>
                                                  {sub.rows?.map((row: TableRow) => row.fields.map((f, fidx: number) => {
                                                      const fid = typeof f === "string" ? f : (f as any).id;
@@ -496,7 +507,13 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                                          />
                                      )}
                                      {['perimetria', 'forca', 'dinamometria', 'ndi_integracao', 'oswestry_integracao', 'quickdash_integracao'].includes(sub.id) && (
-                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginTop: '1rem' }}>
+                                         <div style={{ 
+                                             display: (isPrint && (type === 'afLombar' || type === 'afCervical')) ? 'grid' : 'flex', 
+                                             gridTemplateColumns: (isPrint && (type === 'afLombar' || type === 'afCervical')) ? '1fr 1fr' : 'none',
+                                             flexWrap: (isPrint && (type === 'afLombar' || type === 'afCervical')) ? 'nowrap' : 'wrap', 
+                                             gap: (isPrint && (type === 'afLombar' || type === 'afCervical')) ? '4%' : '1.5rem', 
+                                             marginTop: '1rem' 
+                                         }}>
                                              {sub.rows?.map((row: TableRow) => row.fields.map((f, fidx: number) => {
                                                  const fid = typeof f === "string" ? f : (f as any).id;
                                                  

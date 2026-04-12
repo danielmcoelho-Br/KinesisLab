@@ -366,7 +366,7 @@ body {
   .clinical-summary-container {
     display: block !important;
     width: 100% !important;
-    padding: 1.5cm !important;
+    padding: 0 !important;
   }
 
   /* Structural elements that shouldn't break across pages */

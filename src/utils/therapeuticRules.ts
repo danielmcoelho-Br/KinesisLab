@@ -158,6 +158,18 @@ export function getTherapeuticSuggestions(questionnaireId: string, answers: Reco
     });
   }
 
+  // -- LOGIC FOR GERIATRICS (afGeriatria) --
+  // 2. Gait
+  const vel = parseFloat(String(answers['vel_marcha'] || '1').replace(',', '.'));
+  if (vel > 0 && vel < 0.8) {
+    suggestions.push({ 
+      id: 'ger_gait', 
+      title: 'Treino de Marcha e Velocidade', 
+      description: 'Trabalhar cadência e comprimento do passo para aumentar velocidade funcional.', 
+      category: 'Mobilidade' 
+    });
+  }
+
   // Group by category
   const groups: Record<string, Suggestion[]> = {};
   suggestions.forEach(s => {
@@ -229,6 +241,23 @@ export function generateDiagnosticText(questionnaireId: string, answers: Record<
     findings.push(`Limitação da amplitude de movimento (ADM) de: ${romFindings.join(', ')}`);
   }
 
+  // 2.1 Myelopathy Screen (New)
+  const specialTestsFields = [
+    'hoffmann_esq', 'hoffmann_dir', 'babinski_esq', 'babinski_dir', 'clonus_esq', 'clonus_dir',
+    'hoffmann_esq_l', 'hoffmann_dir_l', 'babinski_esq_l', 'babinski_dir_l', 'clonus_esq_l', 'clonus_dir_l'
+  ];
+  const hasPositiveSpecialTest = specialTestsFields.some(field => answers[field] === true);
+  if (hasPositiveSpecialTest) {
+    findings.push("Sugerido investigação de mielopatia cervical.");
+  }
+
+  // 2.2 Cauda Equina Screen (New)
+  const caudaEquinaFields = ['cauda_esfincter_pos', 'cauda_mmii_pos', 'cauda_perineo_pos'];
+  const hasCaudaEquinaSign = caudaEquinaFields.some(field => answers[field] === true);
+  if (hasCaudaEquinaSign) {
+    findings.push("Sinais sugestivos de Síndrome da Cauda Equina. Encaminhamento de EMERGÊNCIA.");
+  }
+
   // 3. Endurance
   const enduranceFindings: string[] = [];
   if (answers['sorensen_res'] === 'Reduzido' || answers['resist_extensora_res'] === 'Reduzido') enduranceFindings.push('Extensores');
@@ -286,6 +315,30 @@ export function generateDiagnosticText(questionnaireId: string, answers: Record<
   });
   if (vertebrae.length > 0) {
     findings.push(`Disfunção segmentar / Irritabilidade vertebral nos níveis: ${vertebrae.join(', ')}`);
+  }
+
+  // 7. Muscle Strength (New)
+  const strengthDeficits: string[] = [];
+  Object.entries(answers).forEach(([key, val]) => {
+    if (key.startsWith('forca_') && hasValue(val) && parseInt(val) < 5) {
+      const label = key.replace('forca_', '').replace('_esq', ' (Esq)').replace('_dir', ' (Dir)').toUpperCase();
+      strengthDeficits.push(`${label}: Grau ${val}/5`);
+    }
+  });
+  if (strengthDeficits.length > 0) {
+    findings.push(`Déficit de força muscular (Miótomos): ${strengthDeficits.join(', ')}`);
+  }
+
+  // 8. Reflexes / Hyperreflexia (New)
+  const hyperReflexes: string[] = [];
+  Object.entries(answers).forEach(([key, val]) => {
+    if (key.startsWith('ref_') && val === 'Hiperreflexia') {
+      const label = key.replace('ref_', '').replace('_esq', ' (Esq)').replace('_dir', ' (Dir)').toUpperCase();
+      hyperReflexes.push(label);
+    }
+  });
+  if (hyperReflexes.length > 0) {
+    findings.push(`Presença de HIPERREFLEXIA (${hyperReflexes.join(', ')}). Sugere-se realizar Testes Especiais para sinais de liberação piramidal.`);
   }
 
   if (findings.length === 0) return "DIAGNÓSTICO CINÉTICO FUNCIONAL:\n\n• Quadro de estabilidade e funcionalidade dentro dos padrões de normalidade.";

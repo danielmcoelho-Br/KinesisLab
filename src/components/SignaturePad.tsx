@@ -71,7 +71,7 @@ export default function SignaturePad({ value, onChange }: SignaturePadProps) {
             contextRef.current?.closePath();
             setIsDrawing(false);
             const canvas = canvasRef.current;
-            if (canvas) onChange(canvas.toDataURL());
+            if (canvas) onChange(canvas.toDataURL('image/webp', 0.6));
         }
     };
 
@@ -108,7 +108,7 @@ export default function SignaturePad({ value, onChange }: SignaturePadProps) {
             ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
             ctx.drawImage(img, 0, 0);
             setHistory(newHistory);
-            onChange(canvas.toDataURL());
+            onChange(canvas.toDataURL('image/webp', 0.6));
         };
         img.src = prevState;
     };

@@ -17,7 +17,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { getEnduranceThreshold, getPatientProfileString } from "@/utils/clinicalThresholds";
 
 interface FormFieldProps {
-    field: SectionField; 
+    field: SectionField & { hideLabel?: boolean }; 
     isPrint?: boolean;
     value?: unknown; // To allow overriding answers manually
 }
@@ -165,8 +165,8 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
             );
         }
         return (
-          <div key={field.id} className="form-group" style={{ gridColumn: (field.id === 'inspecao_text' || field.id === 'obs_perimetria') ? '1 / -1' : 'auto' }}>
-            <label className="form-label">{field.label}</label>
+          <div key={field.id} className="form-group" style={{ width: '100%', gridColumn: (field.id === 'inspecao_text' || field.id === 'obs_perimetria' || field.type === 'textarea') ? '1 / -1' : 'auto' }}>
+            {(!field.hideLabel && field.label) && <label className="form-label">{field.label}</label>}
             {!isEditing ? (
                 <div style={{ 
                     width: '100%', 
@@ -192,7 +192,7 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                         placeholder="Descreva aqui..."
                         style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)', fontSize: '0.85rem' }}
                     />
-                    {field.id === 'conclusao' && isEditing && (['afLombar', 'afCervical'].includes(type)) && (
+                    {['conclusao', 'sugestoes_obs'].includes(field.id) && isEditing && (['afLombar', 'afCervical', 'afGeriatria'].includes(type)) && (
                         <div style={{ marginTop: '0.5rem' }}>
                             <button
                                 type="button"
@@ -220,7 +220,7 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                             </button>
                         </div>
                     )}
-                    {field.id === 'diagnostico' && isEditing && (['afLombar', 'afCervical'].includes(type)) && (
+                    {['diagnostico', 'diagnostico_funcional', 'risco_quedas'].includes(field.id) && isEditing && (['afLombar', 'afCervical', 'afGeriatria'].includes(type)) && (
                         <div style={{ marginTop: '0.5rem' }}>
                             <button
                                 type="button"
@@ -341,11 +341,13 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                 maxWidth: '100%',
                 alignSelf: 'center'
             }}>
-                <label className="form-label" style={{ fontWeight: '800', marginBottom: '2.5rem', display: 'block' }}>
-                    {isEVA ? 'Intensidade de Dor (EVA)' : field.label}
-                </label>
+                {!field.hideLabel && (
+                    <label className="form-label" style={{ fontWeight: '800', marginBottom: isPrint ? '0.75rem' : '2.5rem', display: 'block' }}>
+                        {isEVA ? 'Intensidade de Dor (EVA)' : field.label}
+                    </label>
+                )}
                 
-                <div style={{ position: 'relative', width: '100%', paddingTop: '0.5rem' }}>
+                <div style={{ position: 'relative', width: '100%', paddingTop: isPrint ? '0.25rem' : '0.5rem' }}>
                     <div style={{ 
                         height: '6px', 
                         width: '100%', 
@@ -383,7 +385,7 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                             {value || 0}
                         </div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#666', marginTop: '0.8rem', fontWeight: '600' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#666', marginTop: isPrint ? '0.4rem' : '0.8rem', fontWeight: '600' }}>
                         <span>0 — {isEVA ? 'SEM DOR' : 'MÍNIMO'}</span>
                         <span>10 — {isEVA ? 'DOR INSUPORTÁVEL' : 'MÁXIMO'}</span>
                     </div>
@@ -534,15 +536,36 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
 
         // MODO RESUMO / IMPRESSÃO
         return (
-            <div key={field.id} className="form-group" style={{ marginBottom: '1.5rem' }}>
-                <label className="form-label" style={{ marginBottom: '1rem', display: 'block', fontWeight: '800', color: isPrint ? '#8b0000' : 'var(--secondary)' }}>
-                    {(isPrint || !isEditing) ? field.label.split('(')[0].trim() : field.label}
-                </label>
-                <div style={{ width: '100%', maxWidth: '1000px', margin: '0 auto' }}>
+            <div key={field.id} className="form-group" style={{ marginBottom: isPrint ? '0.75rem' : '1.5rem' }}>
+                {!field.hideLabel && (
+                    <label className="form-label" style={{ marginBottom: '1rem', display: 'block', fontWeight: '800', color: isPrint ? '#8b0000' : 'var(--secondary)' }}>
+                        {(isPrint || !isEditing) ? field.label.split('(')[0].trim() : field.label}
+                    </label>
+                )}
+                <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto' }}>
                     {value ? (
-                            <div style={{ position: 'relative', width: '100%', maxWidth: '700px', margin: '0 auto', borderRadius: '2rem', overflow: 'hidden', border: isPrint ? '1px solid #eee' : 'none' }}>
-                                <img src={field.image || "/img/esquema_corpo_inteiro.png"} style={{ width: '100%', height: 'auto', display: 'block' }} alt="Background" />
-                                <img src={value as string} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="Marks" />
+                            <div style={{ 
+                                display: 'grid',
+                                gridTemplateColumns: '1fr',
+                                gridTemplateRows: '1fr',
+                                position: 'relative', 
+                                width: '100%', 
+                                maxWidth: '750px', 
+                                margin: '0 auto', 
+                                borderRadius: '2rem', 
+                                overflow: 'hidden', 
+                                border: isPrint ? '1px solid #eee' : 'none' 
+                            }}>
+                                <img 
+                                    src={field.image || "/img/esquema_corpo_inteiro.png"} 
+                                    style={{ gridArea: '1/1', width: '100%', height: 'auto', display: 'block' }} 
+                                    alt="Background" 
+                                />
+                                <img 
+                                    src={value as string} 
+                                    style={{ gridArea: '1/1', width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none' }} 
+                                    alt="Marks" 
+                                />
                             </div>
                     ) : (
                         <div style={{ color: '#ccc', fontSize: '0.9rem', padding: '2rem', fontStyle: 'italic', textAlign: 'center', backgroundColor: 'white', borderRadius: '1rem', border: '1px solid var(--border)' }}>
@@ -571,7 +594,9 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
         const isDataUrl = typeof value === 'string' && (value.startsWith('data:image') || value.startsWith('http'));
         return (
             <div key={field.id} className="form-group">
-                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block', fontWeight: (isPrint || !isEditing) ? '800' : 'inherit' }}>{field.label}</label>
+                {!field.hideLabel && (
+                    <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block', fontWeight: (isPrint || !isEditing) ? '800' : 'inherit' }}>{field.label}</label>
+                )}
                 <div style={{ pointerEvents: isEditing ? 'auto' : 'none', opacity: 1 }}>
                     <div style={{ 
                         display: 'grid',
@@ -579,7 +604,7 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                         gridTemplateRows: '1fr',
                         position: 'relative', 
                         width: '100%', 
-                        maxWidth: '700px', 
+                        maxWidth: '750px', 
                         margin: '0 auto', 
                         borderRadius: '2rem', 
                         overflow: 'hidden', 
@@ -590,11 +615,13 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                             style={{ gridArea: '1/1', width: '100%', height: 'auto', display: 'block' }} 
                             alt="Background" 
                         />
-                        <img 
-                            src={value as string} 
-                            style={{ gridArea: '1/1', width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none' }} 
-                            alt="Marks" 
-                        />
+                        {value && (
+                            <img 
+                                src={value as string} 
+                                style={{ gridArea: '1/1', width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none' }} 
+                                alt="Marks" 
+                            />
+                        )}
                     </div>
                 </div>
             </div>
@@ -603,7 +630,9 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
         const isAngleDataUrl = typeof value === 'string' && (value.startsWith('data:image') || value.startsWith('http'));
         return (
             <div key={field.id} className="form-group">
-                <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block', fontWeight: (isPrint || !isEditing) ? '800' : 'inherit' }}>{field.label}</label>
+                {!field.hideLabel && (
+                    <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block', fontWeight: (isPrint || !isEditing) ? '800' : 'inherit' }}>{field.label}</label>
+                )}
                 {(isPrint || !isEditing) && isAngleDataUrl ? (
                     <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
                          <img 

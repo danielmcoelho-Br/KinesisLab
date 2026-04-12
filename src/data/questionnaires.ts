@@ -397,9 +397,13 @@ export const questionnairesData: Record<string, Questionnaire> = {
         {
             id: 'testes_especiais_resistidos',
             title: 'Testes Resistidos e Especiais',
+            type: 'table',
+            columns: ['Teste', 'Tempo (s)', 'Resultado'],
+            rows: [
+                { id: 'res_flex_row', label: 'Resistência Musculatura Flexora', fields: ['resist_flexora', 'resist_flexora_res'] },
+                { id: 'res_ext_row', label: 'Resistência Musculatura Extensora', fields: ['resist_extensora', 'resist_extensora_res'] }
+            ],
             fields: [
-                { id: 'resist_flexora', label: 'Resistência Musculatura Flexora (segundos)', type: 'number' },
-                { id: 'resist_extensora', label: 'Resistência Musculatura Extensora (segundos)', type: 'number' },
                 { id: 'testes_especiais', label: 'Testes Especiais / Observações', type: 'textarea' }
             ]
         },
@@ -446,8 +450,9 @@ export const questionnairesData: Record<string, Questionnaire> = {
         level: 'red',
         message: 'Relato de alterações em sela ou disfunção esfincteriana associada a dor lombar súbita. Encaminhamento de EMERGÊNCIA necessário.',
         criteria: (answers) => {
-            // This is a placeholder for specific anamnesis flags if they exist
-            return String(answers['anamnese_texto'] || '').toLowerCase().includes('esfincter') || 
+            const caudaEquinaFields = ['cauda_esfincter_pos', 'cauda_mmii_pos', 'cauda_perineo_pos'];
+            return caudaEquinaFields.some(f => answers[f] === true) ||
+                   String(answers['anamnese_texto'] || '').toLowerCase().includes('esfincter') || 
                    String(answers['anamnese_texto'] || '').toLowerCase().includes('sela');
         }
       },
@@ -519,6 +524,17 @@ export const questionnairesData: Record<string, Questionnaire> = {
                         { id: 'babinski_l', label: 'Babinski', fields: [{ id: 'babinski_esq_l', type: 'checkbox' }, { id: 'babinski_dir_l', type: 'checkbox' }] },
                         { id: 'clonus_l', label: 'Clonus', fields: [{ id: 'clonus_esq_l', type: 'checkbox' }, { id: 'clonus_dir_l', type: 'checkbox' }] },
                         { id: 'claudicacao_neuro_l', label: 'Claudicação Neurogênica', fields: [{ id: 'claudicacao_esq_l', type: 'checkbox' }, { id: 'claudicacao_dir_l', type: 'checkbox' }] }
+                    ]
+                },
+                {
+                    id: 'sind_cauda_equina',
+                    title: 'Sind. Cauda Equina',
+                    type: 'table',
+                    columns: ['Sintoma', 'Positivo'],
+                    rows: [
+                        { id: 'cauda_esfincter', label: 'Controle de Esfincter', fields: [{ id: 'cauda_esfincter_pos', type: 'checkbox' }] },
+                        { id: 'cauda_mmii', label: 'Anestesia em MMII', fields: [{ id: 'cauda_mmii_pos', type: 'checkbox' }] },
+                        { id: 'cauda_perineo', label: 'Anestesia em Períneo', fields: [{ id: 'cauda_perineo_pos', type: 'checkbox' }] }
                     ]
                 }
             ],
@@ -636,9 +652,13 @@ export const questionnairesData: Record<string, Questionnaire> = {
         {
             id: 'testes_resistencia',
             title: 'Testes de Resistência Muscular',
+            type: 'table',
+            columns: ['Teste', 'Tempo (s)', 'Resultado'],
+            rows: [
+                { id: 'res_60_row', label: 'Flexão a 60º - Isometria Anterior', fields: ['flexao_60', 'flexao_60_res'] },
+                { id: 'res_sorensen_row', label: 'Teste de Sorensen - Isometria Posterior', fields: ['sorensen', 'sorensen_res'] }
+            ],
             fields: [
-                { id: 'flexao_60', label: 'Flexão a 60º - Isometria Anterior (segundos)', type: 'number' },
-                { id: 'sorensen', label: 'Teste de Sorensen - Isometria Posterior (segundos)', type: 'number' },
                 { id: 'testes_obs', label: 'Observações Adicionais', type: 'textarea' }
             ]
         },

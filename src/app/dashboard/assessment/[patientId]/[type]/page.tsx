@@ -25,7 +25,8 @@ import {
     ArrowUp,
     ArrowDownLeft,
     ArrowDownRight,
-    Ruler
+    Ruler,
+    AlertTriangle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { questionnairesData, Section, SectionField } from "@/data/questionnaires";
@@ -42,6 +43,7 @@ import PosturalAnalysisModal from "@/components/PosturalAnalysisModal";
 import { calculateAssessmentScore, CalculationType } from "@/lib/calculations";
 import { compressImage } from "@/lib/image-compressor";
 import { useAssessmentState } from "@/hooks/useAssessmentState";
+import ConfirmModal from "@/components/ConfirmModal";
 
 // Modularized Assessment Components
 import Bar from "@/components/assessment/Bar";
@@ -131,6 +133,9 @@ function AssessmentContent() {
     setShowExitModal
   } = state;
 
+  const [showMyelopathyModal, setShowMyelopathyModal] = useState(false);
+
+
   if (!patientId || !isValidUUID(patientId)) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', padding: '2rem', textAlign: 'center' }}>
@@ -163,6 +168,7 @@ function AssessmentContent() {
 
   const isClinical = !!questionnaire.sections;
   const items = isClinical ? questionnaire.sections! : questionnaire.questions!;
+
   const currentItem = items[currentIdx];
   const progress = ((currentIdx + 1) / items.length) * 100;
   
@@ -423,6 +429,28 @@ function AssessmentContent() {
                             {currentIdx < items.length - 1 && (
                                 <button
                                     onClick={() => {
+                                        // Myelopathy Logic for Cervical and Lumbar
+                                        if ((type === 'afCervical' || type === 'afLombar') && items[currentIdx]?.id === 'exame_neurologico') {
+                                            const reflexFields = type === 'afCervical' 
+                                                ? ['ref_bic_esq', 'ref_bic_dir', 'ref_est_esq', 'ref_est_dir', 'ref_tri_esq', 'ref_tri_dir']
+                                                : ['ref_pat_esq', 'ref_pat_dir', 'ref_aqui_esq', 'ref_aqui_dir'];
+                                            
+                                            const hasHyperreflexia = reflexFields.some(f => answers[f] === 'Hiperreflexia');
+                                            
+                                            if (hasHyperreflexia) {
+                                                const specialFields = type === 'afCervical'
+                                                    ? ['hoffmann_esq', 'hoffmann_dir', 'babinski_esq', 'babinski_dir', 'clonus_esq', 'clonus_dir', 'claudicacao_esq', 'claudicacao_dir']
+                                                    : ['hoffmann_esq_l', 'hoffmann_dir_l', 'babinski_esq_l', 'babinski_dir_l', 'clonus_esq_l', 'clonus_dir_l', 'claudicacao_esq_l', 'claudicacao_dir_l'];
+                                                
+                                                const hasSpecialFilled = specialFields.some(f => answers[f] === true);
+                                                
+                                                if (!hasSpecialFilled) {
+                                                    setShowMyelopathyModal(true);
+                                                    return;
+                                                }
+                                            }
+                                        }
+
                                         setCurrentIdx(currentIdx + 1);
                                         window.scrollTo({ top: 0, behavior: 'smooth' });
                                     }}
@@ -447,6 +475,7 @@ function AssessmentContent() {
                     </div>
                 </motion.div>
             </AnimatePresence>
+
         </div>
         </div>
         )}
@@ -869,6 +898,51 @@ function AssessmentContent() {
                             style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', marginTop: '0.5rem', padding: '0.5rem' }}
                         >
                             Cancelar
+                        </button>
+                    </div>
+                </motion.div>
+            </motion.div>
+        )}
+
+        {showMyelopathyModal && (
+            <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, backdropFilter: 'blur(8px)' }}
+            >
+                <motion.div 
+                    initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                    className="modal-content" 
+                    style={{ maxWidth: '500px', width: '90%', padding: '2.5rem', textAlign: 'center', backgroundColor: 'white', borderRadius: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid var(--border)' }}
+                >
+                    <div style={{ backgroundColor: '#fee2e2', color: '#dc2626', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                        <AlertTriangle size={36} />
+                    </div>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: '900', marginBottom: '1rem', color: 'var(--secondary)', lineHeight: '1.2' }}>Atenção: Possível Mielopatia</h2>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: '2.5rem', lineHeight: '1.6', fontSize: '1.05rem' }}>
+                        Campo <strong style={{color: 'var(--primary)'}}>HIPERREFLEXIA</strong> selecionado. Sugerido investigar reflexos patológicos para investigação de mielopatia.
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <button 
+                            onClick={() => {
+                                setShowMyelopathyModal(false);
+                                setCurrentIdx(currentIdx + 1);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="btn-primary"
+                            style={{ width: '100%', padding: '1.1rem', borderRadius: '1.25rem', fontWeight: '800', fontSize: '1.1rem' }}
+                        >
+                            Avaliado e Negativo
+                        </button>
+                        <button 
+                            onClick={() => setShowMyelopathyModal(false)}
+                            className="btn-action-outline"
+                            style={{ width: '100%', padding: '1rem', borderRadius: '1.25rem', fontWeight: '700', fontSize: '1rem' }}
+                        >
+                            Avaliar
                         </button>
                     </div>
                 </motion.div>
@@ -1328,7 +1402,7 @@ function AssessmentContent() {
             .print-all-content {
                 display: block !important;
                 width: 100% !important;
-                padding: 2.5cm 2.5cm !important;
+                padding: 0.5cm 0.5cm !important;
             }
             body { background: white !important; padding: 0 !important; overflow: visible !important; }
             .background-gradient { display: none !important; }

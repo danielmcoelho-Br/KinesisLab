@@ -13,7 +13,6 @@ import {
   History,
   TrendingUp,
   Trash2,
-  Printer,
   AlertTriangle
 } from "lucide-react";
 
@@ -179,17 +178,6 @@ export default function PatientHistoryPage() {
                             )}
                           </h4>
                           <div className="assessment-actions">
-                            <button
-                              className="btn-action-outline print-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                router.push(`/dashboard/assessment/${patientId}/${item.assessment_type}?id=${item.id}&autoPrint=true`);
-                              }}
-                              title="Imprimir"
-                              style={{ padding: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem' }}
-                            >
-                              <Printer size={16} />
-                            </button>
                             
                             <button
                               className="btn-action-outline edit-btn"
@@ -446,8 +434,6 @@ export default function PatientHistoryPage() {
           transition: all 0.15s;
           flex-shrink: 0;
         }
-        .print-btn { color: var(--secondary); }
-        .print-btn:hover { background: var(--bg-secondary); }
         .edit-btn { color: var(--primary); }
         .edit-btn:hover { background: var(--primary-light); border-color: var(--primary); }
         .delete-btn { color: #EF4444; border-color: #fca5a5; }

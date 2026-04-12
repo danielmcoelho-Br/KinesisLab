@@ -422,8 +422,8 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                 </div>
             ) : section.type === 'multi-table' ? (
                 <div style={{ 
-                    display: (isPrint || !isEditing) && section.id.includes('miofascial_neural') ? 'grid' : 'flex', 
-                    gridTemplateColumns: (isPrint || !isEditing) && section.id.includes('miofascial_neural') ? '1fr 1fr' : 'none',
+                    display: (isPrint || !isEditing) && (section.id.includes('miofascial_neural') || section.id.includes('testes_especiais')) ? 'grid' : ((isPrint && section.id.includes('adm_ombro')) ? 'flex' : 'flex'), 
+                    gridTemplateColumns: (isPrint || !isEditing) && (section.id.includes('miofascial_neural') || section.id.includes('testes_especiais')) ? '1fr 1fr' : 'none',
                     flexDirection: 'column', 
                     gap: isPrint ? '0.75rem' : '1.5rem' 
                 }}>
@@ -441,6 +441,7 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                             pageBreakInside: 'auto'
                         }}>
                             <h4 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', color: 'var(--secondary)' }}>{sub.title}</h4>
+                             <div style={{ width: '100%', marginBottom: isPrint ? '0' : '1.5rem' }}>
                              {sub.type === 'table' ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                     {((sub.id === 'testes_resistencia' || sub.id === 'testes_especiais_resistidos')) ? (
@@ -612,6 +613,7 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                                      })}
                                  </div>
                              )}
+                             </div>
                         </div>
                     ))}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>

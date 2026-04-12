@@ -769,26 +769,26 @@ export const questionnairesData: Record<string, Questionnaire> = {
                     id: 'adm_ombro_esq',
                     title: 'Ombro Esquerdo',
                     type: 'table',
-                    columns: ['Movimento', 'Ativa', 'Passiva'],
+                    columns: ['Movimento', 'Ativa', 'Passiva', 'Déficit'],
                     rows: [
-                        { id: 'flexao_e', label: 'Flexão', fields: [{ id: 'flexao_ativa_e', type: 'number', min: 0, max: 180 }, { id: 'flexao_passiva_e', type: 'number', min: 0, max: 180 }] },
-                        { id: 'extensao_e', label: 'Extensão', fields: [{ id: 'extensao_ativa_e', type: 'number', min: 0, max: 60 }, { id: 'extensao_passiva_e', type: 'number', min: 0, max: 60 }] },
-                        { id: 'abd_frontal_e', label: 'Abdução Frontal', fields: [{ id: 'abd_f_ativa_e', type: 'number', min: 0, max: 180 }, { id: 'abd_f_passiva_e', type: 'number', min: 0, max: 180 }] },
-                        { id: 'rot_med_e', label: 'Rotação Medial', fields: [{ id: 'rm_ativa_e', type: 'number', min: 0, max: 90 }, { id: 'rm_passiva_e', type: 'number', min: 0, max: 90 }] },
-                        { id: 'rot_lat_e', label: 'Rotação Lateral', fields: [{ id: 'rl_ativa_e', type: 'number', min: 0, max: 90 }, { id: 'rl_passiva_e', type: 'number', min: 0, max: 90 }] }
+                        { id: 'flexao_e', label: 'Flexão', fields: [{ id: 'flexao_ativa_e', type: 'number', min: 0, max: 180 }, { id: 'flexao_passiva_e', type: 'number', min: 0, max: 180 }, 'flexao_deficit_e'] },
+                        { id: 'extensao_e', label: 'Extensão', fields: [{ id: 'extensao_ativa_e', type: 'number', min: 0, max: 60 }, { id: 'extensao_passiva_e', type: 'number', min: 0, max: 60 }, 'extensao_deficit_e'] },
+                        { id: 'abd_frontal_e', label: 'Abdução Frontal', fields: [{ id: 'abd_f_ativa_e', type: 'number', min: 0, max: 180 }, { id: 'abd_f_passiva_e', type: 'number', min: 0, max: 180 }, 'abd_f_deficit_e'] },
+                        { id: 'rot_med_e', label: 'Rotação Medial', fields: [{ id: 'rm_ativa_e', type: 'number', min: 0, max: 90 }, { id: 'rm_passiva_e', type: 'number', min: 0, max: 90 }, 'rm_deficit_e'] },
+                        { id: 'rot_lat_e', label: 'Rotação Lateral', fields: [{ id: 'rl_ativa_e', type: 'number', min: 0, max: 90 }, { id: 'rl_passiva_e', type: 'number', min: 0, max: 90 }, 'rl_deficit_e'] }
                     ]
                 },
                 {
                     id: 'adm_ombro_dir',
                     title: 'Ombro Direito',
                     type: 'table',
-                    columns: ['Movimento', 'Ativa', 'Passiva'],
+                    columns: ['Movimento', 'Ativa', 'Passiva', 'Déficit'],
                     rows: [
-                        { id: 'flexao_d', label: 'Flexão', fields: [{ id: 'flexao_ativa_d', type: 'number', min: 0, max: 180 }, { id: 'flexao_passiva_d', type: 'number', min: 0, max: 180 }] },
-                        { id: 'extensao_d', label: 'Extensão', fields: [{ id: 'extensao_ativa_d', type: 'number', min: 0, max: 60 }, { id: 'extensao_passiva_d', type: 'number', min: 0, max: 60 }] },
-                        { id: 'abd_frontal_d', label: 'Abdução Frontal', fields: [{ id: 'abd_f_ativa_d', type: 'number', min: 0, max: 180 }, { id: 'abd_f_passiva_d', type: 'number', min: 0, max: 180 }] },
-                        { id: 'rot_med_d', label: 'Rotação Medial', fields: [{ id: 'rm_ativa_d', type: 'number', min: 0, max: 90 }, { id: 'rm_passiva_d', type: 'number', min: 0, max: 90 }] },
-                        { id: 'rot_lat_d', label: 'Rotação Lateral', fields: [{ id: 'rl_ativa_d', type: 'number', min: 0, max: 90 }, { id: 'rl_passiva_d', type: 'number', min: 0, max: 90 }] }
+                        { id: 'flexao_d', label: 'Flexão', fields: [{ id: 'flexao_ativa_d', type: 'number', min: 0, max: 180 }, { id: 'flexao_passiva_d', type: 'number', min: 0, max: 180 }, 'flexao_deficit_d'] },
+                        { id: 'extensao_d', label: 'Extensão', fields: [{ id: 'extensao_ativa_d', type: 'number', min: 0, max: 60 }, { id: 'extensao_passiva_d', type: 'number', min: 0, max: 60 }, 'extensao_deficit_d'] },
+                        { id: 'abd_frontal_d', label: 'Abdução Frontal', fields: [{ id: 'abd_f_ativa_d', type: 'number', min: 0, max: 180 }, { id: 'abd_f_passiva_d', type: 'number', min: 0, max: 180 }, 'abd_f_deficit_d'] },
+                        { id: 'rot_med_d', label: 'Rotação Medial', fields: [{ id: 'rm_ativa_d', type: 'number', min: 0, max: 90 }, { id: 'rm_passiva_d', type: 'number', min: 0, max: 90 }, 'rm_deficit_d'] },
+                        { id: 'rot_lat_d', label: 'Rotação Lateral', fields: [{ id: 'rl_ativa_d', type: 'number', min: 0, max: 90 }, { id: 'rl_passiva_d', type: 'number', min: 0, max: 90 }, 'rl_deficit_d'] }
                     ]
                 }
             ],
@@ -818,18 +818,21 @@ export const questionnairesData: Record<string, Questionnaire> = {
                     id: 'testes_ckcuest',
                     title: 'Teste Funcional (CKCUEST)',
                     type: 'table',
-                    columns: ['Teste', 'Esquerdo', 'Direito'],
+                    columns: ['Teste', 'Esquerdo (toques)', 'Resultado Esq.', 'Direito (toques)', 'Resultado Dir.'],
                     rows: [
-                        { id: 'ckcuest', label: 'CKCUEST (Nº de toques)', fields: [{ id: 'ckcuest_esq', type: 'number' }, { id: 'ckcuest_dir', type: 'number' }] }
+                        { id: 'ckcuest', label: 'CKCUEST (Nº de toques)', fields: ['ckcuest_esq', 'ckcuest_res_esq', 'ckcuest_dir', 'ckcuest_res_dir'] }
+                    ],
+                    fields: [
+                        { id: 'ckc_ref', label: '* ≥ 21 toques: retorno aos treinos / ≥ 25 toques: retorno ao esporte overhead', type: 'info' }
                     ]
                 },
                 {
                     id: 'testes_fadiga',
                     title: 'Teste de Fadiga',
                     type: 'table',
-                    columns: ['Teste', 'Esquerdo', 'Direito'],
+                    columns: ['Teste', 'Esquerdo (s)', 'Resultado Esq.', 'Direito (s)', 'Resultado Dir.'],
                     rows: [
-                        { id: 'fadiga_serratil', label: 'Fadiga Serrátil Anterior (segundos)', fields: [{ id: 'fadiga_serratil_esq', type: 'number' }, { id: 'fadiga_serratil_dir', type: 'number' }] }
+                        { id: 'fadiga_serratil', label: 'Fadiga Serrátil Anterior (> 109,5s)', fields: ['fadiga_serratil_esq', 'fadiga_serratil_res_esq', 'fadiga_serratil_dir', 'fadiga_serratil_res_dir'] }
                     ]
                 }
             ],
@@ -863,12 +866,12 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'dinamometria',
             title: 'Força Muscular do Ombro (kgF) - Torque',
             type: 'table',
-            columns: ['Movimento', 'Esquerdo', 'Direito', '% Déficit'],
+            columns: ['Movimento', 'Esquerdo', 'Direito', '% Déficit', 'Resultado'],
             rows: [
-                { id: 'abd_forca', label: 'Abdução', fields: ['forca_abd_esq', 'forca_abd_dir', 'forca_abd_deficit'] },
-                { id: 'rl_forca', label: 'Rotadores Laterais (RL)', fields: ['forca_rl_esq', 'forca_rl_dir', 'forca_rl_deficit'] },
-                { id: 'rm_forca', label: 'Rotadores Mediais (RM)', fields: ['forca_rm_esq', 'forca_rm_dir', 'forca_rm_deficit'] },
-                { id: 'ratio_forca', label: 'Relação RL/RM', fields: ['rl_rm_ratio_esq', 'rl_rm_ratio_dir', ''] }
+                { id: 'abd_forca', label: 'Abdução', fields: ['forca_abd_esq', 'forca_abd_dir', 'forca_abd_deficit', 'forca_abd_deficit_res'] },
+                { id: 'rl_forca', label: 'Rotadores Laterais (RL)', fields: ['forca_rl_esq', 'forca_rl_dir', 'forca_rl_deficit', 'forca_rl_deficit_res'] },
+                { id: 'rm_forca', label: 'Rotadores Mediais (RM)', fields: ['forca_rm_esq', 'forca_rm_dir', 'forca_rm_deficit', 'forca_rm_deficit_res'] },
+                { id: 'ratio_forca', label: 'Relação RL/RM (76%)', fields: ['rl_rm_ratio_esq', 'rl_rm_ratio_dir', '-', '-'] }
             ],
             fields: [{ id: 'forca_obs', label: 'Observações de Força', type: 'textarea' }]
         },

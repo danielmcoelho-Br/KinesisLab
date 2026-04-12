@@ -192,7 +192,7 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                         placeholder="Descreva aqui..."
                         style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)', fontSize: '0.85rem' }}
                     />
-                    {['conclusao', 'sugestoes_obs'].includes(field.id) && isEditing && (['afLombar', 'afCervical', 'afGeriatria'].includes(type)) && (
+                    {['conclusao', 'sugestoes_obs'].includes(field.id) && isEditing && (['afLombar', 'afCervical', 'afGeriatria', 'afOmbro'].includes(type)) && (
                         <div style={{ marginTop: '0.5rem' }}>
                             <button
                                 type="button"
@@ -220,7 +220,7 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                             </button>
                         </div>
                     )}
-                    {['diagnostico', 'diagnostico_funcional', 'risco_quedas'].includes(field.id) && isEditing && (['afLombar', 'afCervical', 'afGeriatria'].includes(type)) && (
+                    {['diagnostico', 'diagnostico_funcional', 'risco_quedas'].includes(field.id) && isEditing && (['afLombar', 'afCervical', 'afGeriatria', 'afOmbro'].includes(type)) && (
                         <div style={{ marginTop: '0.5rem' }}>
                             <button
                                 type="button"
@@ -726,6 +726,24 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
             </div>
         );
       }
+      case 'info':
+        return (
+            <div key={field.id} className="form-group" style={{ gridColumn: '1 / -1', marginTop: '0.25rem' }}>
+                <p style={{ 
+                    fontSize: '0.8rem', 
+                    color: '#64748b', 
+                    fontStyle: 'italic', 
+                    margin: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontWeight: '600'
+                }}>
+                    <Calculator size={14} />
+                    {field.label}
+                </p>
+            </div>
+        );
       default:
         return null;
     }

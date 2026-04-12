@@ -416,24 +416,26 @@ export function useAssessmentState({
             const newAnswers = { ...prev, [fieldId]: value, _lastModified: Date.now() };
             
             // Auto-calculations logic
-            if (type === 'afOmbro' && (fieldId === 'forca_rl' || fieldId === 'forca_rm')) {
-                const rl = Number(newAnswers['forca_rl']);
-                const rm = Number(newAnswers['forca_rm']);
-                if (rl && rm) newAnswers['rl_rm_ratio'] = `${Math.round((rl / rm) * 100)}%`;
-                else newAnswers['rl_rm_ratio'] = '';
-            }
             if (type === 'afOmbro') {
-                const movements = ['forca_abd', 'forca_rl', 'forca_rm'];
+                const safeParse = (val: any) => {
+                    if (val === undefined || val === null || val === '') return 0;
+                    return parseFloat(String(val).replace(',', '.'));
+                           const movements = ['forca_abd', 'forca_rl', 'forca_rm'];
                 movements.forEach(mId => {
                     if (fieldId === `${mId}_esq` || fieldId === `${mId}_dir`) {
-                        const esq = Number(newAnswers[`${mId}_esq`]);
-                        const dir = Number(newAnswers[`${mId}_dir`]);
+                        const esq = safeParse(newAnswers[`${mId}_esq`]);
+                        const dir = safeParse(newAnswers[`${mId}_dir`]);
                         if (esq > 0 || dir > 0) {
                             const max = Math.max(esq, dir);
                             const min = Math.min(esq, dir);
                             const deficit = Math.round(((max - min) / max) * 100);
                             newAnswers[`${mId}_deficit`] = `${deficit}%`;
-                            newAnswers[`${mId}_deficit_res`] = deficit <= 15 ? 'Normal' : 'Reduzido';
+                            
+                            // 4-level classification for strength deficit
+                            if (deficit <= 10) newAnswers[`${mId}_deficit_res`] = 'Normal';
+                            else if (deficit <= 20) newAnswers[`${mId}_deficit_res`] = 'Déficit Leve';
+                            else if (deficit <= 30) newAnswers[`${mId}_deficit_res`] = 'Déficit Moderado';
+                            else newAnswers[`${mId}_deficit_res`] = 'Déficit Grave';
                         } else {
                             newAnswers[`${mId}_deficit`] = '';
                             newAnswers[`${mId}_deficit_res`] = '';
@@ -441,18 +443,72 @@ export function useAssessmentState({
                     }
                 });
 
+                // RL/RM Ratio Logic (76% threshold)
                 if (fieldId === 'forca_rl_esq' || fieldId === 'forca_rm_esq') {
-                    const rl = Number(newAnswers['forca_rl_esq']);
-                    const rm = Number(newAnswers['forca_rm_esq']);
-                    if (rl && rm) newAnswers['rl_rm_ratio_esq'] = `${Math.round((rl / rm) * 100)}%`;
-                    else newAnswers['rl_rm_ratio_esq'] = '';
+                    const rl = safeParse(newAnswers['forca_rl_esq']);
+                    const rm = safeParse(newAnswers['forca_rm_esq']);
+                    if (rl > 0 && rm > 0) {
+                        const ratio = Math.round((rl / rm) * 100);
+                        newAnswers['rl_rm_ratio_esq'] = `${ratio}% - ${ratio >= 76 ? 'Normal' : 'Abaixo'}`;
+                    } else {
+                        newAnswers['rl_rm_ratio_esq'] = '';
+                    }
                 }
                 if (fieldId === 'forca_rl_dir' || fieldId === 'forca_rm_dir') {
-                    const rl = Number(newAnswers['forca_rl_dir']);
-                    const rm = Number(newAnswers['forca_rm_dir']);
-                    if (rl && rm) newAnswers['rl_rm_ratio_dir'] = `${Math.round((rl / rm) * 100)}%`;
-                    else newAnswers['rl_rm_ratio_dir'] = '';
+                    const rl = safeParse(newAnswers['forca_rl_dir']);
+                    const rm = safeParse(newAnswers['forca_rm_dir']);
+                    if (rl > 0 && rm > 0) {
+                        const ratio = Math.round((rl / rm) * 100);
+                        newAnswers['rl_rm_ratio_dir'] = `${ratio}% - ${ratio >= 76 ? 'Normal' : 'Abaixo'}`;
+                    } else {
+                        newAnswers['rl_rm_ratio_dir'] = '';
+                    }
                 }
+             }
+
+                // CKCUEST Classification
+                if (fieldId === 'ckcuest_esq' || fieldId === 'ckcuest_dir') {
+                    const side = fieldId.includes('esq') ? 'esq' : 'dir';
+                    const val = safeParse(value);
+                    if (val > 0) {
+                        if (val >= 25) newAnswers[`ckcuest_res_${side}`] = 'Retorno ao esporte overhead';
+                        else if (val >= 21) newAnswers[`ckcuest_res_${side}`] = 'Retorno aos treinos';
+                        else newAnswers[`ckcuest_res_${side}`] = 'Abaixo';
+                    } else {
+                        newAnswers[`ckcuest_res_${side}`] = '';
+                    }
+                }
+
+                // Fatigue Classification
+                if (fieldId === 'fadiga_serratil_esq' || fieldId === 'fadiga_serratil_dir') {
+                    const side = fieldId.includes('esq') ? 'esq' : 'dir';
+                    const val = safeParse(value);
+                    if (val > 0) {
+                        newAnswers[`fadiga_serratil_res_${side}`] = val > 109.5 ? 'Normal' : 'Abaixo';
+                    } else {
+                        newAnswers[`fadiga_serratil_res_${side}`] = '';
+                    }
+                }
+
+                // ADM Deficits calculation
+                const admMoves = ['flexao', 'extensao', 'abd_f', 'rm', 'rl'];
+                admMoves.forEach(move => {
+                    ['e', 'd'].forEach(side => {
+                        const ativaId = `${move}_ativa_${side}`;
+                        const passivaId = `${move}_passiva_${side}`;
+                        const deficitId = `${move}_deficit_${side}`;
+                        
+                        if (fieldId === ativaId || fieldId === passivaId) {
+                            const ativa = safeParse(newAnswers[ativaId]);
+                            const passiva = safeParse(newAnswers[passivaId]);
+                            if (passiva > 0 || ativa > 0) {
+                                newAnswers[deficitId] = (passiva - ativa) + "°";
+                            } else {
+                                newAnswers[deficitId] = "";
+                            }
+                        }
+                    });
+                });
             }
 
             if (type === 'afMao') {

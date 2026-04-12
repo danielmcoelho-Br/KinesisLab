@@ -1,3 +1,4 @@
+// Updated shoulder logic - forcing reload
 export interface Suggestion {
   id: string;
   title: string;
@@ -10,6 +11,11 @@ export interface SuggestionGroup {
   category: string;
   items: Suggestion[];
 }
+
+const safeParse = (val: any) => {
+  if (val === undefined || val === null || val === '') return 0;
+  return parseFloat(String(val).replace(',', '.'));
+};
 
 export function getTherapeuticSuggestions(questionnaireId: string, answers: Record<string, any>): SuggestionGroup[] {
   const suggestions: Suggestion[] = [];
@@ -158,17 +164,74 @@ export function getTherapeuticSuggestions(questionnaireId: string, answers: Reco
     });
   }
 
-  // -- LOGIC FOR GERIATRICS (afGeriatria) --
-  // 2. Gait
-  const vel = parseFloat(String(answers['vel_marcha'] || '1').replace(',', '.'));
-  if (vel > 0 && vel < 0.8) {
-    suggestions.push({ 
-      id: 'ger_gait', 
-      title: 'Treino de Marcha e Velocidade', 
-      description: 'Trabalhar cadência e comprimento do passo para aumentar velocidade funcional.', 
-      category: 'Mobilidade' 
+  // -- LOGIC FOR GERIATRICS (afGeriatria) -- (Already exists)
+  
+  // -- LOGIC FOR SHOULDER (afOmbro) --
+  if (questionnaireId === 'afOmbro') {
+    // 1. ADM / Capsular
+    const rlPassivaE = safeParse(answers['rl_passiva_e']);
+    const rlPassivaD = safeParse(answers['rl_passiva_d']);
+    const abdPassivaE = safeParse(answers['abd_f_passiva_e']);
+    const abdPassivaD = safeParse(answers['abd_f_passiva_d']);
+
+    if ((rlPassivaE > 0 && rlPassivaE < 45) || (rlPassivaD > 0 && rlPassivaD < 45)) {
+      suggestions.push({ id: 'ombro_capsular', title: 'Mobilidade Capsular', description: 'Ganho de ADM passiva e mobilização articular (graus III/IV de Maitland).', category: 'Mobilidade' });
+      suggestions.push({ id: 'ombro_edu_dor', title: 'Educação: Proteção e Dor', description: 'Orientar sobre curso natural da capsulite adesiva e controle de dor.', category: 'Educação' });
+    }
+
+    // 2. Strength / Rotator Cuff
+    const deficitAbd = safeParse(answers['forca_abd_deficit']);
+    const deficitRL = safeParse(answers['forca_rl_deficit']);
+    if (deficitAbd > 15 || deficitRL > 15) {
+      suggestions.push({ id: 'ombro_manguito', title: 'Fortalecimento de Manguito', description: 'Exercícios isométricos e isotônicos para rotadores laterais e abdutores.', category: 'Fortalecimento' });
+    }
+
+    // 3. Functional / CKCUEST
+    if (answers['ckcuest_res_esq'] === 'Abaixo' || answers['ckcuest_res_dir'] === 'Abaixo') {
+      suggestions.push({ id: 'ombro_estabilidade', title: 'Estabilidade Dinâmica', description: 'Treino de controle motor em cadeia cinética fechada e propriocepção.', category: 'Fortalecimento' });
+    }
+
+    // 4. Trigger Points (Miofascial)
+    const mioFieldsS: Record<string, string> = {
+      'trapezio_sup': 'Trapézio Superior',
+      'deltoide_ant': 'Deltoide Anterior',
+      'deltoide_med': 'Deltoide Médio',
+      'deltoide_pos': 'Deltoide Posterior',
+      'peitoral_maior': 'Peitoral Maior',
+      'peitoral_menor': 'Peitoral Menor',
+      'subclavio': 'Subclávio',
+      'grande_dorsal': 'Grande Dorsal',
+      'redondo_menor': 'Redondo Menor',
+      'supra_espinhoso': 'Supra Espinhoso',
+      'infraespinhoso': 'Infraespinhoso',
+      'romboide': 'Romboide',
+      'extensores_toracicos': 'Extensores Torácicos',
+      'biceps': 'Bíceps',
+      'triceps': 'Tríceps'
+    };
+
+    Object.keys(mioFieldsS).forEach(key => {
+      if (hasValue(answers[`${key}_esq`]) || hasValue(answers[`${key}_dir`])) {
+        const side = (hasValue(answers[`${key}_esq`]) && hasValue(answers[`${key}_dir`])) ? '(Bilateral)' : hasValue(answers[`${key}_esq`]) ? '(Esq)' : '(Dir)';
+        suggestions.push({
+          id: `tp_s_${key}`,
+          title: `Liberação de ${mioFieldsS[key]}`,
+          description: `Técnica manual ou agulhamento para desativar pontos gatilhos ${side}.`,
+          category: 'Manual',
+          type: 'musculo'
+        });
+      }
     });
+
+    // 5. Agonist/Antagonist Balance (Ratio)
+    const ratioE = parseInt(String(answers['rl_rm_ratio_esq'] || '0').replace('%', ''));
+    const ratioD = parseInt(String(answers['rl_rm_ratio_dir'] || '0').replace('%', ''));
+    if ((ratioE > 0 && ratioE < 72) || (ratioD > 0 && ratioD < 72)) {
+      suggestions.push({ id: 'ombro_ratio', title: 'Equilíbrio RL/RM', description: 'Focar no fortalecimento isolado de rotadores laterais para equilibrar a relação com rotadores mediais.', category: 'Fortalecimento' });
+    }
   }
+
+  // -- FINISH LOGIC --
 
   // Group by category
   const groups: Record<string, Suggestion[]> = {};
@@ -236,9 +299,89 @@ export function generateDiagnosticText(questionnaireId: string, answers: Record<
     if (parseFloat(answers['flexao_graus']) < 50) romFindings.push('Flexão');
     if (parseFloat(answers['extensao_graus']) < 50) romFindings.push('Extensão');
     if (parseFloat(answers['rot_esq_graus']) < 70 || parseFloat(answers['rot_dir_graus']) < 70) romFindings.push('Rotação');
+  } else if (questionnaireId === 'afOmbro') {
+    const movements = [
+      { id: 'flexao', label: 'Flexão', norm: 160 },
+      { id: 'abd_f', label: 'Abdução', norm: 160 },
+      { id: 'rl', label: 'Rotação Lateral', norm: 60 },
+      { id: 'rm', label: 'Rotação Medial', norm: 70 }
+    ];
+    
+    movements.forEach(m => {
+      const passE = safeParse(answers[`${m.id}_passiva_e`]);
+      const passD = safeParse(answers[`${m.id}_passiva_d`]);
+      const checkSide = (val: number, side: string) => {
+        if (val > 0 && val < m.norm) romFindings.push(`${m.label} ${side}`);
+      };
+      checkSide(passE, '(Esq)');
+      checkSide(passD, '(Dir)');
+
+      // Passive vs Active logic
+      const actE = safeParse(answers[`${m.id}_ativa_e`]);
+      const actD = safeParse(answers[`${m.id}_ativa_d`]);
+      if ((passE - actE) >= 15) findings.push(`Déficit Ativo/Passivo em ${m.label} (Esq) sugerindo inibição muscular.`);
+      if ((passD - actD) >= 15) findings.push(`Déficit Ativo/Passivo em ${m.label} (Dir) sugerindo inibição muscular.`);
+    });
+
+    // Patterns
+    const isCapsularE = safeParse(answers['rl_passiva_e']) > 0 && safeParse(answers['rl_passiva_e']) < 45;
+    const isCapsularD = safeParse(answers['rl_passiva_d']) > 0 && safeParse(answers['rl_passiva_d']) < 45;
+    if (isCapsularE || isCapsularD) {
+      findings.push(`Padrão capsular detectado ${isCapsularE ? '(Esq)' : ''} ${isCapsularD ? '(Dir)' : ''}. Sugestivo de Capsulite Adesiva / Alterações Capsulares.`);
+    }
+
+    // Special Tests
+    const impactTests = [];
+    if (answers['neer_esq'] || answers['neer_dir']) impactTests.push('Neer');
+    if (answers['hawkins_esq'] || answers['hawkins_dir']) impactTests.push('Hawkins-Kennedy');
+    if (impactTests.length > 0) findings.push(`Sinais de impacto subacromial via testes positivos (${impactTests.join(', ')}).`);
+
+    const cuffTests = [];
+    if (answers['job_esq'] || answers['job_dir']) cuffTests.push('Jobe (Supra)');
+    if (answers['patte_esq'] || answers['patte_dir']) cuffTests.push('Patte (Infra)');
+    if (answers['gerber_esq'] || answers['gerber_dir']) cuffTests.push('Gerber (Subescap)');
+    if (cuffTests.length > 0) findings.push(`Sinais de envolvimento do manguito rotador nos testes (${cuffTests.join(', ')}).`);
+
+    if (answers['speed_esq'] || answers['speed_dir']) findings.push('Sinais de comprometimento da cabeça longa do bíceps (Speed positivo).');
+    if (answers['apreensao_esq'] || answers['apreensao_dir']) findings.push('Sinais de instabilidade articular (Apreensão positivo).');
+
+    // Strength Symmetery
+    const strengthMovements = [
+      { id: 'forca_abd', label: 'Abdução' },
+      { id: 'forca_rl', label: 'Rotadores Laterais' },
+      { id: 'forca_rm', label: 'Rotadores Mediais' }
+    ];
+
+    strengthMovements.forEach(s => {
+      const def = answers[`${s.id}_deficit`];
+      if (def && parseFloat(def) > 15) {
+        findings.push(`Déficit significativo de força em ${s.label} (${def} de assimetria entre os lados), indicando desequilíbrio muscular importante.`);
+      }
+    });
+
+    // Ratio
+    const ratioE = parseInt(String(answers['rl_rm_ratio_esq'] || '0').replace('%', ''));
+    const ratioD = parseInt(String(answers['rl_rm_ratio_dir'] || '0').replace('%', ''));
+    if ((ratioE > 0 && ratioE < 72) || (ratioD > 0 && ratioD < 72)) {
+      findings.push(`Imbalanço na relação RL/RM detectado (abaixo de 72%), aumentando o risco de lesões labrais e instabilidade glenoumeral.`);
+    }
+
+    // Trigger Points
+    const tps = [];
+    const mioFields: Record<string, string> = {
+      'trapezio_sup': 'Trapézio Superior',
+      'peitoral_maior': 'Peitoral Maior',
+      'peitoral_menor': 'Peitoral Menor',
+      'infraespinhoso': 'Infraespinhoso',
+      'supra_espinhoso': 'Supra'
+    };
+    Object.keys(mioFields).forEach(key => {
+      if (answers[`${key}_esq`] || answers[`${key}_dir`]) tps.push(mioFields[key]);
+    });
+    if (tps.length > 0) findings.push(`Presença de pontos gatilhos ativos em: ${tps.join(', ')}.`);
   }
   if (romFindings.length > 0) {
-    findings.push(`Limitação da amplitude de movimento (ADM) de: ${romFindings.join(', ')}`);
+    findings.push(`Limitação da amplitude de movimento (ADM) Passiva de: ${romFindings.join(', ')}`);
   }
 
   // 2.1 Myelopathy Screen (New)

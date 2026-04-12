@@ -54,12 +54,12 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                             <th 
                                 key={idx} 
                                 style={{ 
-                                    padding: isPrint ? '0.35rem 0.5rem' : '1.1rem 1rem', 
+                                    padding: isPrint ? '0.35rem 0.5rem' : '0.8rem 0.6rem', 
                                     textAlign: idx === 0 ? 'left' : 'center', 
-                                    fontSize: isPrint ? '0.6rem' : '0.75rem', 
+                                    fontSize: isPrint ? '0.6rem' : '0.72rem', 
                                     fontWeight: '800', 
                                     color: 'var(--primary)', // BRAND RED TEXT
-                                    letterSpacing: '0.025em',
+                                    letterSpacing: '0.01em',
                                     textTransform: 'uppercase', 
                                     borderBottom: '1px solid var(--border)',
                                     whiteSpace: 'nowrap'
@@ -127,15 +127,15 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                         return (
                             <tr key={rIdx} style={{ transition: 'background-color 0.2s' }}>
                                 <td style={{ 
-                                    padding: isPrint ? '0.3rem 0.5rem' : '1.25rem 1rem', 
-                                    fontSize: isPrint ? '0.7rem' : '0.82rem', 
+                                    padding: isPrint ? '0.3rem 0.5rem' : '0.6rem 0.6rem', 
+                                    fontSize: isPrint ? '0.7rem' : '0.78rem', 
                                     fontWeight: '700', 
                                     color: 'var(--secondary)', 
                                     borderBottom: '1px solid #f8fafc',
                                     backgroundColor: '#fafafa', // SUBTLE CONTRAST
-                                    width: '35%',
-                                    minWidth: '180px',
-                                    lineHeight: '1.3'
+                                    width: row.fields.length >= 4 ? '22%' : '35%',
+                                    minWidth: row.fields.length >= 4 ? '120px' : '180px',
+                                    lineHeight: '1.2'
                                 }}>
                                     {displayLabel}
                                 </td>
@@ -147,9 +147,10 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                                     const max = typeof f === "string" ? undefined : (f as any).max;
 
                                     let calculatedValue = answers[fieldId];
-                                    const isDeficitField = fieldId.endsWith('_deficit') || fieldId.endsWith('_def');
+                                    const isCalculated = fieldId.includes('_deficit') || fieldId.includes('_def') || 
+                                                       fieldId.includes('_ratio') || fieldId.includes('_res_global');
 
-                                    if (isDeficitField) {
+                                    if (isCalculated && !answers[fieldId] && (fieldId.endsWith('_deficit') || fieldId.endsWith('_def'))) {
                                         const sidePrefix = fieldId.replace('_deficit', '').replace('_def', '');
                                         const valE = parseFloat(String(answers[`${sidePrefix}_esq`] || '0').replace(',', '.'));
                                         const valD = parseFloat(String(answers[`${sidePrefix}_dir`] || '0').replace(',', '.'));
@@ -164,7 +165,7 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                                                 calculatedValue = '0%';
                                             }
                                         }
-                                    } else if (fieldId.endsWith('_res') || fieldId.endsWith('_res_esq') || fieldId.endsWith('_res_dir')) {
+                                    } else if (!answers[fieldId] && (fieldId.endsWith('_res') || fieldId.endsWith('_res_esq') || fieldId.endsWith('_res_dir'))) {
                                         const sourceValFieldId = fieldId.replace('_res_esq', '').replace('_res_dir', '').replace('_res', '');
                                         const valStr = answers[sourceValFieldId];
                                         
@@ -196,7 +197,11 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                                     }
 
                                     return (
-                                        <td key={fIdx} style={{ padding: isPrint ? '0.2rem' : '0.6rem', borderBottom: '1px solid #f8fafc' }}>
+                                        <td key={fIdx} style={{ 
+                                            padding: isPrint ? '0.2rem' : '0.3rem', 
+                                            borderBottom: '1px solid #f8fafc',
+                                            textAlign: 'center'
+                                        }}>
                                             <DataTableCell 
                                                 fieldId={fieldId}
                                                 fieldType={fieldType}
@@ -204,7 +209,7 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                                                 value={calculatedValue}
                                                 isPrint={isPrint}
                                                 rowLabel={row.label}
-                                                isCalculated={isDeficitField}
+                                                isCalculated={isCalculated}
                                                 min={min}
                                                 max={max}
                                             />

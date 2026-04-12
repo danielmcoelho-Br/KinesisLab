@@ -45,19 +45,84 @@ const DataTableCell = memo(({
         (max !== undefined && numValue > max)
     );
 
+    if (fieldId.endsWith('_res') || fieldId.endsWith('_res_esq') || fieldId.endsWith('_res_dir') || fieldId.endsWith('_res_global') || fieldId.endsWith('_class') || fieldId.endsWith('_status') || fieldId.endsWith('_deficit_res') || fieldId.includes('ratio')) {
+        let displayValue = value || "-";
+        
+        // Dynamic status for ratio if missing
+        if (fieldId.includes('ratio') && displayValue !== "-" && !displayValue.includes('-')) {
+            const ratioNum = parseFloat(displayValue.replace('%', ''));
+            if (!isNaN(ratioNum)) {
+                displayValue = `${ratioNum}% - ${ratioNum >= 76 ? 'Normal' : 'Abaixo'}`;
+            }
+        }
+
+        const val = String(displayValue).toUpperCase();
+        const isNormal = val.includes('NORMAL') || val === 'SIM';
+        const isLeve = val.includes('LEVE');
+        const isModerado = val.includes('MODERADO');
+        const isGrave = val.includes('GRAVE') || val.includes('ABAIXO') || val.includes('DÉFICIT') || val.includes('DEFICIT') || val.includes('ALTERADO') || val === 'NÃO' || val === 'NAO';
+        
+        let bgColor = '#f1f5f9';
+        let textColor = '#64748b';
+        let borderColor = '#cbd5e1';
+
+        if (isNormal) {
+            bgColor = '#ecfdf5';
+            textColor = '#059669';
+            borderColor = '#10b981';
+        } else if (isLeve) {
+            bgColor = '#fffbeb';
+            textColor = '#b45309';
+            borderColor = '#fbbf24';
+        } else if (isModerado) {
+            bgColor = '#fff7ed';
+            textColor = '#c2410c';
+            borderColor = '#f97316';
+        } else if (isGrave) {
+            bgColor = '#fef2f2';
+            textColor = '#991b1b';
+            borderColor = '#ef4444';
+        }
+
+        return (
+            <div style={{ textAlign: 'center' }}>
+                <span style={{ 
+                    color: textColor, 
+                    fontWeight: '800',
+                    fontSize: isPrint ? '0.6rem' : '0.68rem',
+                    textTransform: 'uppercase',
+                    backgroundColor: bgColor,
+                    padding: isPrint ? '2px 3px' : '2px 4px',
+                    borderRadius: '4px',
+                    border: `1px solid ${borderColor}`,
+                    display: 'inline-block',
+                    minWidth: isPrint ? '35px' : '50px',
+                    textAlign: 'center'
+                }}>
+                    {displayValue}
+                </span>
+            </div>
+        );
+    }
+
     if (isCalculated) {
+        const isRatio = fieldId.includes('ratio');
+        const isRatioBelow = isRatio && (value && parseInt(String(value)) < 72);
+        const isDeficit = fieldId.includes('deficit') || fieldId.includes('def');
+        const isDeficitHigh = isDeficit && (value && parseFloat(String(value).replace('%', '')) > 20);
+
         return (
             <div style={{ 
                 textAlign: 'center', 
-                padding: isPrint ? '0.2rem 0.1rem' : '0.4rem', 
-                backgroundColor: 'var(--bg-secondary)', 
+                padding: isPrint ? '0.1rem 0.1rem' : '0.4rem', 
+                backgroundColor: (isRatioBelow || isDeficitHigh) ? '#fef2f2' : (isCalculated ? '#f8fafc' : 'var(--bg-secondary)'), 
                 borderRadius: '0.4rem',
-                border: '1px solid var(--border)',
-                fontWeight: '700',
-                color: 'var(--primary)',
-                fontSize: isPrint ? '0.75rem' : '0.85rem'
+                border: `1px solid ${(isRatioBelow || isDeficitHigh) ? '#fee2e2' : 'var(--border)'}`,
+                fontWeight: '800',
+                color: (isRatioBelow || isDeficitHigh) ? '#b91c1c' : 'var(--primary)',
+                fontSize: isPrint ? '0.7rem' : '0.78rem'
             }}>
-                {value || "0%"}
+                {value || "-"}
             </div>
         );
     }
@@ -146,29 +211,6 @@ const DataTableCell = memo(({
         );
     }
 
-    if (fieldId.endsWith('_res') || fieldId.endsWith('_res_esq') || fieldId.endsWith('_res_dir') || fieldId.endsWith('_class') || fieldId.endsWith('_status')) {
-        const isNormal = value === 'Normal' || value === 'NORMAL';
-        const isReduced = value === 'Reduzido' || value === 'Abaixo' || value === 'Déficit' || value === 'ABAIXO' || value?.includes('Déficit');
-        
-        return (
-            <div style={{ textAlign: 'center' }}>
-                <span style={{ 
-                    color: isNormal ? '#059669' : (isReduced ? '#991b1b' : '#64748b'), 
-                    fontWeight: '800',
-                    fontSize: isPrint ? '0.65rem' : '0.7rem',
-                    textTransform: 'uppercase',
-                    backgroundColor: isNormal ? '#ecfdf5' : (isReduced ? '#fee2e2' : '#f1f5f9'),
-                    padding: isPrint ? '2px 6px' : '4px 8px',
-                    borderRadius: '6px',
-                    border: `1px solid ${isNormal ? '#10b981' : (isReduced ? '#991b1b' : '#cbd5e1')}`,
-                    display: 'inline-block',
-                    minWidth: isPrint ? '45px' : '65px'
-                }}>
-                    {value || "-"}
-                </span>
-            </div>
-        );
-    }
 
     return isPrint ? (
         <div style={{ textAlign: 'center', fontSize: '0.78rem' }}>
@@ -184,11 +226,12 @@ const DataTableCell = memo(({
                 placeholder="-"
                 style={{ 
                     flex: 1, 
-                    padding: '0.3rem 0.4rem', 
+                    maxWidth: '85px',
+                    padding: isPrint ? '0.1rem 0.2rem' : '0.2rem 0.3rem', 
                     borderRadius: '0.4rem', 
                     border: isEditing ? (isOutOfRange ? '2px solid #f97316' : '1px solid var(--border)') : '1px solid transparent',
                     backgroundColor: isEditing ? (isOutOfRange ? '#fff7ed' : 'white') : 'transparent',
-                    fontSize: '0.82rem',
+                    fontSize: isPrint ? '0.7rem' : '0.78rem',
                     textAlign: 'center',
                     boxShadow: isOutOfRange ? '0 0 0 2px #ffedd5' : 'none'
                 }}

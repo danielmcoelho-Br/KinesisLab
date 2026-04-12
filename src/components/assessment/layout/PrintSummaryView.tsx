@@ -147,190 +147,89 @@ export default function PrintSummaryView({
 
             return checkFieldsData(section.fields) || hasTableData || hasSubData || hasHistoryData || hasTableHistoryData;
         }).reduce((acc: any[], item, idx, arr) => {
-            const isCervicalOrLumbar = type === 'afCervical' || type === 'afLombar';
-            
-            if (isClinical) {
-                const section = item as Section;
-                const nextSection = arr[idx + 1] as Section;
-                
-                // Optimized Anamnese + Clinical Data (Neuro/ADM) Grouping for Cervical/Lumbar
-                const nextIsClinicalData = nextSection?.id === 'exame_neurologico' || nextSection?.id === 'adm';
-                
-                if (section.id === 'anamnese' && isCervicalOrLumbar && nextIsClinicalData) {
-                    const areaDorField = section.fields?.find((f: any) => typeof f !== 'string' && f.id === 'area_dor');
-                    const intensidadeDorField = section.fields?.find((f: any) => typeof f !== 'string' && f.id === 'intensidade_dor');
-                    
-                    acc.push(
-                        <div key={`group-top-${section.id}`} style={{ width: '100%', marginBottom: '1rem' }}>
-                            {/* Main Subjective Block (Anamnese) */}
-                            <div style={{ 
-                                padding: '0.85rem 1rem', 
-                                backgroundColor: 'white', 
-                                borderRadius: '0.75rem', 
-                                border: '1px solid #e2e8f0',
-                                marginBottom: '0.75rem',
-                                width: '100%'
-                            }}>
-                                <h3 style={{ fontSize: '1rem', fontWeight: '900', marginBottom: '0.5rem', color: '#8b0000', textTransform: 'uppercase' }}>Características da Disfunção</h3>
-                                <div style={{ width: '100%' }}>
-                                    <FormSection 
-                                        section={{ ...section, fields: section.fields?.map((f: any) => ({ ...f, hideLabel: (f.id === 'anamnese_texto' || f.id === 'anamnese_obs') })) }}
-                                        isPrint={true}
-                                        hideTitle={true}
-                                        excludeFields={['area_dor', 'intensidade_dor']}
-                                    />
-                                </div>
-                            </div>
-                            
-                            {/* STRICT 2-COLUMN LAYOUT TO FILL PAGE 1 */}
-                            <div style={{ width: '100%', clear: 'both', overflow: 'hidden' }}>
-                                {/* Left Column (48%): EVA + Miótomos (Priority) */}
-                                <div style={{ float: 'left', width: '48%', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    {/* Intensidade de Dor (EVA) */}
-                                    <div style={{ padding: '0.65rem 0.75rem', backgroundColor: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
-                                        <h4 style={{ fontSize: '0.8rem', fontWeight: '800', marginBottom: '0.25rem', color: 'var(--secondary)', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.25rem' }}>INTESIDADE DA DOR (EVA)</h4>
-                                        {intensidadeDorField && (
-                                            <div style={{ marginTop: '0.25rem' }}>
-                                                <FormField 
-                                                    field={{ ...intensidadeDorField, hideLabel: true }} 
-                                                    isPrint={true} 
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
+            const isShoulder = type === 'afOmbro';
+            const section = item as Section;
 
-                                    {/* Miótomos Table (Specifically requested below EVA) */}
-                                    {nextSection?.subsections?.find((s: any) => s.id === 'miotomos') && (
-                                        <div style={{ width: '100%', marginTop: '0.25rem' }}>
-                                            <FormSection 
-                                                section={{ 
-                                                    ...nextSection, 
-                                                    title: 'Miótomos (Força 0-5)',
-                                                    subsections: [nextSection.subsections.find((s: any) => s.id === 'miotomos')]
-                                                }}
-                                                isPrint={true}
-                                                hideTitle={false}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Right Column (48%): Mapa de Dor */}
-                                <div style={{ float: 'right', width: '48%', padding: '0.65rem 0.75rem', backgroundColor: '#fff', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
-                                    <h4 style={{ fontSize: '0.8rem', fontWeight: '800', marginBottom: '0.25rem', color: 'var(--secondary)', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.25rem' }}>MAPA DE DOR</h4>
-                                    {areaDorField && (
-                                        <div style={{ display: 'flex', justifyContent: 'center', transform: 'scale(0.82)', transformOrigin: 'top center', marginTop: '0.25rem' }}>
-                                            <FormField 
-                                                field={{ ...areaDorField, hideLabel: true }} 
-                                                isPrint={true}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                                <div style={{ clear: 'both' }}></div>
-                            </div>
-
-                            {/* REMAINING NEURO EXAM (Reflexos, Testes Especiais, etc.) */}
-                            {nextSection?.subsections?.filter((s: any) => s.id !== 'miotomos').length > 0 && (
-                                <div style={{ width: '100%', marginTop: '0.75rem' }}>
-                                    <FormSection 
-                                        section={{ 
-                                            ...nextSection, 
-                                            title: 'Outros Testes Neurológicos',
-                                            subsections: nextSection.subsections.filter((s: any) => s.id !== 'miotomos')
-                                        }}
-                                        isPrint={true}
-                                        hideTitle={false}
-                                        excludeFields={['neuro_cervical_obs', 'neuro_lombar_obs']}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    );
-                    return acc;
-                }
-
-                // General grouping logic for other forms (e.g. Cervical/Lumbar Step 1)
-                if (section.id === 'anamnese' && !isCervicalOrLumbar && nextIsClinicalData) {
-                    const areaDorField = section.fields?.find((f: any) => typeof f !== 'string' && f.id === 'area_dor');
-                    acc.push(
-                        <div key={`group-top-${section.id}`} style={{ width: '100%', marginBottom: '1rem' }}>
-                            <div style={{ padding: '1rem', backgroundColor: 'white', borderRadius: '0.75rem', border: '1px solid #e2e8f0', marginBottom: '0.75rem' }}>
-                                <h3 style={{ fontSize: '1.05rem', fontWeight: '900', marginBottom: '0.5rem', color: '#8b0000', textTransform: 'uppercase' }}>Características da Disfunção</h3>
-                                <FormSection section={{ ...section, fields: section.fields?.map((f: any) => ({ ...f, hideLabel: (f.id === 'anamnese_texto' || f.id === 'anamnese_obs' || f.id === 'anamnese' || f.type === 'textarea') })) }} isPrint={true} hideTitle={true} excludeFields={['area_dor']} />
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '1.5rem', marginTop: '0.5rem' }}>
-                                <div style={{ border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '0.75rem', backgroundColor: '#fff' }}>
-                                    <h4 style={{ fontSize: '0.9rem', fontWeight: '800', marginBottom: '0.25rem', color: 'var(--secondary)' }}>MAPA DE DOR</h4>
-                                    {areaDorField && <FormField field={{ ...areaDorField, hideLabel: true }} isPrint={true} />}
-                                </div>
-                                <FormSection section={nextSection} isPrint={true} />
-                            </div>
-                        </div>
-                    );
-                    return acc;
-                }
-
-                // Skip clinical data already grouped
-                const isGrouped = (section.id === 'exame_neurologico' || section.id === 'adm') && arr[idx - 1] && (arr[idx - 1] as Section).id === 'anamnese';
-                if (isGrouped) return acc;
-
-                const SYMMETRICAL_PAIRS: Record<string, string> = {
-                    'movimento_cervical': 'irritabilidade',
-                    'avaliacao_do_movimento': 'irritabilidade',
-                    'adm_ombro_esq': 'adm_ombro_dir',
-                    'adm_mmii_esq': 'adm_mmii_dir',
-                    'adm_tornozelo_at': 'adm_tornozelo_ps',
-                    'adm_punho_at': 'adm_punho_ps',
-                    'adm_mao_at': 'adm_mao_ps',
-                    'testes_equilibrio': 'equilibrio_funcional',
-                    'testes_mobilidade': 'teste_forca'
-                };
-
-                if (SYMMETRICAL_PAIRS[section.id] && nextSection?.id === SYMMETRICAL_PAIRS[section.id]) {
-                    acc.push(
-                        <div key={`group-${section.id}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', width: '100%' }}>
-                            <FormSection section={section} isPrint={true} />
-                            <FormSection section={nextSection} isPrint={true} />
-                        </div>
-                    );
-                    return acc;
+            if (isShoulder) {
+                // Group 'anamnese' and 'adm_ombro' into a Dashboard
+                if (section.id === 'anamnese') {
+                    const nextSection = arr[idx + 1] as Section;
+                    if (nextSection?.id === 'adm_ombro') {
+                        acc.push({ 
+                            ...section, 
+                            isShoulderDashboard: true, 
+                            secondarySection: nextSection 
+                        });
+                        return acc;
+                    }
                 }
                 
-                if (Object.values(SYMMETRICAL_PAIRS).includes(section.id) && arr[idx - 1] && SYMMETRICAL_PAIRS[(arr[idx - 1] as Section).id] === section.id) {
+                // Skip 'adm_ombro' if it was already grouped with the section before it
+                const prevSection = arr[idx - 1] as Section;
+                if (section.id === 'adm_ombro' && prevSection?.id === 'anamnese') {
                     return acc;
                 }
             }
 
-            acc.push(
-                isClinical ? (
-                    (isCervicalOrLumbar && (item as Section).id === 'diagnostico_conclusoes') ? (
-                        <div key={`conclusions-${(item as Section).id}`} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
-                            {(item as Section).fields?.map((f: any) => (
-                                <div key={f.id} style={{ 
-                                    padding: '1rem', 
-                                    backgroundColor: 'white', 
-                                    borderRadius: '0.75rem', 
-                                    border: '1px solid #e2e8f0',
-                                    pageBreakInside: 'avoid'
-                                }}>
-                                    <h3 style={{ fontSize: '1rem', fontWeight: '900', marginBottom: '0.75rem', color: '#8b0000', textTransform: 'uppercase' }}>{f.label}</h3>
-                                    <FormField 
-                                        field={{ ...f, hideLabel: true }}
-                                        isPrint={true}
+            acc.push(item);
+            return acc;
+        }, []).map((item, idx) => {
+            if (isClinical) {
+                const section = item as any;
+
+                // SPECIAL DASHBOARD RENDERER FOR SHOULDER
+                if (section.isShoulderDashboard) {
+                    const evaField = section.fields?.find((f: any) => typeof f !== 'string' && f.id === 'intensidade_dor');
+                    const mapField = section.fields?.find((f: any) => typeof f !== 'string' && f.id === 'area_dor');
+                    const anamneseField = section.fields?.find((f: any) => typeof f !== 'string' && (f.id === 'anamnese' || f.id === 'anamnese_texto' || f.id === 'anamnese_obs'));
+                    
+                    return (
+                        <div key={section.id} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', marginBottom: '1.5rem' }}>
+                            {/* NEW: Top Row (100% width): Anamnese */}
+                            <div style={{ padding: '1rem', backgroundColor: 'white', borderRadius: '0.75rem', border: '1px solid #e2e8f0', width: '100%' }}>
+                                <h3 style={{ fontSize: '1rem', fontWeight: '900', marginBottom: '0.75rem', color: '#8b0000', textTransform: 'uppercase' }}>Anamnese / Histórico</h3>
+                                {anamneseField && <FormField field={anamneseField} isPrint={true} />}
+                            </div>
+
+                            {/* Grid Row (48% / 48%) */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1.5rem', width: '100%' }}>
+                                {/* Left Column: EVA + ADM Tables */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    {/* EVA Group */}
+                                    <div style={{ padding: '0.5rem', backgroundColor: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                                        <h4 style={{ fontSize: '0.8rem', fontWeight: '800', marginBottom: '0.25rem', color: 'var(--secondary)' }}>INTESIDADE DA DOR (EVA)</h4>
+                                        {evaField && <FormField field={{ ...evaField, hideLabel: true }} isPrint={true} />}
+                                    </div>
+
+                                    {/* ROM Tables (Reduced to column width) */}
+                                    <FormSection 
+                                        section={section.secondarySection} 
+                                        isPrint={true} 
+                                        hideTitle={false}
                                     />
                                 </div>
-                            ))}
+
+                                {/* Right Column: Body Map */}
+                                <div style={{ padding: '1rem', backgroundColor: '#fff', borderRadius: '0.75rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <h4 style={{ width: '100%', fontSize: '0.8rem', fontWeight: '800', marginBottom: '1.5rem', color: 'var(--secondary)', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.25rem' }}>MAPA DE DOR</h4>
+                                    {mapField && (
+                                        <div style={{ transform: 'scale(1.1)', transformOrigin: 'top center' }}>
+                                            <FormField field={{ ...mapField, hideLabel: true }} isPrint={true} />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                    ) : (
-                        <FormSection 
-                            key={idx}
-                            section={item as Section}
-                            isPrint={true}
-                        />
-                    )
-                ) : (
-                    !(item as any).isInstruction && (
+                    );
+                }
+
+                return (
+                    <div key={(item as Section).id} style={{ marginBottom: '1.5rem', pageBreakInside: 'avoid' }}>
+                        <FormSection section={item as Section} isPrint={true} />
+                    </div>
+                );
+            } else {
+                return (
                     <div key={idx} className="print-section" style={{ marginBottom: '1.5rem', padding: '1.5rem', border: '1px solid var(--border)', borderRadius: '1rem', backgroundColor: 'var(--bg-secondary)', pageBreakInside: 'avoid' }}>
                         <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--secondary)', marginBottom: '1rem' }}>
                             {(item as any).text}
@@ -342,11 +241,9 @@ export default function PrintSummaryView({
                             }
                         </div>
                     </div>
-                    )
-                )
-            );
-            return acc;
-        }, [])}
+                );
+            }
+        })}
 
 
         {isFinished && !isClinical && (

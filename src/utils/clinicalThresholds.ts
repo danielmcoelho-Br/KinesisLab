@@ -50,6 +50,11 @@ export function getEnduranceThreshold({ testId, gender, age, activityLevel = 'In
         }
     }
 
+    // Shoulder Fatigue (Serratus Anterior)
+    if (testId === 'fadiga_serratil') {
+        return 109.5;
+    }
+
     return 0; // Default fallback
 }
 

@@ -13,7 +13,8 @@ import {
   History,
   TrendingUp,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  ExternalLink
 } from "lucide-react";
 
 import { motion } from "framer-motion";
@@ -179,6 +180,22 @@ export default function PatientHistoryPage() {
                           </h4>
                           <div className="assessment-actions">
                             
+                            <button
+                              className="btn-action-outline edit-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const baseUrl = window.location.origin;
+                                const shareUrl = `${baseUrl}/assessment/public/summary/${item.id}`;
+                                const message = encodeURIComponent(`Olá ${patient?.name}, segue o resumo da sua avaliação (${qInfo?.title}) realizada na KinesisLab: ${shareUrl}`);
+                                window.open(`https://wa.me/?text=${message}`, '_blank');
+                                toast.success("Link gerado e WhatsApp aberto!");
+                              }}
+                              title="Compartilhar HTML (WhatsApp)"
+                              style={{ padding: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#10B981', borderColor: '#6EE7B7' }}
+                            >
+                              <ExternalLink size={16} />
+                            </button>
+
                             <button
                               className="btn-action-outline edit-btn"
                               onClick={(e) => {

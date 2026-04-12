@@ -26,7 +26,8 @@ import {
     ArrowDownLeft,
     ArrowDownRight,
     Ruler,
-    AlertTriangle
+    AlertTriangle,
+    Share2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { questionnairesData, Section, SectionField } from "@/data/questionnaires";
@@ -324,6 +325,23 @@ function AssessmentContent() {
                         <Printer size={16} />
                         <span>Imprimir</span>
                     </button>
+
+                    {assessmentId && (
+                        <button 
+                            onClick={() => {
+                                const baseUrl = window.location.origin;
+                                const shareUrl = `${baseUrl}/assessment/public/summary/${assessmentId}`;
+                                const message = encodeURIComponent(`Olá ${patientName}, segue o resumo da sua avaliação (${questionnaire.title}) realizada na KinesisLab: ${shareUrl}`);
+                                window.open(`https://wa.me/?text=${message}`, '_blank');
+                                toast.success("Link gerado e WhatsApp aberto!");
+                            }}
+                            className="btn-action-outline"
+                            style={{ color: '#10B981', borderColor: '#6EE7B7' }}
+                        >
+                            <Share2 size={16} />
+                            <span>Compartilhar</span>
+                        </button>
+                    )}
 
                     {assessmentId && !isEditing && (user?.role === 'ADMINISTRADOR' || assessmentOwnerId === user?.id) && (
                         <button 

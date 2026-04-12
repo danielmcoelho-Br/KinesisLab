@@ -24,12 +24,10 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
-    
-    const patientId = params.patientId as string;
-    const type = params.type as string;
-    const assessmentId = searchParams.get('id');
-
     const state = useAssessmentContext();
+    const patientId = params.patientId as string;
+    const type = (params.type as string) || state.type;
+    const assessmentId = searchParams.get('id');
     
     const answers = state.answers;
     const isEditing = state.isEditing;
@@ -342,13 +340,13 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                         section={section} 
                         isPrint={isPrint}
                     />                    {/* 1. SIDE-BY-SIDE EVOLUTION CHARTS (Data-heavy sections) */}
-                    {['perimetria', 'forca', 'dinamometria', 'ndi_integracao', 'oswestry_integracao', 'quickdash_integracao', 'resistencia', 'testes_especiais_resistidos', 'resistencia_tronco', 'testes_equilibrio', 'adm', 'movimento_cervical', 'movimento_lombar'].includes(section.id) && (
+                    {['perimetria', 'forca', 'dinamometria', 'ndi_integracao', 'oswestry_integracao', 'quickdash_integracao', 'resistencia', 'testes_resistencia', 'testes_fadiga', 'testes_especiais_resistidos', 'resistencia_tronco', 'testes_equilibrio', 'adm', 'movimento_cervical', 'movimento_lombar'].includes(section.id) && (
                         <div style={{ 
-                            display: (isPrint && (type === 'afLombar' || type === 'afCervical')) ? 'grid' : 'flex', 
-                            gridTemplateColumns: (isPrint && (type === 'afLombar' || type === 'afCervical')) ? '1fr 1fr' : 'none',
+                            display: (isPrint || ['afOmbro', 'afCervical', 'afLombar'].includes(type)) ? 'grid' : 'flex', 
+                            gridTemplateColumns: (isPrint || ['afOmbro', 'afCervical', 'afLombar'].includes(type)) ? '1fr 1fr' : 'none',
                             gridAutoRows: 'auto',
-                            flexWrap: (isPrint && (type === 'afLombar' || type === 'afCervical')) ? 'nowrap' : 'wrap', 
-                            gap: (isPrint && (type === 'afLombar' || type === 'afCervical')) ? '2.5%' : '1.5rem', 
+                            flexWrap: (isPrint || ['afOmbro', 'afCervical', 'afLombar'].includes(type)) ? 'nowrap' : 'wrap', 
+                            gap: (isPrint || ['afOmbro', 'afCervical', 'afLombar'].includes(type)) ? '2.5%' : '1.5rem', 
                             marginTop: '1.5rem',
                             width: '100%',
                             pageBreakInside: 'avoid'
@@ -422,10 +420,40 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                 </div>
             ) : section.type === 'multi-table' ? (
                 <div style={{ 
-                    display: (isPrint || !isEditing) && (section.id.includes('miofascial_neural') || section.id.includes('testes_especiais')) ? 'grid' : ((isPrint && section.id.includes('adm_ombro')) ? 'flex' : 'flex'), 
-                    gridTemplateColumns: (isPrint || !isEditing) && (section.id.includes('miofascial_neural') || section.id.includes('testes_especiais')) ? '1fr 1fr' : 'none',
+                    display: (isPrint || !isEditing) && (
+                        section.id.includes('miofascial_neural') || 
+                        section.id.includes('palpacao_miofascial') || 
+                        section.id.includes('testes_especiais') || 
+                        section.id.includes('testes_fadiga') || 
+                        section.id.includes('fadiga') || 
+                        section.id.includes('dinamometria') || 
+                        section.id.includes('miotomos') || 
+                        section.id.includes('reflexos') || 
+                        section.id.includes('irritabilidade') || 
+                        section.id.includes('movimento_cervical') || 
+                        section.id.includes('movimento_lombar') ||
+                        section.id.includes('avaliacao_do_movimento') ||
+                        section.id.includes('resistencia')
+                    ) ? 'grid' : 'flex', 
+                    gridTemplateColumns: (isPrint || !isEditing) && (
+                        section.id.includes('miofascial_neural') || 
+                        section.id.includes('palpacao_miofascial') || 
+                        section.id.includes('testes_especiais') || 
+                        section.id.includes('testes_fadiga') || 
+                        section.id.includes('fadiga') || 
+                        section.id.includes('dinamometria') || 
+                        section.id.includes('miotomos') || 
+                        section.id.includes('reflexos') || 
+                        section.id.includes('irritabilidade') || 
+                        section.id.includes('movimento_cervical') || 
+                        section.id.includes('movimento_lombar') ||
+                        section.id.includes('avaliacao_do_movimento') ||
+                        section.id.includes('resistencia')
+                    ) ? '1fr 1fr' : 'none',
                     flexDirection: 'column', 
-                    gap: isPrint ? '0.75rem' : '1.5rem' 
+                    gap: isPrint ? '0.75rem' : '1.5rem',
+                    width: '100%',
+                    minWidth: 0
                 }}>
                     {section.subsections?.filter((sub: Section) => {
                         if (isEditing) return true;

@@ -27,11 +27,10 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
     const searchParams = useSearchParams();
     const router = useRouter();
 
-    const patientId = params.patientId as string;
-    const type = params.type as string;
-    const assessmentId = searchParams.get('id');
-
     const state = useAssessmentContext();
+    const patientId = params.patientId as string;
+    const type = (params.type as string) || state.type;
+    const assessmentId = searchParams.get('id');
     const { questionnaire } = state;
 
     const answers = state.answers;

@@ -20,14 +20,12 @@ export default function PrintSummaryView({
     isClinical
 }: PrintSummaryViewProps) {
     const params = useParams();
-    const router = useRouter();
     const searchParams = useSearchParams();
+    const state = useAssessmentContext();
     
     const patientId = params.patientId as string;
-    const type = params.type as string;
+    const type = (params.type as string) || state.type;
     const assessmentId = searchParams.get('id');
-
-    const state = useAssessmentContext();
     
     const { 
         patientName, 
@@ -147,28 +145,65 @@ export default function PrintSummaryView({
 
             return checkFieldsData(section.fields) || hasTableData || hasSubData || hasHistoryData || hasTableHistoryData;
         }).reduce((acc: any[], item, idx, arr) => {
-            const isShoulder = type === 'afOmbro';
+            const isClinicalAssessment = ['afOmbro', 'afCervical', 'afLombar'].includes(type);
             const section = item as Section;
 
-            if (isShoulder) {
-                // Group 'anamnese' and 'adm_ombro' into a Dashboard
-                if (section.id === 'anamnese') {
-                    const nextSection = arr[idx + 1] as Section;
-                    if (nextSection?.id === 'adm_ombro') {
-                        acc.push({ 
-                            ...section, 
-                            isShoulderDashboard: true, 
-                            secondarySection: nextSection 
-                        });
+            if (isClinicalAssessment) {
+                const isMultiTable = section.type === 'multi-table';
+                const FULL_WIDTH_SECTIONS = [
+                    'anamnese', 
+                    'testes_resistencia', 
+                    'resistencia_tronco', 
+                    'testes_especiais_resistidos',
+                    'conclusoes',
+                    'diagnostico_conclusoes',
+                    'oswestry_integracao',
+                    'ndi_integracao',
+                    'quickdash_integracao'
+                ];
+
+                // DASHBOARD LOGIC (First Row)
+                // idx 0 (Header) groups with idx 1 if idx 1 is not a mandated full-width section.
+                const firstItem = arr[0] as Section;
+                const secondItem = arr[1] as Section;
+                const isDashboardSecondary = secondItem && !FULL_WIDTH_SECTIONS.includes(secondItem.id);
+
+                if (idx === 0) {
+                    if (isDashboardSecondary) {
+                        acc.push({ ...section, isClinicalDashboard: true, secondarySection: secondItem });
                         return acc;
                     }
                 }
                 
-                // Skip 'adm_ombro' if it was already grouped with the section before it
-                const prevSection = arr[idx - 1] as Section;
-                if (section.id === 'adm_ombro' && prevSection?.id === 'anamnese') {
+                // SKIP idx 1 if it was grouped with idx 0
+                if (idx === 1 && isDashboardSecondary) {
                     return acc;
                 }
+
+                const mustBeFullWidth = FULL_WIDTH_SECTIONS.includes(section.id) || isMultiTable;
+
+                // PAIR PAIRING (Subsequent rows)
+                // NEVER pair multi-tables. ONLY pair simple 'table' sections.
+                if (!mustBeFullWidth && idx > (isDashboardSecondary ? 1 : 0)) {
+                    const prevWasGrouped = acc.some(a => a.isPairGroup && a.secondarySection === section);
+                    if (prevWasGrouped) return acc;
+
+                    const nextSection = arr[idx + 1] as Section;
+                    const canPairNext = nextSection && !FULL_WIDTH_SECTIONS.includes(nextSection.id) && nextSection.type === 'table';
+                    
+                    if (canPairNext && section.type === 'table') {
+                        acc.push({
+                            ...section,
+                            isPairGroup: true,
+                            secondarySection: nextSection
+                        });
+                        return acc;
+                    }
+                }
+
+                // If it reached here, it's either full-width or a solo simple section
+                acc.push(section);
+                return acc;
             }
 
             acc.push(item);
@@ -177,31 +212,29 @@ export default function PrintSummaryView({
             if (isClinical) {
                 const section = item as any;
 
-                // SPECIAL DASHBOARD RENDERER FOR SHOULDER
-                if (section.isShoulderDashboard) {
+                // 1. TOP DASHBOARD (Anamnese + Pain Map + 1st Metrics)
+                if (section.isClinicalDashboard) {
                     const evaField = section.fields?.find((f: any) => typeof f !== 'string' && f.id === 'intensidade_dor');
                     const mapField = section.fields?.find((f: any) => typeof f !== 'string' && f.id === 'area_dor');
-                    const anamneseField = section.fields?.find((f: any) => typeof f !== 'string' && (f.id === 'anamnese' || f.id === 'anamnese_texto' || f.id === 'anamnese_obs'));
+                    const anamneseField = section.fields?.find((f: any) => typeof f !== 'string' && (f.id === 'anamnese' || f.id === 'anamnese_texto' || f.id === 'anamnese_obs' || f.id === 'queixa'));
                     
                     return (
                         <div key={section.id} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', marginBottom: '1.5rem' }}>
-                            {/* NEW: Top Row (100% width): Anamnese */}
+                            {/* Top Row (100% width): Anamnese */}
                             <div style={{ padding: '1rem', backgroundColor: 'white', borderRadius: '0.75rem', border: '1px solid #e2e8f0', width: '100%' }}>
-                                <h3 style={{ fontSize: '1rem', fontWeight: '900', marginBottom: '0.75rem', color: '#8b0000', textTransform: 'uppercase' }}>Anamnese / Histórico</h3>
+                                <h3 style={{ fontSize: '1rem', fontWeight: '900', marginBottom: '0.75rem', color: '#8b0000', textTransform: 'uppercase' }}>Histórico Clínico</h3>
                                 {anamneseField && <FormField field={anamneseField} isPrint={true} />}
                             </div>
 
                             {/* Grid Row (48% / 48%) */}
                             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1.5rem', width: '100%' }}>
-                                {/* Left Column: EVA + ADM Tables */}
+                                {/* Left Column: EVA + Secondary Section (Metrics) */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    {/* EVA Group */}
-                                    <div style={{ padding: '0.5rem', backgroundColor: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
                                         <h4 style={{ fontSize: '0.8rem', fontWeight: '800', marginBottom: '0.25rem', color: 'var(--secondary)' }}>INTESIDADE DA DOR (EVA)</h4>
                                         {evaField && <FormField field={{ ...evaField, hideLabel: true }} isPrint={true} />}
                                     </div>
 
-                                    {/* ROM Tables (Reduced to column width) */}
                                     <FormSection 
                                         section={section.secondarySection} 
                                         isPrint={true} 
@@ -219,6 +252,16 @@ export default function PrintSummaryView({
                                     )}
                                 </div>
                             </div>
+                        </div>
+                    );
+                }
+
+                // 2. PAIR GROUP RENDERER (Clean 2-column layout for subsequent tables)
+                if (section.isPairGroup) {
+                    return (
+                        <div key={section.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', width: '100%', marginBottom: '1.5rem', pageBreakInside: 'avoid' }}>
+                            <FormSection section={section} isPrint={true} />
+                            <FormSection section={section.secondarySection} isPrint={true} />
                         </div>
                     );
                 }

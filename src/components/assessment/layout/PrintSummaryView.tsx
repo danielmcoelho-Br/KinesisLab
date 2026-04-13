@@ -24,7 +24,6 @@ export default function PrintSummaryView({
     const state = useAssessmentContext();
     
     const patientId = params.patientId as string;
-    const hasValue = (val: any) => val !== undefined && val !== null && val !== "" && val !== "null" && val !== false && (Array.isArray(val) ? val.length > 0 : true);
     const type = (params.type as string) || state.type;
     const assessmentId = searchParams.get('id');
     
@@ -165,9 +164,23 @@ export default function PrintSummaryView({
                     'quickdash_integracao'
                 ];
 
-                // Dashboard logic is now handled during section rendering
-                acc.push(section);
-                return acc;
+                // DASHBOARD LOGIC (First Row)
+                // idx 0 (Header) groups with idx 1 if idx 1 is not a mandated full-width section.
+                const firstItem = arr[0] as Section;
+                const secondItem = arr[1] as Section;
+                const isDashboardSecondary = secondItem && !FULL_WIDTH_SECTIONS.includes(secondItem.id);
+
+                if (idx === 0) {
+                    if (isDashboardSecondary) {
+                        acc.push({ ...section, isClinicalDashboard: true, secondarySection: secondItem });
+                        return acc;
+                    }
+                }
+                
+                // SKIP idx 1 if it was grouped with idx 0
+                if (idx === 1 && isDashboardSecondary) {
+                    return acc;
+                }
 
                 const mustBeFullWidth = FULL_WIDTH_SECTIONS.includes(section.id) || isMultiTable;
 
@@ -201,48 +214,44 @@ export default function PrintSummaryView({
             if (isClinical) {
                 const section = item as any;
 
-                // 1. ANAMNESE DASHBOARD (Multiple Texts + Side-by-Side EVA/Map)
-                if (section.id === 'anamnese') {
+                // 1. TOP DASHBOARD (Anamnese + Pain Map + 1st Metrics)
+                if (section.isClinicalDashboard) {
                     const evaField = section.fields?.find((f: any) => typeof f !== 'string' && f.id === 'intensidade_dor');
                     const mapField = section.fields?.find((f: any) => typeof f !== 'string' && f.id === 'area_dor');
-                    
-                    // Fields to render as full-width boxes (textareas excluding special ones)
-                    const textFields = section.fields?.filter((f: any) => 
-                        typeof f !== 'string' && 
-                        f.type === 'textarea' && 
-                        f.id !== 'area_dor' && 
-                        f.id !== 'intensidade_dor' &&
-                        hasValue(answers[f.id])
-                    );
+                    const anamneseField = section.fields?.find((f: any) => typeof f !== 'string' && (f.id === 'anamnese' || f.id === 'anamnese_texto' || f.id === 'anamnese_obs' || f.id === 'queixa'));
                     
                     return (
-                        <div key={section.id} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', marginBottom: '1.5rem' }}>
-                            {/* Full Width Text Boxes */}
-                            {(textFields as any[])?.map((f: any) => (
-                                <div key={f.id} style={{ padding: '0.85rem', backgroundColor: 'white', borderRadius: '0.75rem', border: '1px solid #e2e8f0', width: '100%' }}>
-                                    <h4 style={{ fontSize: '0.85rem', fontWeight: '900', marginBottom: '0.5rem', color: '#8b0000', textTransform: 'uppercase' }}>{f.label}</h4>
-                                    <FormField field={f} isPrint={true} />
-                                </div>
-                            ))}
+                        <div key={section.id} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', marginBottom: '1.5rem' }}>
+                            {/* Top Row (100% width): Anamnese */}
+                            <div style={{ padding: '1rem', backgroundColor: 'white', borderRadius: '0.75rem', border: '1px solid #e2e8f0', width: '100%' }}>
+                                <h3 style={{ fontSize: '1rem', fontWeight: '900', marginBottom: '0.75rem', color: '#8b0000', textTransform: 'uppercase' }}>Histórico Clínico</h3>
+                                {anamneseField && <FormField field={anamneseField} isPrint={true} />}
+                            </div>
 
-                            {/* Grid Row (48% / 48%) for EVA and Map */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1.5rem', width: '100%', pageBreakInside: 'avoid' }}>
-                                {/* Left Column: EVA */}
-                                <div style={{ padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                    <h4 style={{ fontSize: '0.8rem', fontWeight: '800', marginBottom: '0.75rem', color: 'var(--secondary)', textTransform: 'uppercase' }}>INTENSIDADE DA DOR (EVA)</h4>
-                                    {evaField && <FormField field={{ ...evaField, hideLabel: true }} isPrint={true} />}
-                                    {!evaField && <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#cbd5e1', textAlign: 'center' }}>---</div>}
+                            {/* Grid Row (48% / 48%) */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1.5rem', width: '100%' }}>
+                                {/* Left Column: EVA + Secondary Section (Metrics) */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div style={{ padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                                        <h4 style={{ fontSize: '0.8rem', fontWeight: '800', marginBottom: '0.25rem', color: 'var(--secondary)' }}>INTESIDADE DA DOR (EVA)</h4>
+                                        {evaField && <FormField field={{ ...evaField, hideLabel: true }} isPrint={true} />}
+                                    </div>
+
+                                    <FormSection 
+                                        section={section.secondarySection} 
+                                        isPrint={true} 
+                                        hideTitle={false}
+                                    />
                                 </div>
 
                                 {/* Right Column: Body Map */}
-                                <div style={{ padding: '0.75rem', backgroundColor: '#fff', borderRadius: '0.75rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '220px' }}>
-                                    <h4 style={{ width: '100%', fontSize: '0.8rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--secondary)', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.25rem', textTransform: 'uppercase' }}>MAPA DE DOR</h4>
+                                <div style={{ padding: '1rem', backgroundColor: '#fff', borderRadius: '0.75rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <h4 style={{ width: '100%', fontSize: '0.8rem', fontWeight: '800', marginBottom: '1.5rem', color: 'var(--secondary)', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.25rem' }}>MAPA DE DOR</h4>
                                     {mapField && (
-                                        <div style={{ transform: 'scale(1)', transformOrigin: 'top center' }}>
+                                        <div style={{ transform: 'scale(1.1)', transformOrigin: 'top center' }}>
                                             <FormField field={{ ...mapField, hideLabel: true }} isPrint={true} />
                                         </div>
                                     )}
-                                    {!mapField && <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontStyle: 'italic', marginTop: '2rem' }}>Mapa não preenchido</div>}
                                 </div>
                             </div>
                         </div>

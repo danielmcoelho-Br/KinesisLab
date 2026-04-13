@@ -928,6 +928,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             title: 'Anamnese e Exames',
             fields: [
                 { id: 'queixa', label: 'Queixa Principal', type: 'textarea' },
+                { id: 'intensidade_dor', label: 'Intensidade da Dor', type: 'range', min: 0, max: 10, step: 1 },
                 { id: 'area_dor', label: 'Área da Dor (Pinte as áreas afetadas)', type: 'bodyschema', image: '/img/esquema_corpo_inteiro.png' },
                 { id: 'historia', label: 'História Atual e Pregressa', type: 'textarea' },
                 { id: 'exames', label: 'Exames Complementares', type: 'textarea' }

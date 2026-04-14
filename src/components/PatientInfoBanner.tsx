@@ -7,9 +7,12 @@ import { getPatient } from "@/app/dashboard/actions";
 
 interface PatientInfoBannerProps {
   patientId: string;
+  patientName?: string;
+  patientGender?: string;
+  patientAge?: number;
 }
 
-export default function PatientInfoBanner({ patientId }: PatientInfoBannerProps) {
+export default function PatientInfoBanner({ patientId, patientName, patientGender, patientAge }: PatientInfoBannerProps) {
   const [patient, setPatient] = useState<any>(null);
 
   useEffect(() => {
@@ -36,7 +39,7 @@ export default function PatientInfoBanner({ patientId }: PatientInfoBannerProps)
         </div>
         <div>
           <p className="item-label">Paciente</p>
-          <p className="item-value">{patient.name}</p>
+          <p className="item-value">{patientName || patient.name}</p>
         </div>
       </div>
       
@@ -46,7 +49,7 @@ export default function PatientInfoBanner({ patientId }: PatientInfoBannerProps)
         </div>
         <div>
           <p className="item-label">Idade</p>
-          <p className="item-value">{patient.age} anos</p>
+          <p className="item-value">{patientAge || patient.age} anos</p>
         </div>
       </div>
 
@@ -56,7 +59,7 @@ export default function PatientInfoBanner({ patientId }: PatientInfoBannerProps)
         </div>
         <div>
           <p className="item-label">Sexo</p>
-          <p className="item-value">{patient.gender}</p>
+          <p className="item-value">{patientGender || patient.gender}</p>
         </div>
       </div>
 

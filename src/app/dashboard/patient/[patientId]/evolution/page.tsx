@@ -266,7 +266,7 @@ export default function PatientEvolutionPage() {
           <div className="empty-state">
             <Activity size={48} />
             <h3>Dados Comparativos Insuficientes</h3>
-            <p>É necessária uma segunda avaliação do tipo <strong>{questionnairesData[selectedType]?.title}</strong> para gerar o gráfico evolutivo comparativo.</p>
+            <p>É necessária uma segunda avaliação do tipo <strong>{selectedType ? questionnairesData[selectedType]?.title : "selecionado"}</strong> para gerar o gráfico evolutivo comparativo.</p>
           </div>
         ) : (
           <div className="dashboard-grid">

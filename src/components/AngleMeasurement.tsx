@@ -201,7 +201,7 @@ export default function AngleMeasurement({
                     for (let i = 1; i < el.points.length; i++) ctx.lineTo(el.points[i].x, el.points[i].y);
                     ctx.stroke();
                 } else if (el.type === 'angle') {
-                    el.points.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill(); });
+                    el.points.forEach((p: any) => { ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill(); });
                     if (el.points.length >= 2) { ctx.beginPath(); ctx.moveTo(el.points[0].x, el.points[0].y); ctx.lineTo(el.points[1].x, el.points[1].y); ctx.stroke(); }
                     if (el.points.length === 3) {
                         ctx.beginPath(); ctx.moveTo(el.points[1].x, el.points[1].y); ctx.lineTo(el.points[2].x, el.points[2].y); ctx.stroke();

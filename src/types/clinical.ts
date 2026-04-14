@@ -21,7 +21,7 @@ export type ClinicalFlag = {
 export type SectionField = {
     id: string;
     label: string;
-    type: 'textarea' | 'range' | 'text' | 'number' | 'date' | 'select' | 'checkbox' | 'table' | 'bodyschema' | 'image-upload' | 'button' | 'paintmap' | 'angle_measurement' | 'freecanvas' | 'static';
+    type: 'textarea' | 'range' | 'text' | 'number' | 'date' | 'select' | 'checkbox' | 'table' | 'bodyschema' | 'image-upload' | 'button' | 'paintmap' | 'angle_measurement' | 'freecanvas' | 'static' | 'info';
     min?: number;
     max?: number;
     step?: number;
@@ -29,14 +29,16 @@ export type SectionField = {
     options?: string[] | { id: string, value: string }[]; 
     colors?: { hex: string, label: string }[]; 
     rows?: number; 
+    isCalculated?: boolean;
 };
   
 export type TableRowField = string | { 
     id: string; 
-    type: 'checkbox' | 'text' | 'number' | 'select' | 'image-upload' | 'static'; 
+    type?: 'checkbox' | 'text' | 'number' | 'select' | 'image-upload' | 'static'; 
     options?: string[]; 
     min?: number; 
     max?: number;
+    isCalculated?: boolean;
 };
 
 export type TableRow = {
@@ -60,11 +62,12 @@ export type Section = {
     rows?: TableRow[];
     subsections?: Section[];
     chart?: string;
+    footer?: string;
 };
   
 export type DiagnosisRule = {
     id: string;
-    label: string;
+    label?: string;
     criteria: (answers: Record<string, any>) => boolean;
     message: string;
 };
@@ -86,7 +89,7 @@ export type Questionnaire = {
 };
 
 export type AssessmentResult = {
-    score: number | string;
+    score?: number | string;
     percentage?: number;
     interpretation: string;
     unit?: string;

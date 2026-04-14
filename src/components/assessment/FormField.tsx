@@ -509,9 +509,13 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
               style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)' }}
             >
               <option value="">Selecione...</option>
-              {(field.options || [0,1,2,3,4,5]).map(v => (
-                <option key={v} value={v}>{v}</option>
-              ))}
+              {(field.options || [0,1,2,3,4,5]).map((v, idx) => {
+                const val = typeof v === 'object' ? v.value : v;
+                const label = typeof v === 'object' ? v.id : v;
+                return (
+                  <option key={idx} value={val}>{label}</option>
+                );
+              })}
             </select>
           </div>
         );
@@ -680,8 +684,8 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                     </div>
                 ) : (
                     <FreeCanvas 
-                        value={value} 
-                        onChange={(val) => handleInputChange(field.id, val)}
+                        value={value as string} 
+                        onAnalyze={() => onAnalyzeImage?.(value as string, field.id, 0)}
                         isEditing={isEditing}
                     />
                 )}

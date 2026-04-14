@@ -165,7 +165,6 @@ function AssessmentContent() {
                     unit=" pts"
                     history={patientAssessments.filter(a => a.assessment_type === 'aofas')}
                     assessmentId={assessmentId}
-                    assessmentDate={assessmentDate}
                 />
             </div>
         )}
@@ -302,7 +301,7 @@ function AssessmentContent() {
                 </div>
             </div>
 
-            <PatientInfoBanner patientName={patientName} patientGender={patientGender} patientAge={patientAge} />
+            <PatientInfoBanner patientId={patientId} patientName={patientName} patientGender={patientGender} patientAge={patientAge} />
         </header>
 
         {!isEditing ? (

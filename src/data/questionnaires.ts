@@ -1,3 +1,4 @@
+import { Questionnaire } from '@/types/clinical';
 export * from '@/types/clinical';
 
 const scores0to5 = ["0", "1", "2", "3", "4", "5"];
@@ -16,7 +17,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
         label: 'Red Flag: Disfunção Esfincteriana',
         level: 'red',
         message: 'Atenção: A perda de controle de bexiga ou intestino é um sinal clínico grave (ex: Síndrome da Cauda Equina). Encaminhamento urgente recomendado.',
-        criteria: (answers) => answers[8] === 5 // Item 9 do Oswestry (Função Intestinal/Bexiga) - Score 5
+        criteria: (answers: any) => answers[8] === 5 // Item 9 do Oswestry (Função Intestinal/Bexiga) - Score 5
       }
     ],
     questions: [
@@ -225,7 +226,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
         label: 'Red Flag: Déficit Neurológico Cervical',
         level: 'red',
         message: 'Atenção: Fraqueza muscular significativa detectada nos membros superiores (Grau < 3). Recomenda-se avaliação neurológica urgente para descartar compressão medular ou radiculopatia grave.',
-        criteria: (answers) => {
+        criteria: (answers: any) => {
           const mios = ['forca_c5_esq', 'forca_c5_dir', 'forca_c6_esq', 'forca_c6_dir', 'forca_c7_esq', 'forca_c7_dir', 'forca_c8_esq', 'forca_c8_dir', 'forca_t1_esq', 'forca_t1_dir'];
           return mios.some(m => answers[m] && parseInt(answers[m]) < 3);
         }
@@ -235,7 +236,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
         label: 'Yellow Flag: Alta Intensidade de Dor',
         level: 'yellow',
         message: 'Intensidade de dor muito elevada (EVA >= 9). Considere o impacto da sensibilização central e fatores psicossociais no prognóstico.',
-        criteria: (answers) => answers['intensidade_dor'] >= 9
+        criteria: (answers: any) => answers['intensidade_dor'] >= 9
       }
     ],
     sections: [
@@ -482,7 +483,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
         label: 'Red Flag: Déficit Neurológico Grave',
         level: 'red',
         message: 'Atenção: Fraqueza muscular severa (Grau < 3) em miótomos detectada. Risco de compressão radicular importante.',
-        criteria: (answers) => {
+        criteria: (answers: any) => {
           const mios = ['forca_l2_esq', 'forca_l2_dir', 'forca_l3_esq', 'forca_l3_dir', 'forca_l4_esq', 'forca_l4_dir', 'forca_l5_esq', 'forca_l5_dir', 'forca_s1_esq', 'forca_s1_dir'];
           return mios.some(m => answers[m] && parseInt(answers[m]) < 3);
         }
@@ -492,7 +493,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
         label: 'Red Flag: Suspeita de Cauda Equina',
         level: 'red',
         message: 'Relato de alterações em sela ou disfunção esfincteriana associada a dor lombar súbita. Encaminhamento de EMERGÊNCIA necessário.',
-        criteria: (answers) => {
+        criteria: (answers: any) => {
             const caudaEquinaFields = ['cauda_esfincter_pos', 'cauda_mmii_pos', 'cauda_perineo_pos'];
             return caudaEquinaFields.some(f => answers[f] === true) ||
                    String(answers['anamnese_texto'] || '').toLowerCase().includes('esfincter') || 
@@ -504,7 +505,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
         label: 'Yellow Flag: Incapacidade Funcional Elevada',
         level: 'yellow',
         message: 'Índice de Oswestry > 40%. Paciente apresenta limitações funcionais severas que podem retardar o prognóstico.',
-        criteria: (answers) => {
+        criteria: (answers: any) => {
             const score = parseFloat(String(answers['oswestry_score'] || '0').replace('%', ''));
             return score > 40;
         }
@@ -815,14 +816,14 @@ export const questionnairesData: Record<string, Questionnaire> = {
         label: 'Red Flag: Instabilidade Articular',
         level: 'red',
         message: 'Teste de apreensão positivo detectado. Alto risco de luxação ou lesão labral complexa. Evite manobras de amplitude extrema até diagnóstico por imagem.',
-        criteria: (answers) => answers['apreensao_esq'] === true || answers['apreensao_dir'] === true
+        criteria: (answers: any) => answers['apreensao_esq'] === true || answers['apreensao_dir'] === true
       },
       {
         id: 'yellow_flag_strength_deficit',
         label: 'Yellow Flag: Déficit de Força Significativo',
         level: 'yellow',
         message: 'Déficit de força importante detectado entre os membros (> 25%). Pode indicar lesão tendínea parcial ou inibição por dor.',
-        criteria: (answers) => {
+        criteria: (answers: any) => {
           const deficits = ['forca_abd_deficit', 'forca_rl_deficit', 'forca_rm_deficit'];
           return deficits.some(d => {
             const val = answers[d];
@@ -989,7 +990,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
         label: 'Red Flag: Alto Risco de Quedas',
         level: 'red',
         message: 'O paciente apresenta critérios de alto risco para quedas (TUG > 12.4s ou Apoio Unipodal < 10s). Recomenda-se intervenção imediata focada em equilíbrio e segurança domiciliar.',
-        criteria: (answers) => {
+        criteria: (answers: any) => {
           const tug = parseFloat(String(answers['tug'] || '0').replace(',', '.'));
           const unipEsq = parseFloat(String(answers['unipodal_esq'] || '11').replace(',', '.'));
           const unipDir = parseFloat(String(answers['unipodal_dir'] || '11').replace(',', '.'));
@@ -1001,7 +1002,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
         label: 'Yellow Flag: Sinais de Fragilidade',
         level: 'yellow',
         message: 'Velocidade de marcha reduzida (< 0.8 m/s). Indicativo de fragilidade física inicial e maior vulnerabilidade a desfechos negativos de saúde.',
-        criteria: (answers) => {
+        criteria: (answers: any) => {
           const vel = parseFloat(String(answers['vel_marcha'] || '1').replace(',', '.'));
           return vel < 0.8 && vel > 0;
         }
@@ -1635,7 +1636,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
         {
             id: 'mmii_forca_def',
             message: 'Déficit de força muscular significativa (> 15%) em um ou mais grupos musculares.',
-            criteria: (answers) => {
+            criteria: (answers: any) => {
                 const muscles = ['f_abd_q_def', 'f_ext_q_def', 'f_ext_j_def', 'f_flex_j_def', 'f_flex_j_p_def'];
                 return muscles.some(m => parseFloat(String(answers[m] || '0').replace('%', '')) > 15);
             }
@@ -1643,7 +1644,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
         {
             id: 'mmii_iq_ratio',
             message: 'Desequilíbrio na Relação Isquiotibiais/Quadríceps (fora da faixa 0,45-0,60).',
-            criteria: (answers) => {
+            criteria: (answers: any) => {
                 const relE = parseFloat(String(answers['rel_iq_esq'] || '0').replace(',', '.'));
                 const relD = parseFloat(String(answers['rel_iq_dir'] || '0').replace(',', '.'));
                 return (relE > 0 && (relE < 0.45 || relE > 0.60)) || (relD > 0 && (relD < 0.45 || relD > 0.60));
@@ -1652,12 +1653,12 @@ export const questionnairesData: Record<string, Questionnaire> = {
         {
             id: 'mmii_ybt_asym',
             message: 'Assimetria significativa no Y-Balance Test (> 10% assimetria).',
-            criteria: (answers) => parseFloat(String(answers['ybt_diff'] || '0').replace(',', '.')) > 10
+            criteria: (answers: any) => parseFloat(String(answers['ybt_diff'] || '0').replace(',', '.')) > 10
         },
         {
             id: 'mmii_stepdown_poor',
             message: 'Controle motor comprometido detectado no Step Down Test (sinais de valgo dinâmico ou instabilidade).',
-            criteria: (answers) => parseFloat(String(answers['sd_result_esq'] || '0').replace(',', '.')) >= 2 || parseFloat(String(answers['sd_result_dir'] || '0').replace(',', '.')) >= 2
+            criteria: (answers: any) => parseFloat(String(answers['sd_result_esq'] || '0').replace(',', '.')) >= 2 || parseFloat(String(answers['sd_result_dir'] || '0').replace(',', '.')) >= 2
         }
     ],
     clinicalFlags: [
@@ -1666,7 +1667,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
         label: 'Red Flag: Déficit Neurológico Significativo',
         level: 'red',
         message: 'Fraqueza muscular severa detectada (Grau < 3) em movimentos de quadril ou joelho. Necessária investigação de compressão radicular ou neuropatia periférica.',
-        criteria: (answers) => {
+        criteria: (answers: any) => {
           const mios = ['f_abd_q_esq', 'f_abd_q_dir', 'f_ext_q_esq', 'f_ext_q_dir', 'f_ext_j_esq', 'f_ext_j_dir', 'f_flex_j_esq', 'f_flex_j_dir', 'f_flex_j_p_esq', 'f_flex_j_p_dir'];
           return mios.some(m => answers[m] && parseInt(answers[m]) < 3);
         }
@@ -1803,14 +1804,14 @@ export const questionnairesData: Record<string, Questionnaire> = {
         label: 'Red Flag: Ruptura do Tendão de Aquiles',
         level: 'red',
         message: 'Teste de Thompson positivo detectado. Alta suspeita de ruptura total do tendão de calcâneo. Encaminhamento ortopédico imediato é necessário.',
-        criteria: (answers) => answers['test_thompson_esq'] === true || answers['test_thompson_dir'] === true
+        criteria: (answers: any) => answers['test_thompson_esq'] === true || answers['test_thompson_dir'] === true
       },
       {
         id: 'red_flag_sindesmose',
         label: 'Red Flag: Lesão da Sindesmose',
         level: 'red',
         message: 'Testes de Kleiger ou Squeeze positivos. Possível lesão da sindesmose tibiofibular (entorse alta). Recomenda-se cautela na descarga de peso inicial.',
-        criteria: (answers) => answers['test_kleiger_esq'] === true || answers['test_kleiger_dir'] === true || answers['test_squeeze_esq'] === true || answers['test_squeeze_dir'] === true
+        criteria: (answers: any) => answers['test_kleiger_esq'] === true || answers['test_kleiger_dir'] === true || answers['test_squeeze_esq'] === true || answers['test_squeeze_dir'] === true
       },
       {
         id: 'yellow_flag_wblt_asymmetry',
@@ -2021,14 +2022,14 @@ export const questionnairesData: Record<string, Questionnaire> = {
         label: 'Red Flag: Túnel do Carpo Grave',
         level: 'red',
         message: 'Sinal de Tinel e Phalen positivos com relato de perda de força ou atrofia tênar. Risco de dano neurológico irreversível no nervo mediano.',
-        criteria: (answers) => (answers['test_phalen_esq'] === true || answers['test_phalen_dir'] === true) && (answers['test_tinelm_esq'] === true || answers['test_tinelm_dir'] === true)
+        criteria: (answers: any) => (answers['test_phalen_esq'] === true || answers['test_phalen_dir'] === true) && (answers['test_tinelm_esq'] === true || answers['test_tinelm_dir'] === true)
       },
       {
         id: 'red_flag_vascular',
         label: 'Red Flag: Insuficiência Vascular',
         level: 'red',
         message: 'Teste de Allen positivo. Comprometimento da circulação colateral da mão (artéria radial ou ulnar). Necessita avaliação vascular.',
-        criteria: (answers) => answers['test_allen_esq'] === true || answers['test_allen_dir'] === true
+        criteria: (answers: any) => answers['test_allen_esq'] === true || answers['test_allen_dir'] === true
       }
     ],
     sections: [

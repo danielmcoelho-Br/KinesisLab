@@ -633,6 +633,22 @@ export function useAssessmentState({
                     }
                 });
 
+                // Endurance Percentage Calculation (Sorensen / Flexão 60º)
+                if (fieldId === 'sorensen' || fieldId === 'flexao_60') {
+                    const val = safeParse(newAnswers[fieldId]);
+                    if (!isNaN(val) && val > 0) {
+                        const threshold = getEnduranceThreshold({ testId: fieldId, gender: patientGender, age: patientAge, activityLevel: patientActivityLevel });
+                        if (threshold > 0) {
+                            const pct = Math.round(((val / threshold) - 1) * 100);
+                            newAnswers[`${fieldId}_pct`] = `${pct > 0 ? '+' : ''}${pct}%`;
+                            newAnswers[`${fieldId}_res`] = pct >= 0 ? 'Normal' : 'Reduzido';
+                        }
+                    } else {
+                        newAnswers[`${fieldId}_pct`] = '';
+                        newAnswers[`${fieldId}_res`] = '';
+                    }
+                }
+
                 // Relação I/Q Logic
                 const relIQFields = ['f_ext_j', 'f_flex_j', 'f_flex_j_p'];
                 if (relIQFields.some(f => fieldId.startsWith(f))) {
@@ -692,11 +708,19 @@ export function useAssessmentState({
                 if (!isNaN(val)) {
                     if (fieldId === 'flexao_60') {
                         const threshold = getEnduranceThreshold({ testId: 'flexao_60', gender: patientGender, age: patientAge, activityLevel: patientActivityLevel });
-                        newAnswers['flexao_60_res'] = val >= threshold ? 'Normal' : 'Reduzido';
+                        if (threshold > 0) {
+                            newAnswers['flexao_60_res'] = val >= threshold ? 'Normal' : 'Reduzido';
+                            const pct = Math.round(((val / threshold) - 1) * 100);
+                            newAnswers['flexao_60_pct'] = `${pct > 0 ? '+' : ''}${pct}%`;
+                        }
                     }
                     if (fieldId === 'sorensen') {
                         const threshold = getEnduranceThreshold({ testId: 'sorensen', gender: patientGender, age: patientAge, activityLevel: patientActivityLevel });
-                        newAnswers['sorensen_res'] = val >= threshold ? 'Normal' : 'Reduzido';
+                        if (threshold > 0) {
+                            newAnswers['sorensen_res'] = val >= threshold ? 'Normal' : 'Reduzido';
+                            const pct = Math.round(((val / threshold) - 1) * 100);
+                            newAnswers['sorensen_pct'] = `${pct > 0 ? '+' : ''}${pct}%`;
+                        }
                     }
                 }
 
@@ -716,22 +740,34 @@ export function useAssessmentState({
                 if (!isNaN(val)) {
                     if (fieldId === 'resist_flexora') {
                         const threshold = getEnduranceThreshold({ testId: 'resist_flexora', gender: patientGender, age: patientAge, activityLevel: patientActivityLevel });
-                        newAnswers['resist_flexora_res'] = val >= threshold ? 'Normal' : 'Reduzido';
+                        if (threshold > 0) {
+                            newAnswers['resist_flexora_res'] = val >= threshold ? 'Normal' : 'Reduzido';
+                            const pct = Math.round(((val / threshold) - 1) * 100);
+                            newAnswers['resist_flexora_pct'] = `${pct > 0 ? '+' : ''}${pct}%`;
+                        }
                     }
                     if (fieldId === 'resist_extensora') {
                         const threshold = getEnduranceThreshold({ testId: 'resist_extensora', gender: patientGender, age: patientAge, activityLevel: patientActivityLevel });
-                        newAnswers['resist_extensora_res'] = val >= threshold ? 'Normal' : 'Reduzido';
+                        if (threshold > 0) {
+                            newAnswers['resist_extensora_res'] = val >= threshold ? 'Normal' : 'Reduzido';
+                            const pct = Math.round(((val / threshold) - 1) * 100);
+                            newAnswers['resist_extensora_pct'] = `${pct > 0 ? '+' : ''}${pct}%`;
+                        }
                     }
                 }
             }
 
             return newAnswers;
         });
-    }, [isEditing, type, patientGender, patientAge, fieldMap]);
+    }, [isEditing, type, patientGender, patientAge, patientActivityLevel, fieldMap]);
 
     const handleFinish = async () => {
         setSaving(true);
-        const result = assessmentService.calculateResult(type, answers, questionnaire);
+        const result = assessmentService.calculateResult(type, answers, questionnaire, { 
+            gender: patientGender, 
+            age: patientAge, 
+            activityLevel: patientActivityLevel 
+        });
         
         // Generate Audit Logs
         const logEntries: string[] = [];

@@ -79,7 +79,7 @@ const AssessmentComparisonChart = memo(({
                             style={{ 
                                 height: `${leftHeight}%`,
                                 width: '100%', 
-                                backgroundColor: 'var(--primary-light)', 
+                                backgroundColor: 'var(--primary)', 
                                 borderRadius: '8px 8px 0 0',
                                 position: 'relative',
                                 display: 'flex',
@@ -100,7 +100,7 @@ const AssessmentComparisonChart = memo(({
                             style={{ 
                                 height: `${rightHeight}%`,
                                 width: '100%', 
-                                backgroundColor: 'var(--primary)', 
+                                backgroundColor: 'var(--primary-light)', 
                                 borderRadius: '8px 8px 0 0',
                                 position: 'relative',
                                 display: 'flex',

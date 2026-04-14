@@ -32,7 +32,7 @@ export interface CalculationResult {
     details?: Record<string, any>;
 }
 
-export function calculateAssessmentScore(type: CalculationType, answers: Record<string, any>): CalculationResult {
+export function calculateAssessmentScore(type: CalculationType, answers: Record<string, any>, profile?: { gender?: string, age?: number, activityLevel?: string }): CalculationResult {
     // Filter answers where keys are numeric indices (0, 1, 2...) and values are numeric or string-numbers
     const values = Object.entries(answers)
         .filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean')
@@ -242,11 +242,15 @@ export function calculateAssessmentScore(type: CalculationType, answers: Record<
                     results['ybt_diff'] = Math.abs(ybtE - ybtD).toFixed(1);
                 }
 
-                // Step Down Score (Simplified qualitative sum if present)
+                // Step Down Test Calculation
                 const sdE = (parseInt(answers['sd_arm_e']) || 0) + (parseInt(answers['sd_trunk_e']) || 0) + (parseInt(answers['sd_pelvis_e']) || 0) + (parseInt(answers['sd_knee_e']) || 0) + (parseInt(answers['sd_unstead_e']) || 0);
                 const sdD = (parseInt(answers['sd_arm_d']) || 0) + (parseInt(answers['sd_trunk_d']) || 0) + (parseInt(answers['sd_pelvis_d']) || 0) + (parseInt(answers['sd_knee_d']) || 0) + (parseInt(answers['sd_unstead_d']) || 0);
                 if (sdE > 0) results['sd_result_esq'] = sdE;
                 if (sdD > 0) results['sd_result_dir'] = sdD;
+
+                // Endurance Percentages
+                if (answers['sorensen_pct']) results['sorensen_pct'] = answers['sorensen_pct'];
+                if (answers['flexao_60_pct']) results['flexao_60_pct'] = answers['flexao_60_pct'];
             }
 
             return {
@@ -317,12 +321,22 @@ export function calculateAssessmentScore(type: CalculationType, answers: Record<
         case 'sum': 
         default: {
             if (n === 0) return emptyResult();
+            
+            // Collect any clinical percentages from answers for summary
+            const clinicalDetails: Record<string, any> = {};
+            Object.keys(answers).forEach(k => {
+                if (k.endsWith('_pct') || k.endsWith('_res')) {
+                    clinicalDetails[k] = answers[k];
+                }
+            });
+
             return {
                 score: sum,
                 max: '-',
                 percentage: 0,
                 interpretation: 'Cálculo concluído',
-                unit: ''
+                unit: '',
+                details: clinicalDetails
             };
         }
     }

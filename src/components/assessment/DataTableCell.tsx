@@ -119,16 +119,17 @@ const DataTableCell = memo(({
         const isRatioBelow = isRatio && (value && parseInt(String(value)) < 72);
         const isDeficit = fieldId.includes('deficit') || fieldId.includes('def');
         const isDeficitHigh = isDeficit && (value && parseFloat(String(value).replace('%', '')) > 20);
+        const isNegativeValue = typeof value === 'string' && value.startsWith('-');
 
         return (
             <div style={{ 
                 textAlign: 'center', 
                 padding: isPrint ? '0.1rem 0.1rem' : '0.4rem', 
-                backgroundColor: (isRatioBelow || isDeficitHigh) ? '#fef2f2' : (isCalculated ? '#f8fafc' : 'var(--bg-secondary)'), 
+                backgroundColor: (isRatioBelow || isDeficitHigh || isNegativeValue) ? '#fef2f2' : (isCalculated ? '#f8fafc' : 'var(--bg-secondary)'), 
                 borderRadius: '0.4rem',
-                border: `1px solid ${(isRatioBelow || isDeficitHigh) ? '#fee2e2' : 'var(--border)'}`,
+                border: `1px solid ${(isRatioBelow || isDeficitHigh || isNegativeValue) ? '#fee2e2' : 'var(--border)'}`,
                 fontWeight: '800',
-                color: (isRatioBelow || isDeficitHigh) ? '#b91c1c' : 'var(--primary)',
+                color: (isRatioBelow || isDeficitHigh || isNegativeValue) ? '#b91c1c' : 'var(--primary)',
                 fontSize: isPrint ? '0.7rem' : '0.78rem'
             }}>
                 {value || "-"}

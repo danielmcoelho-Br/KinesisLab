@@ -108,7 +108,7 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                     }).map((row: TableRow, rIdx) => {
                         let displayLabel = row.label;
                         
-                        if (type === 'afLombar' || type === 'afCervical') {
+                        if (type === 'afLombar' || type === 'afCervical' || type === 'afMmii') {
                             const mainField = row.fields[0];
                             const fieldId = typeof mainField === 'string' ? mainField : (mainField as any)?.id;
                             
@@ -148,7 +148,8 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
 
                                     let calculatedValue = answers[fieldId];
                                     const isCalculated = fieldId.includes('_deficit') || fieldId.includes('_def') || 
-                                                       fieldId.includes('_ratio') || fieldId.includes('_res_global') || fieldId.includes('_iq_');
+                                                       fieldId.includes('_ratio') || fieldId.includes('_res_global') || 
+                                                       fieldId.includes('_iq_') || fieldId.includes('_pct');
 
                                     if (isCalculated && !answers[fieldId] && (fieldId.endsWith('_deficit') || fieldId.endsWith('_def'))) {
                                         const sidePrefix = fieldId.replace('_deficit', '').replace('_def', '');

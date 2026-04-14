@@ -29,7 +29,7 @@ const Bar = ({ value, maxValue, label, color, subLabel, unit = 's', isPrint = fa
             flexDirection: 'column', 
             alignItems: 'center', 
             gap: '8px',
-            height: '180px' // FIXED TOTAL HEIGHT
+            height: '190px' // INCREASED TOTAL HEIGHT
         }}>
             <div style={{ 
                 height: '140px', // FIXED BAR CONTAINER HEIGHT
@@ -65,26 +65,26 @@ const Bar = ({ value, maxValue, label, color, subLabel, unit = 's', isPrint = fa
                     bottom: value / (maxValue || 1) > 0.5 ? 'auto' : '8px',
                     left: '50%', 
                     transform: 'translateX(-50%)',
-                    fontSize: isPrint ? '0.6rem' : '0.8rem',
                     fontWeight: '800',
                     color: value / (maxValue || 1) > 0.5 ? '#fff' : 'var(--text)',
                     textShadow: value / (maxValue || 1) > 0.5 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none',
                     zIndex: 1,
                     textAlign: 'center',
-                    width: '100%'
+                    width: '100%',
+                    fontSize: isPrint ? '0.7rem' : '0.9rem'
                 }}>
                     {value}{unit}
                 </div>
             </div>
             <div style={{ 
                 textAlign: 'center', 
-                height: '32px', // FIXED LABEL AREA HEIGHT
+                height: '42px', // INCREASED LABEL AREA HEIGHT
                 display: 'flex', 
                 flexDirection: 'column', 
                 justifyContent: 'center' 
             }}>
-                <div style={{ fontSize: isPrint ? '0.6rem' : '0.75rem', fontWeight: '700', color: 'var(--text)', lineHeight: 1.1 }}>{label}</div>
-                {subLabel && <div style={{ fontSize: isPrint ? '0.55rem' : '0.65rem', color: 'var(--text-muted)' }}>{subLabel}</div>}
+                <div style={{ fontSize: isPrint ? '0.7rem' : '0.95rem', fontWeight: '900', color: 'var(--text)', lineHeight: 1.1 }}>{label}</div>
+                {subLabel && <div style={{ fontSize: isPrint ? '0.65rem' : '0.85rem', fontWeight: '800', color: 'var(--text-muted)' }}>{subLabel}</div>}
             </div>
         </div>
     );

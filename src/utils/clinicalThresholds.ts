@@ -103,6 +103,58 @@ export function isValueBelowStandard(testId: string, value: number, gender?: Gen
     return false;
 }
 
+/**
+ * Normative MVIC data for Lower Limbs (kgf)
+ * Sources: Meldrum ALS normative values (Knee) & USP/WhatsApp Table (Hip)
+ */
+const MM_DATA = {
+    hip_abd: {
+        male: { young: { active: 23.1, sedentary: 23.2 }, old: { active: 21.4, sedentary: 20.5 } },
+        female: { young: { active: 22.7, sedentary: 19.2 }, old: { active: 20.0, sedentary: 18.5 } }
+    },
+    hip_ext: {
+        male: { young: { active: 33.0, sedentary: 31.4 }, old: { active: 33.0, sedentary: 30.2 } },
+        female: { young: { active: 31.5, sedentary: 26.5 }, old: { active: 27.1, sedentary: 24.3 } }
+    },
+    knee_ext: {
+        female: { 20: 49.6, 25: 47.4, 30: 46.0, 35: 44.9, 40: 43.9, 45: 43.0, 50: 41.9, 55: 40.8, 60: 39.4, 65: 37.9, 70: 36.2 },
+        male_multiplier: 1.25 // Estimate for Missing Male MVIC table (Can be adjusted)
+    },
+    knee_flex: {
+        female: { 20: 25.7, 25: 24.5, 30: 23.8, 35: 23.2, 40: 22.7, 45: 22.2, 50: 21.7, 55: 21.1, 60: 20.5, 65: 19.7, 70: 18.8 },
+        male_multiplier: 1.22 // Estimate for Missing Male MVIC table (Can be adjusted)
+    }
+};
+
+export function getMuscleStrengthReference(muscleId: string, gender: Gender, age: number, activityLevel: ActivityLevel = 'Inativo'): number {
+    const isMale = gender === 'Masculino';
+    const isActive = activityLevel === 'Ativo';
+    const gKey = isMale ? 'male' : 'female';
+    const aKey = isActive ? 'active' : 'sedentary';
+    const ageKey = age <= 40 ? 'young' : 'old';
+
+    if (muscleId.includes('abd_q')) {
+        return MM_DATA.hip_abd[gKey][ageKey][aKey];
+    }
+    if (muscleId.includes('ext_q')) {
+        return MM_DATA.hip_ext[gKey][ageKey][aKey];
+    }
+    
+    // Knee logic (lookup nearest age)
+    if (muscleId.includes('ext_j') || muscleId.includes('flex_j')) {
+        const type = muscleId.includes('ext_j') ? 'knee_ext' : 'knee_flex';
+        const ageList = [20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70];
+        const closestAge = ageList.reduce((prev, curr) => Math.abs(curr - age) < Math.abs(prev - age) ? curr : prev);
+        
+        let val = MM_DATA[type].female[closestAge as keyof typeof MM_DATA.knee_ext.female];
+        if (isMale) val *= (type === 'knee_ext' ? MM_DATA.knee_ext.male_multiplier : MM_DATA.knee_flex.male_multiplier);
+        
+        return parseFloat(val.toFixed(1));
+    }
+
+    return 20; // Default fallback
+}
+
 export function getPatientProfileString(gender: Gender, age: number, activityLevel: ActivityLevel = 'Inativo'): string {
     const isMale = gender === 'Masculino';
     const isActive = activityLevel === 'Ativo';

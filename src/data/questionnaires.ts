@@ -398,10 +398,10 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'testes_especiais_resistidos',
             title: 'Testes Resistidos e Especiais',
             type: 'table',
-            columns: ['Teste', 'Tempo (s)', 'Resultado'],
+            columns: ['Teste', 'Tempo (s)', 'Percentual (%)', 'Resultado'],
             rows: [
-                { id: 'res_flex_row', label: 'Resistência Musculatura Flexora', fields: ['resist_flexora', 'resist_flexora_res'] },
-                { id: 'res_ext_row', label: 'Resistência Musculatura Extensora', fields: ['resist_extensora', 'resist_extensora_res'] }
+                { id: 'res_flex_row', label: 'Resistência Musculatura Flexora', fields: ['resist_flexora', { id: 'resist_flexora_pct', isCalculated: true }, 'resist_flexora_res'] },
+                { id: 'res_ext_row', label: 'Resistência Musculatura Extensora', fields: ['resist_extensora', { id: 'resist_extensora_pct', isCalculated: true }, 'resist_extensora_res'] }
             ],
             fields: [
                 { id: 'testes_especiais', label: 'Testes Especiais / Observações', type: 'textarea' }
@@ -653,10 +653,10 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'testes_resistencia',
             title: 'Testes de Resistência Muscular',
             type: 'table',
-            columns: ['Teste', 'Tempo (s)', 'Resultado'],
+            columns: ['Teste', 'Tempo (s)', 'Percentual (%)', 'Resultado'],
             rows: [
-                { id: 'res_60_row', label: 'Flexão a 60º - Isometria Anterior', fields: ['flexao_60', 'flexao_60_res'] },
-                { id: 'res_sorensen_row', label: 'Teste de Sorensen - Isometria Posterior', fields: ['sorensen', 'sorensen_res'] }
+                { id: 'res_60_row', label: 'Flexão a 60º - Isometria Anterior', fields: ['flexao_60', { id: 'flexao_60_pct', isCalculated: true }, 'flexao_60_res'] },
+                { id: 'res_sorensen_row', label: 'Teste de Sorensen - Isometria Posterior', fields: ['sorensen', { id: 'sorensen_pct', isCalculated: true }, 'sorensen_res'] }
             ],
             fields: [
                 { id: 'testes_obs', label: 'Observações Adicionais', type: 'textarea' }
@@ -1639,7 +1639,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             columns: ['Local', 'Esquerdo', 'Direito', '% Déficit'],
             rows: [
                 { id: 'peri_joelho', label: 'Interlinha Articular (Joelho)', fields: ['p_joe_esq', 'p_joe_dir', 'p_joe_def'] },
-                { id: 'peri_coxa_10', label: 'Coxa (10 cm acima patela)', fields: ['p_cox_esq', 'p_cox_dir', 'p_cox_def'] }
+                { id: 'peri_coxa_15', label: 'Coxa (15 cm acima da patela)', fields: ['p_cox_esq', 'p_cox_dir', 'p_cox_def'] }
             ],
             fields: [{ id: 'peri_obs', label: 'OBSERVAÇÕES', type: 'textarea' }]
         },
@@ -1662,9 +1662,13 @@ export const questionnairesData: Record<string, Questionnaire> = {
         {
             id: 'endurance',
             title: 'Endurance Muscular (segundos)',
+            type: 'table',
+            columns: ['Teste', 'Tempo (s)', 'Percentual (%)', 'Resultado'],
+            rows: [
+                { id: 'res_sorensen_row', label: 'Teste de Sorensen (Posterior)', fields: ['sorensen', { id: 'sorensen_pct', isCalculated: true }, 'sorensen_res'] },
+                { id: 'res_flex_60_row', label: 'Flexão 60º (Anterior)', fields: ['flexao_60', { id: 'flexao_60_pct', isCalculated: true }, 'flexao_60_res'] }
+            ],
             fields: [
-                { id: 'sorensen', label: 'Teste de Sorensen (Posterior)', type: 'number' },
-                { id: 'flexao_60', label: 'Flexão 60º (Anterior)', type: 'number' },
                 { id: 'endurance_obs', label: 'OBSERVAÇÕES', type: 'textarea' }
             ]
         },

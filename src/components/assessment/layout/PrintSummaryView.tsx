@@ -152,6 +152,7 @@ export default function PrintSummaryView({
                 const isMultiTable = section.type === 'multi-table';
                 const FULL_WIDTH_SECTIONS = [
                     'anamnese', 
+                    'forca',
                     'testes_resistencia', 
                     'resistencia_tronco', 
                     'testes_especiais_resistidos',

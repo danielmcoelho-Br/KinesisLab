@@ -7,6 +7,7 @@ import FormField from "./FormField";
 import DataTable from "./DataTable";
 import AssessmentHistoryChart from "./AssessmentHistoryChart";
 import AssessmentComparisonChart from "./AssessmentComparisonChart";
+import MuscleStrengthRowChart from "./MuscleStrengthRowChart";
 import { getEnduranceThreshold, getPatientProfileString } from "@/utils/clinicalThresholds";
 import AngleMeasurement from "@/components/AngleMeasurement";
 import { Section, SectionField, TableRow } from "@/types/clinical";
@@ -308,62 +309,80 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                         section={section} 
                         isPrint={isPrint}
                     />                    {/* 1. SIDE-BY-SIDE EVOLUTION CHARTS (Data-heavy sections) */}
-                    {['perimetria', 'forca', 'dinamometria', 'ndi_integracao', 'oswestry_integracao', 'quickdash_integracao', 'resistencia', 'testes_resistencia', 'testes_fadiga', 'testes_especiais_resistidos', 'resistencia_tronco', 'testes_equilibrio', 'adm', 'movimento_cervical', 'movimento_lombar'].includes(section.id) && (
+                    {['perimetria', 'forca', 'dinamometria', 'ndi_integracao', 'oswestry_integracao', 'quickdash_integracao', 'resistencia', 'testes_resistencia', 'testes_fadiga', 'testes_especiais_resistidos', 'resistencia_tronco', 'testes_equilibrio', 'adm', 'movimento_cervical', 'movimento_lombar', 'endurance'].includes(section.id) && (
                         <div style={{ 
-                            display: (isPrint || ['afOmbro', 'afCervical', 'afLombar'].includes(type)) ? 'grid' : 'flex', 
-                            gridTemplateColumns: (isPrint || ['afOmbro', 'afCervical', 'afLombar'].includes(type)) ? '1fr 1fr' : 'none',
-                            gridAutoRows: 'auto',
+                            display: (isPrint || ['afOmbro', 'afCervical', 'afLombar', 'afMmii'].includes(type)) ? 'grid' : 'flex', 
+                            gridTemplateColumns: (isPrint || ['afOmbro', 'afCervical', 'afLombar', 'afMmii'].includes(type)) ? '1fr 1fr' : 'none',
                             flexWrap: (isPrint || ['afOmbro', 'afCervical', 'afLombar'].includes(type)) ? 'nowrap' : 'wrap', 
                             gap: (isPrint || ['afOmbro', 'afCervical', 'afLombar'].includes(type)) ? '2.5%' : '1.5rem', 
                             marginTop: '1.5rem',
                             width: '100%',
                             pageBreakInside: 'avoid'
                         }}>
-                            {section.rows?.map((row: TableRow) => row.fields.map((f, fidx: number) => {
-                                const fid = typeof f === "string" ? f : (f as any).id;
-                                if (excludeFields.includes(fid)) return null;
-                                
-                                // Render ONLY charts here, not individual fields (DataTable handles the inputs)
-                                if (fid.endsWith('_res') || fid.endsWith('_status') || fid.endsWith('_obs')) return null;
+                            {type === 'afMmii' && section.id === 'forca' ? (
+                                // SPECIAL ROW-BY-ROW COMPARATIVE CHARTS FOR MMII STRENGTH
+                                section.rows?.filter((r: TableRow) => r.id !== 'relacao_iq').map((row: TableRow) => (
+                                    <MuscleStrengthRowChart 
+                                        key={`mmii-forca-${row.id}`}
+                                        row={row}
+                                        answers={answers}
+                                        history={patientAssessments}
+                                        assessmentId={assessmentId}
+                                        assessmentDate={assessmentDate}
+                                        gender={patientGender}
+                                        age={patientAge}
+                                        activityLevel={state.patientActivityLevel}
+                                        isPrint={isPrint}
+                                    />
+                                ))
+                            ) : (
+                                // STANDARD HISTORY CHARTS
+                                section.rows?.map((row: TableRow) => row.fields.map((f, fidx: number) => {
+                                    const fid = typeof f === "string" ? f : (f as any).id;
+                                    if (excludeFields.includes(fid)) return null;
+                                    
+                                    // Render ONLY charts here, not individual fields (DataTable handles the inputs)
+                                    if (fid.endsWith('_res') || fid.endsWith('_status') || fid.endsWith('_obs')) return null;
 
-                                const colLabel = typeof section.columns?.[fidx + 1] === "string" 
-                                    ? section.columns?.[fidx + 1] 
-                                    : (section.columns?.[fidx + 1] as any)?.label || "";
-                                
-                                const referenceValue = ['resist_flexora', 'resist_extensora', 'flexao_60', 'sorensen'].includes(fid) 
-                                    ? getEnduranceThreshold({ testId: fid, gender: state.patientGender, age: state.patientAge, activityLevel: state.patientActivityLevel })
-                                    : undefined;
+                                    const colLabel = typeof section.columns?.[fidx + 1] === "string" 
+                                        ? section.columns?.[fidx + 1] 
+                                        : (section.columns?.[fidx + 1] as any)?.label || "";
+                                    
+                                    const referenceValue = ['resist_flexora', 'resist_extensora', 'flexao_60', 'sorensen'].includes(fid) 
+                                        ? getEnduranceThreshold({ testId: fid, gender: state.patientGender, age: state.patientAge, activityLevel: state.patientActivityLevel })
+                                        : undefined;
 
-                                const isClinicalTest = ['resist_flexora', 'resist_extensora', 'flexao_60', 'sorensen'].includes(fid);
-                                const isTime = colLabel.includes("Tempo") || colLabel.includes("segundos");
-                                const isValue = colLabel.includes("Valor") || colLabel.includes("Tentativa");
-                                const isScore = fid.endsWith("_score");
+                                    const isClinicalTest = ['resist_flexora', 'resist_extensora', 'flexao_60', 'sorensen'].includes(fid);
+                                    const isTime = colLabel.includes("Tempo") || colLabel.includes("segundos");
+                                    const isValue = colLabel.includes("Valor") || colLabel.includes("Tentativa");
+                                    const isScore = fid.endsWith("_score");
 
-                                if ((isScore || isClinicalTest || isTime || isValue) && (patientAssessments.length > 1 || referenceValue)) {
-                                    const profile = getPatientProfileString(state.patientGender, state.patientAge, state.patientActivityLevel);
-                                    const chartTitle = isClinicalTest 
-                                        ? `${row.label.replace('(Ref: Normativa)', '').trim()} (${profile}: ${referenceValue}s)`
-                                        : `Evolução: ${row.label} (${colLabel})`;
+                                    if ((isScore || isClinicalTest || isTime || isValue) && (patientAssessments.length > 1 || referenceValue)) {
+                                        const profile = getPatientProfileString(state.patientGender, state.patientAge, state.patientActivityLevel);
+                                        const chartTitle = isClinicalTest 
+                                            ? `${row.label.replace('(Ref: Normativa)', '').trim()} (${profile}: ${referenceValue}s)`
+                                            : `Evolução: ${row.label} (${colLabel})`;
 
-                                    return (
-                                        <AssessmentHistoryChart 
-                                            key={`hist-${fid}`}
-                                            fieldId={fid}
-                                            currentValue={answers[fid] || 0}
-                                            chartTitle={chartTitle}
-                                            unit={isScore ? "%" : ((section.id.includes("forca") || section.id.includes("dinamometria")) && !isClinicalTest ? "kgF" : (isTime ? "s" : "un"))}
-                                            history={patientAssessments}
-                                            isPrint={isPrint}
-                                            assessmentId={assessmentId}
-                                            referenceValue={referenceValue}
-                                            referenceLabel="Normalidade"
-                                            isEndurance={isClinicalTest}
-                                            useScoreData={isScore}
-                                        />
-                                    );
-                                }
-                                return null;
-                            }))}
+                                        return (
+                                            <AssessmentHistoryChart 
+                                                key={`hist-${fid}`}
+                                                fieldId={fid}
+                                                currentValue={answers[fid] || 0}
+                                                chartTitle={chartTitle}
+                                                unit={isScore ? "%" : ((section.id.includes("forca") || section.id.includes("dinamometria")) && !isClinicalTest ? "kgF" : (isTime ? "s" : "un"))}
+                                                history={patientAssessments}
+                                                isPrint={isPrint}
+                                                assessmentId={assessmentId}
+                                                referenceValue={referenceValue}
+                                                referenceLabel="Normalidade"
+                                                isEndurance={isClinicalTest}
+                                                useScoreData={isScore}
+                                            />
+                                        );
+                                    }
+                                    return null;
+                                }))
+                            )}
                         </div>
                     )}
 

@@ -67,8 +67,8 @@ export const assessmentService = {
     /**
      * Calculates the score based on the questionnaire type.
      */
-    calculateResult(type: string, answers: Record<string, any>, questionnaire: Questionnaire): AssessmentResult {
+    calculateResult(type: string, answers: Record<string, any>, questionnaire: Questionnaire, profile?: any): AssessmentResult {
         const calcType = (questionnaire.structure?.calculationType || type) as CalculationType;
-        return calculateAssessmentScore(calcType, answers);
+        return calculateAssessmentScore(calcType, answers, profile);
     }
 };

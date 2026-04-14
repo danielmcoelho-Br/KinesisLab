@@ -260,6 +260,37 @@ export function getTherapeuticSuggestions(questionnaireId: string, answers: Reco
     }
   }
 
+  // -- LOGIC FOR LOWER LIMB (afMmii) --
+  if (questionnaireId === 'afMmii') {
+    // 1. ADM / Mobilidade
+    const movements = ['flex_q', 'ext_q', 'abd_q', 'ext_j', 'flex_j'];
+    movements.forEach(m => {
+        if (safeParse(answers[`${m}_ativa_e`]) < 90 || safeParse(answers[`${m}_ativa_d`]) < 90) {
+            suggestions.push({ id: `mmii_mob_${m}`, title: `Mobilidade de ${m.replace('_', ' ').toUpperCase()}`, description: 'Exercícios de ganho de amplitude articular e alongamento específico.', category: 'Mobilidade' });
+        }
+    });
+
+    // 2. Força e Relação IQ
+    const relE = safeParse(answers['rel_iq_esq']);
+    const relD = safeParse(answers['rel_iq_dir']);
+    if ((relE > 0 && (relE < 0.45 || relE > 0.60)) || (relD > 0 && (relD < 0.45 || relD > 0.60))) {
+        suggestions.push({ id: 'mmii_iq_ratio', title: 'Equilíbrio I/Q (Isquiotibiais/Quadríceps)', description: 'Relação de força fora da faixa ideal (0,45-0,60). Focar no equilíbrio muscular entre isquiotibiais e quadríceps.', category: 'Fortalecimento' });
+    }
+
+    // 3. Estabilidade / YBT
+    const ybtAsym = safeParse(answers['ybt_diff']);
+    if (ybtAsym > 10) {
+        suggestions.push({ id: 'mmii_ybt_asym', title: 'Assimetria de Controle Motor (YBT)', description: 'Treino de equilíbrio dinâmico e estabilidade lombo-pélvica direcionado ao lado deficitário.', category: 'Mobilidade' });
+    }
+
+    // 4. Step Down (Controle de Valgo)
+    const sdE = safeParse(answers['sd_result_esq']);
+    const sdD = safeParse(answers['sd_result_dir']);
+    if (sdE >= 3 || sdD >= 3) {
+        suggestions.push({ id: 'mmii_step_down', title: 'Controle de Valgo Dinâmico', description: 'Fortalecimento de glúteo médio e treino de controle motor para evitar colapso medial do joelho.', category: 'Fortalecimento' });
+    }
+  }
+
   // -- FINISH LOGIC --
 
   // Group by category
@@ -542,6 +573,31 @@ export function generateDiagnosticText(questionnaireId: string, answers: Record<
     if ((gripE > 0 && gripE < gripRef) || (gripD > 0 && gripD < gripRef)) {
       findings.push("Sugerido rastreio de Sarcopenia devido à baixa força de preensão palmar.");
     }
+  }
+
+  // 10. Lower Limb Specific (afMmii)
+  if (questionnaireId === 'afMmii') {
+    // Força e Déficits
+    ['abd_q', 'ext_q', 'ext_j', 'flex_j'].forEach(m => {
+        const def = safeParse(answers[`f_${m}_def`]);
+        if (def > 15) findings.push(`Assimetria importante de força em ${m.replace('_', ' ').toUpperCase()} (${def}%).`);
+    });
+
+    // Relação IQ
+    const relE = safeParse(answers['rel_iq_esq']);
+    const relD = safeParse(answers['rel_iq_dir']);
+    if ((relE > 0 && (relE < 0.45 || relE > 0.60)) || (relD > 0 && (relD < 0.45 || relD > 0.60))) {
+        findings.push(`Déficit na relação Isquiotibiais/Quadríceps (I/Q) detectado (${relE.toFixed(2).replace('.', ',')} Esq / ${relD.toFixed(2).replace('.', ',')} Dir). Fora da faixa de normalidade (0,45-0,60).`);
+    }
+
+    // Estabilidade
+    const ybtAsym = safeParse(answers['ybt_diff']);
+    if (ybtAsym > 10) findings.push(`Déficit de equilíbrio dinâmico (Assimetria YBT de ${ybtAsym}%).`);
+
+    const sdE = safeParse(answers['sd_result_esq']);
+    const sdD = safeParse(answers['sd_result_dir']);
+    if (sdE >= 4 || sdD >= 4) findings.push(`Controle motor pobre no Step Down Test detectado (Escala ${sdE} Esq / ${sdD} Dir).`);
+    else if (sdE >= 2 || sdD >= 2) findings.push(`Sinais de valgo dinâmico ou instabilidade detectados no Step Down Test.`);
   }
 
   if (findings.length === 0) return "DIAGNÓSTICO CINÉTICO FUNCIONAL:\n\n• Quadro de estabilidade e funcionalidade dentro dos padrões de normalidade.";

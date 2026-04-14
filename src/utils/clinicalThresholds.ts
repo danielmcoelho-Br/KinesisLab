@@ -84,6 +84,22 @@ export function isValueBelowStandard(testId: string, value: number, gender?: Gen
     }
     if (testId === 'sentar_levantar') return value > 12; // Higher is worse
 
+    // -- MMII Thresholds --
+    // Force Deficits (Yellow if > 10% or > 15% - let's go with 15% as per standard clinical suspicion)
+    if (testId.includes('deficit') || testId.includes('def')) {
+        return value > 15;
+    }
+
+    // IQ Ratio (Normal ~60-75%, Yellow if < 60%)
+    if (testId.includes('rel_iq')) {
+        return value < 60;
+    }
+
+    // YBT Asymmetry (Significant if > 4cm or > 10% - using 10% as default)
+    if (testId.includes('ybt_diff')) {
+        return value > 10;
+    }
+
     return false;
 }
 

@@ -85,55 +85,61 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
             )}
 
             {section.id === 'ybt' ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: (isPrint && type === 'afMmii') ? '0.75rem' : '1.5rem' }}>
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                        gap: (isPrint && type === 'afMmii') ? '0.75rem' : '1.5rem',
+                        transform: (isPrint && type === 'afMmii') ? 'scale(0.85)' : 'none',
+                        transformOrigin: 'top center'
+                    }}>
                         <div style={{ 
-                            padding: '1.5rem', 
-                            borderRadius: '1.25rem', 
+                            padding: (isPrint && type === 'afMmii') ? '0.75rem' : '1.5rem', 
+                            borderRadius: (isPrint && type === 'afMmii') ? '0.75rem' : '1.25rem', 
                             backgroundColor: 'white', 
                             border: '1px solid var(--border)', 
                             boxShadow: 'var(--shadow-sm)',
                             textAlign: 'center',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: '0.5rem'
+                            gap: '0.25rem'
                         }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Membro Esquerdo</span>
-                            <div style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--primary)' }}>
+                            <span style={{ fontSize: (isPrint && type === 'afMmii') ? '0.65rem' : '0.75rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Membro Esquerdo</span>
+                            <div style={{ fontSize: (isPrint && type === 'afMmii') ? '1.5rem' : '2.5rem', fontWeight: '900', color: 'var(--primary)' }}>
                                 {answers.ybt_esq ? `${answers.ybt_esq}%` : '---'}
                             </div>
                         </div>
 
                         <div style={{ 
-                            padding: '1.5rem', 
-                            borderRadius: '1.25rem', 
+                            padding: (isPrint && type === 'afMmii') ? '0.75rem' : '1.5rem', 
+                            borderRadius: (isPrint && type === 'afMmii') ? '0.75rem' : '1.25rem', 
                             backgroundColor: 'white', 
                             border: '1px solid var(--border)', 
                             boxShadow: 'var(--shadow-sm)',
                             textAlign: 'center',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: '0.5rem'
+                            gap: '0.25rem'
                         }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Membro Direito</span>
-                            <div style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--primary)' }}>
+                            <span style={{ fontSize: (isPrint && type === 'afMmii') ? '0.65rem' : '0.75rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Membro Direito</span>
+                            <div style={{ fontSize: (isPrint && type === 'afMmii') ? '1.5rem' : '2.5rem', fontWeight: '900', color: 'var(--primary)' }}>
                                 {answers.ybt_dir ? `${answers.ybt_dir}%` : '---'}
                             </div>
                         </div>
 
                         <div style={{ 
-                            padding: '1.5rem', 
-                            borderRadius: '1.25rem', 
+                            padding: (isPrint && type === 'afMmii') ? '0.75rem' : '1.5rem', 
+                            borderRadius: (isPrint && type === 'afMmii') ? '0.75rem' : '1.25rem', 
                             backgroundColor: 'var(--bg-secondary)', 
                             border: '2px dashed var(--border)', 
                             textAlign: 'center',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: '0.5rem',
+                            gap: '0.25rem',
                             justifyContent: 'center'
                         }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--secondary)', textTransform: 'uppercase' }}>Assimetria</span>
-                            <div style={{ fontSize: '2rem', fontWeight: '900', color: (parseFloat(answers.ybt_diff) > 4) ? 'var(--danger)' : 'var(--success)' }}>
+                            <span style={{ fontSize: (isPrint && type === 'afMmii') ? '0.65rem' : '0.75rem', fontWeight: '800', color: 'var(--secondary)', textTransform: 'uppercase' }}>Assimetria</span>
+                            <div style={{ fontSize: (isPrint && type === 'afMmii') ? '1.2rem' : '2rem', fontWeight: '900', color: (parseFloat(answers.ybt_diff) > 4) ? 'var(--danger)' : 'var(--success)' }}>
                                 {answers.ybt_diff || '0.0%'}
                             </div>
                         </div>
@@ -173,22 +179,30 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                             <h4 style={{ fontSize: '1.1rem', fontWeight: '900', color: 'var(--secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Step-Down Test</h4>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-                            <div className="form-group">
-                                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: '800', color: 'var(--text-muted)' }}>Estúdio Esquerdo</label>
-                                <AngleMeasurement 
-                                    value={answers.sd_estudio_esq} 
-                                    onChange={(val) => handleInputChange('sd_estudio_esq', val)}
-                                    isEditing={isEditing}
-                                />
+                        <div style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: (isPrint && type === 'afMmii') ? 'repeat(auto-fit, minmax(150px, 1fr))' : '1fr 1fr', 
+                            gap: (isPrint && type === 'afMmii') ? '0.75rem' : '1.25rem' 
+                        }}>
+                            <div className="form-group" style={{ maxHeight: (isPrint && type === 'afMmii') ? '180px' : 'none', overflow: 'hidden' }}>
+                                <label className="form-label" style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-muted)', marginBottom: '4px' }}>Estúdio Esquerdo</label>
+                                <div style={{ height: (isPrint && type === 'afMmii') ? '150px' : 'auto' }}>
+                                    <AngleMeasurement 
+                                        value={answers.sd_estudio_esq} 
+                                        onChange={(val) => handleInputChange('sd_estudio_esq', val)}
+                                        isEditing={isEditing}
+                                    />
+                                </div>
                             </div>
-                            <div className="form-group">
-                                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: '800', color: 'var(--text-muted)' }}>Estúdio Direito</label>
-                                <AngleMeasurement 
-                                    value={answers.sd_estudio_dir} 
-                                    onChange={(val) => handleInputChange('sd_estudio_dir', val)}
-                                    isEditing={isEditing}
-                                />
+                            <div className="form-group" style={{ maxHeight: (isPrint && type === 'afMmii') ? '180px' : 'none', overflow: 'hidden' }}>
+                                <label className="form-label" style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-muted)', marginBottom: '4px' }}>Estúdio Direito</label>
+                                <div style={{ height: (isPrint && type === 'afMmii') ? '150px' : 'auto' }}>
+                                    <AngleMeasurement 
+                                        value={answers.sd_estudio_dir} 
+                                        onChange={(val) => handleInputChange('sd_estudio_dir', val)}
+                                        isEditing={isEditing}
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -204,112 +218,66 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td style={{ padding: '1rem', fontSize: '0.85rem', fontWeight: '700', color: 'var(--secondary)', borderBottom: '1px solid #f1f5f9' }}>Valgo dinâmico do joelho (8°±5)</td>
-                                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
-                                            <input 
-                                                type="number" 
-                                                value={answers.sd_valgo_esq || ''} 
-                                                onChange={(e) => handleInputChange('sd_valgo_esq', e.target.value)}
-                                                disabled={!isEditing}
-                                                className="form-control"
-                                                style={{ width: '70px', margin: '0 auto', textAlign: 'center', fontWeight: '700' }}
-                                            />
-                                        </td>
-                                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
-                                            {answers.sd_valgo_res_esq ? (
-                                                <span style={{ 
-                                                    fontSize: '0.7rem', 
-                                                    fontWeight: '800', 
-                                                    color: answers.sd_valgo_res_esq === 'Déficit' ? '#991b1b' : '#166534',
-                                                    backgroundColor: answers.sd_valgo_res_esq === 'Déficit' ? '#fee2e2' : '#f0fdf4',
-                                                    padding: '4px 8px',
-                                                    borderRadius: '6px',
-                                                    border: `1px solid ${answers.sd_valgo_res_esq === 'Déficit' ? '#fecaca' : '#bbf7d0'}`
-                                                }}>
-                                                    {answers.sd_valgo_res_esq}
-                                                </span>
-                                            ) : <span style={{ color: '#cbd5e1' }}>---</span>}
-                                        </td>
-                                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
-                                            <input 
-                                                type="number" 
-                                                value={answers.sd_valgo_dir || ''} 
-                                                onChange={(e) => handleInputChange('sd_valgo_dir', e.target.value)}
-                                                disabled={!isEditing}
-                                                className="form-control"
-                                                style={{ width: '70px', margin: '0 auto', textAlign: 'center', fontWeight: '700' }}
-                                            />
-                                        </td>
-                                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
-                                            {answers.sd_valgo_res_dir ? (
-                                                <span style={{ 
-                                                    fontSize: '0.7rem', 
-                                                    fontWeight: '800', 
-                                                    color: answers.sd_valgo_res_dir === 'Déficit' ? '#991b1b' : '#166534',
-                                                    backgroundColor: answers.sd_valgo_res_dir === 'Déficit' ? '#fee2e2' : '#f0fdf4',
-                                                    padding: '4px 8px',
-                                                    borderRadius: '6px',
-                                                    border: `1px solid ${answers.sd_valgo_res_dir === 'Déficit' ? '#fecaca' : '#bbf7d0'}`
-                                                }}>
-                                                    {answers.sd_valgo_res_dir}
-                                                </span>
-                                            ) : <span style={{ color: '#cbd5e1' }}>---</span>}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style={{ padding: '1rem', fontSize: '0.85rem', fontWeight: '700', color: 'var(--secondary)' }}>Queda pélvica (10°±5)</td>
-                                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                                            <input 
-                                                type="number" 
-                                                value={answers.sd_queda_esq || ''} 
-                                                onChange={(e) => handleInputChange('sd_queda_esq', e.target.value)}
-                                                disabled={!isEditing}
-                                                className="form-control"
-                                                style={{ width: '70px', margin: '0 auto', textAlign: 'center', fontWeight: '700' }}
-                                            />
-                                        </td>
-                                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                                            {answers.sd_queda_res_esq ? (
-                                                <span style={{ 
-                                                    fontSize: '0.7rem', 
-                                                    fontWeight: '800', 
-                                                    color: answers.sd_queda_res_esq === 'Déficit' ? '#991b1b' : '#166534',
-                                                    backgroundColor: answers.sd_queda_res_esq === 'Déficit' ? '#fee2e2' : '#f0fdf4',
-                                                    padding: '4px 8px',
-                                                    borderRadius: '6px',
-                                                    border: `1px solid ${answers.sd_queda_res_esq === 'Déficit' ? '#fecaca' : '#bbf7d0'}`
-                                                }}>
-                                                    {answers.sd_queda_res_esq}
-                                                </span>
-                                            ) : <span style={{ color: '#cbd5e1' }}>---</span>}
-                                        </td>
-                                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                                            <input 
-                                                type="number" 
-                                                value={answers.sd_queda_dir || ''} 
-                                                onChange={(e) => handleInputChange('sd_queda_dir', e.target.value)}
-                                                disabled={!isEditing}
-                                                className="form-control"
-                                                style={{ width: '70px', margin: '0 auto', textAlign: 'center', fontWeight: '700' }}
-                                            />
-                                        </td>
-                                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                                            {answers.sd_queda_res_dir ? (
-                                                <span style={{ 
-                                                    fontSize: '0.7rem', 
-                                                    fontWeight: '800', 
-                                                    color: answers.sd_queda_res_dir === 'Déficit' ? '#991b1b' : '#166534',
-                                                    backgroundColor: answers.sd_queda_res_dir === 'Déficit' ? '#fee2e2' : '#f0fdf4',
-                                                    padding: '4px 8px',
-                                                    borderRadius: '6px',
-                                                    border: `1px solid ${answers.sd_queda_res_dir === 'Déficit' ? '#fecaca' : '#bbf7d0'}`
-                                                }}>
-                                                    {answers.sd_queda_res_dir}
-                                                </span>
-                                            ) : <span style={{ color: '#cbd5e1' }}>---</span>}
-                                        </td>
-                                    </tr>
+                                    {[
+                                        { id: 'sd_pelvis', label: 'Queda de pelve (10°±5)' },
+                                        { id: 'sd_knee', label: 'Valgo dinâmico do joelho (8°±5)' }
+                                    ].map(row => (
+                                        <tr key={row.id}>
+                                            <td style={{ padding: '0.75rem 1rem', fontSize: '0.85rem', fontWeight: '700', color: 'var(--secondary)', borderBottom: '1px solid #f1f5f9' }}>{row.label}</td>
+                                            {/* ESQ */}
+                                            <td style={{ padding: '0.75rem', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
+                                                <input 
+                                                    type="text" 
+                                                    value={answers[`${row.id}_e`] || ''} 
+                                                    onChange={(e) => handleInputChange(`${row.id}_e`, e.target.value)}
+                                                    disabled={!isEditing}
+                                                    className="form-control"
+                                                    style={{ width: '60px', margin: '0 auto', textAlign: 'center', fontWeight: '700' }}
+                                                />
+                                            </td>
+                                            <td style={{ padding: '0.75rem', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
+                                                {answers[`${row.id}_res_e`] ? (
+                                                    <span style={{ 
+                                                        fontSize: '0.7rem', 
+                                                        fontWeight: '800', 
+                                                        color: answers[`${row.id}_res_e`] === 'Alterado' ? '#991b1b' : '#166534',
+                                                        backgroundColor: answers[`${row.id}_res_e`] === 'Alterado' ? '#fee2e2' : '#f0fdf4',
+                                                        padding: '4px 8px',
+                                                        borderRadius: '6px',
+                                                        border: `1px solid ${answers[`${row.id}_res_e`] === 'Alterado' ? '#fecaca' : '#bbf7d0'}`
+                                                    }}>
+                                                        {answers[`${row.id}_res_e`]}
+                                                    </span>
+                                                ) : <span style={{ color: '#cbd5e1' }}>---</span>}
+                                            </td>
+                                            {/* DIR */}
+                                            <td style={{ padding: '0.75rem', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
+                                                <input 
+                                                    type="text" 
+                                                    value={answers[`${row.id}_d`] || ''} 
+                                                    onChange={(e) => handleInputChange(`${row.id}_d`, e.target.value)}
+                                                    disabled={!isEditing}
+                                                    className="form-control"
+                                                    style={{ width: '60px', margin: '0 auto', textAlign: 'center', fontWeight: '700' }}
+                                                />
+                                            </td>
+                                            <td style={{ padding: '0.75rem', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
+                                                {answers[`${row.id}_res_d`] ? (
+                                                    <span style={{ 
+                                                        fontSize: '0.7rem', 
+                                                        fontWeight: '800', 
+                                                        color: answers[`${row.id}_res_d`] === 'Alterado' ? '#991b1b' : '#166534',
+                                                        backgroundColor: answers[`${row.id}_res_d`] === 'Alterado' ? '#fee2e2' : '#f0fdf4',
+                                                        padding: '4px 8px',
+                                                        borderRadius: '6px',
+                                                        border: `1px solid ${answers[`${row.id}_res_d`] === 'Alterado' ? '#fecaca' : '#bbf7d0'}`
+                                                    }}>
+                                                        {answers[`${row.id}_res_d`]}
+                                                    </span>
+                                                ) : <span style={{ color: '#cbd5e1' }}>---</span>}
+                                            </td>
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
@@ -448,7 +416,9 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                         section.id.includes('movimento_cervical') || 
                         section.id.includes('movimento_lombar') ||
                         section.id.includes('avaliacao_do_movimento') ||
-                        section.id.includes('resistencia')
+                        section.id.includes('resistencia') ||
+                        section.id.includes('adm') ||
+                        section.id.includes('mmii')
                     ) ? '1fr 1fr' : 'none',
                     flexDirection: 'column', 
                     gap: isPrint ? '0.75rem' : '1.5rem',

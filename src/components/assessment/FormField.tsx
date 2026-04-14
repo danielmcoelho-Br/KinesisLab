@@ -191,7 +191,7 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                         placeholder="Descreva aqui..."
                         style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)', fontSize: '0.85rem' }}
                     />
-                    {['conclusao', 'sugestoes_obs'].includes(field.id) && isEditing && (['afLombar', 'afCervical', 'afGeriatria', 'afOmbro'].includes(type)) && (
+                    {['conclusao', 'sugestoes_obs'].includes(field.id) && isEditing && (['afLombar', 'afCervical', 'afGeriatria', 'afOmbro', 'afMmii'].includes(type)) && (
                         <div style={{ marginTop: '0.5rem' }}>
                             <button
                                 type="button"
@@ -219,7 +219,7 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                             </button>
                         </div>
                     )}
-                    {['diagnostico', 'diagnostico_funcional', 'risco_quedas'].includes(field.id) && isEditing && (['afLombar', 'afCervical', 'afGeriatria', 'afOmbro'].includes(type)) && (
+                    {['diagnostico', 'diagnostico_funcional', 'risco_quedas'].includes(field.id) && isEditing && (['afLombar', 'afCervical', 'afGeriatria', 'afOmbro', 'afMmii'].includes(type)) && (
                         <div style={{ marginTop: '0.5rem' }}>
                             <button
                                 type="button"

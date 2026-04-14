@@ -191,10 +191,62 @@ export function calculateAssessmentScore(type: CalculationType, answers: Record<
 
             // MMII specific force/perimetry
             if (type === 'mmii') {
-                ['p_joe', 'p_cox', 'f_abd_q', 'f_ext_q', 'f_ext_j', 'f_flex_j'].forEach(t => {
+                ['p_joe', 'p_cox'].forEach(t => {
                     const def = calcDeficit(answers[`${t}_esq`], answers[`${t}_dir`]);
-                    if (def) results[t] = { deficit: def };
+                    if (def) results[`${t}_def`] = def;
                 });
+
+                ['f_abd_q', 'f_ext_q', 'f_ext_j', 'f_flex_j', 'f_flex_j_p'].forEach(t => {
+                    const def = calcDeficit(answers[`${t}_esq`], answers[`${t}_dir`]);
+                    if (def) {
+                        results[`${t}_def`] = def;
+                        const defNum = parseFloat(def.replace('%', ''));
+                        const status = defNum < 15 ? 'NORMAL' : 'DÉFICIT';
+                        results[`${t}_res`] = `${def} - ${status}`;
+                    }
+                });
+
+                // Relação IQ (Sentado)
+                const flexE = parseFloat(answers['f_flex_j_esq']);
+                const extE = parseFloat(answers['f_ext_j_esq']);
+                const flexD = parseFloat(answers['f_flex_j_dir']);
+                const extD = parseFloat(answers['f_ext_j_dir']);
+
+                let statusE = '';
+                let statusD = '';
+
+                if (flexE > 0 && extE > 0) {
+                    const ratioE = flexE / extE;
+                    results['rel_iq_esq'] = ratioE.toFixed(2);
+                    statusE = (ratioE >= 0.45 && ratioE <= 0.60) ? 'NORMAL' : 'DÉFICIT';
+                }
+
+                if (flexD > 0 && extD > 0) {
+                    const ratioD = flexD / extD;
+                    results['rel_iq_dir'] = ratioD.toFixed(2);
+                    statusD = (ratioD >= 0.45 && ratioD <= 0.60) ? 'NORMAL' : 'DÉFICIT';
+                }
+
+                if (statusE || statusD) {
+                    if (statusE === 'DÉFICIT' || statusD === 'DÉFICIT') {
+                        results['rel_iq_res'] = 'DÉFICIT';
+                    } else {
+                        results['rel_iq_res'] = 'NORMAL';
+                    }
+                }
+
+                // YBT Asymmetry
+                const ybtE = parseFloat(answers['ybt_esq']);
+                const ybtD = parseFloat(answers['ybt_dir']);
+                if (!isNaN(ybtE) && !isNaN(ybtD)) {
+                    results['ybt_diff'] = Math.abs(ybtE - ybtD).toFixed(1);
+                }
+
+                // Step Down Score (Simplified qualitative sum if present)
+                const sdE = (parseInt(answers['sd_arm_e']) || 0) + (parseInt(answers['sd_trunk_e']) || 0) + (parseInt(answers['sd_pelvis_e']) || 0) + (parseInt(answers['sd_knee_e']) || 0) + (parseInt(answers['sd_unstead_e']) || 0);
+                const sdD = (parseInt(answers['sd_arm_d']) || 0) + (parseInt(answers['sd_trunk_d']) || 0) + (parseInt(answers['sd_pelvis_d']) || 0) + (parseInt(answers['sd_knee_d']) || 0) + (parseInt(answers['sd_unstead_d']) || 0);
+                if (sdE > 0) results['sd_result_esq'] = sdE;
+                if (sdD > 0) results['sd_result_dir'] = sdD;
             }
 
             return {

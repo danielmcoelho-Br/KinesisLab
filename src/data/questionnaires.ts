@@ -1453,7 +1453,17 @@ export const questionnairesData: Record<string, Questionnaire> = {
         { text: '22. Sentar e levantar do vaso sanitário?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
         { text: '23. Realizar tarefas domésticas pesadas?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] },
         { text: '24. Realizar tarefas domésticas leves?', options: [{ value: 0, label: 'Nenhuma' }, { value: 1, label: 'Pouca' }, { value: 2, label: 'Moderada' }, { value: 3, label: 'Muita' }, { value: 4, label: 'Extrema' }] }
-    ]
+    ],
+    calculateScore: (answers: Record<string, any>) => {
+        const values = Object.entries(answers)
+            .filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean')
+            .map(([_, v]) => Number(v))
+            .filter(v => !isNaN(v));
+        const sum = values.reduce((a, b) => a + b, 0);
+        // WOMAC: 24 questions, 0-4 scale. Max 96.
+        // Interpretation: Higher score = more disability/symptoms.
+        return { score: sum, max: 96, percentage: Math.round((sum / 96) * 100), interpretation: 'Score de Osteoartrite (WOMAC)', unit: 'pontos' };
+    }
   },
   ikdc: {
     id: 'ikdc',
@@ -1480,7 +1490,19 @@ export const questionnairesData: Record<string, Questionnaire> = {
         { text: '16. Levantar da cadeira', options: [{ value: 4, label: 'Nenhuma Dificuldade' }, { value: 3, label: 'Dificuldade Leve' }, { value: 2, label: 'Dificuldade Moderada' }, { value: 1, label: 'Dificuldade Extrema' }, { value: 0, label: 'Incapaz de fazer' }] },
         { text: '17. Caminhar para a frente de modo continuado', options: [{ value: 4, label: 'Nenhuma Dificuldade' }, { value: 3, label: 'Dificuldade Leve' }, { value: 2, label: 'Dificuldade Moderada' }, { value: 1, label: 'Dificuldade Extrema' }, { value: 0, label: 'Incapaz de fazer' }] },
         { text: '18. Classificação da função do seu joelho hoje (0-10)', options: [{ value: 10, label: '10 (Normal)' }, { value: 9, label: '9' }, { value: 8, label: '8' }, { value: 7, label: '7' }, { value: 6, label: '6' }, { value: 5, label: '5' }, { value: 4, label: '4' }, { value: 3, label: '3' }, { value: 2, label: '2' }, { value: 1, label: '1' }, { value: 0, label: '0 (Incapaz)' }] }
-    ]
+    ],
+    calculateScore: (answers: Record<string, any>) => {
+        const values = Object.entries(answers)
+            .filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean')
+            .map(([_, v]) => Number(v))
+            .filter(v => !isNaN(v));
+        const sum = values.reduce((a, b) => a + b, 0);
+        // IKDC: Max score is 87 according to the provided values.
+        // Normalized to 0-100. Higher is better.
+        const max = 87;
+        const percentage = Math.round((sum / max) * 100);
+        return { score: sum, max, percentage, interpretation: 'Formulário Subjetivo do Joelho (IKDC)', unit: 'pontos' };
+    }
   },
   aofas: {
     id: 'aofas',
@@ -1524,6 +1546,35 @@ export const questionnairesData: Record<string, Questionnaire> = {
     segment: 'mmii',
     title: 'Avaliação Funcional MMII',
     description: 'Protocolo completo de membros inferiores: MMII, joelho e quadril.',
+    diagnosisRules: [
+        {
+            id: 'mmii_forca_def',
+            message: 'Déficit de força muscular significativa (> 15%) em um ou mais grupos musculares.',
+            criteria: (answers) => {
+                const muscles = ['f_abd_q_def', 'f_ext_q_def', 'f_ext_j_def', 'f_flex_j_def', 'f_flex_j_p_def'];
+                return muscles.some(m => parseFloat(String(answers[m] || '0').replace('%', '')) > 15);
+            }
+        },
+        {
+            id: 'mmii_iq_ratio',
+            message: 'Desequilíbrio na Relação Isquiotibiais/Quadríceps (fora da faixa 0,45-0,60).',
+            criteria: (answers) => {
+                const relE = parseFloat(String(answers['rel_iq_esq'] || '0').replace(',', '.'));
+                const relD = parseFloat(String(answers['rel_iq_dir'] || '0').replace(',', '.'));
+                return (relE > 0 && (relE < 0.45 || relE > 0.60)) || (relD > 0 && (relD < 0.45 || relD > 0.60));
+            }
+        },
+        {
+            id: 'mmii_ybt_asym',
+            message: 'Assimetria significativa no Y-Balance Test (> 10% assimetria).',
+            criteria: (answers) => parseFloat(String(answers['ybt_diff'] || '0').replace(',', '.')) > 10
+        },
+        {
+            id: 'mmii_stepdown_poor',
+            message: 'Controle motor comprometido detectado no Step Down Test (sinais de valgo dinâmico ou instabilidade).',
+            criteria: (answers) => parseFloat(String(answers['sd_result_esq'] || '0').replace(',', '.')) >= 2 || parseFloat(String(answers['sd_result_dir'] || '0').replace(',', '.')) >= 2
+        }
+    ],
     clinicalFlags: [
       {
         id: 'red_flag_neuro_mmii',
@@ -1596,15 +1647,16 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'forca',
             title: 'Força Muscular (kgF) - Torque',
             type: 'table',
-            columns: ['Músculo', 'Esquerdo', 'Direito', '% Déficit'],
+            columns: ['MOVIMENTO', 'ESQUERDO', 'DIREITO', '% DÉFICIT', 'RESULTADO'],
             rows: [
-                { id: 'abd_q_forca', label: 'Abdução de Quadril', fields: ['f_abd_q_esq', 'f_abd_q_dir', 'f_abd_q_def'] },
-                { id: 'ext_q_forca', label: 'Extensão de Quadril', fields: ['f_ext_q_esq', 'f_ext_q_dir', 'f_ext_q_def'] },
-                { id: 'ext_j_forca', label: 'Extensão de Joelho', fields: ['f_ext_j_esq', 'f_ext_j_dir', 'f_ext_j_def'] },
-                { id: 'flex_j_sentado_forca', label: 'Flexão de Joelho (Sentado)', fields: ['f_flex_j_esq', 'f_flex_j_dir', 'f_flex_j_def'] },
-                { id: 'flex_j_prono_forca', label: 'Flexão de Joelho (Prono)', fields: ['f_flex_j_p_esq', 'f_flex_j_p_dir', 'f_flex_j_p_def'] },
-                { id: 'relacao_iq', label: 'Relação I/Q', fields: ['rel_iq_esq', 'rel_iq_dir', ''] }
+                { id: 'abd_q_forca', label: 'Abdução de Quadril', fields: ['f_abd_q_esq', 'f_abd_q_dir', 'f_abd_q_def', 'f_abd_q_res'] },
+                { id: 'ext_q_forca', label: 'Extensão de Quadril', fields: ['f_ext_q_esq', 'f_ext_q_dir', 'f_ext_q_def', 'f_ext_q_res'] },
+                { id: 'ext_j_forca', label: 'Extensão de Joelho', fields: ['f_ext_j_esq', 'f_ext_j_dir', 'f_ext_j_def', 'f_ext_j_res'] },
+                { id: 'flex_j_sentado_forca', label: 'Flexão de Joelho (Sentado)', fields: ['f_flex_j_esq', 'f_flex_j_dir', 'f_flex_j_def', 'f_flex_j_res'] },
+                { id: 'flex_j_prono_forca', label: 'Flexão de Joelho (Prono)', fields: ['f_flex_j_p_esq', 'f_flex_j_p_dir', 'f_flex_j_p_def', 'f_flex_j_p_res'] },
+                { id: 'relacao_iq', label: 'Relação I/Q', fields: [{ id: 'rel_iq_esq', isCalculated: true }, { id: 'rel_iq_dir', isCalculated: true }, '', { id: 'rel_iq_status', isCalculated: true }] }
             ],
+            footer: 'Relação Isquiotibiais/Quadríceps: valor normal = 0,5 (0,45-0,60) | Considera-se equilíbrio muscular até o déficit < 15%',
             fields: [{ id: 'forca_mmii_obs', label: 'OBSERVAÇÕES', type: 'textarea' }]
         },
         {
@@ -1622,7 +1674,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             fields: [
                 { id: 'ybt_esq', label: 'Y Apoio Esq. (%)', type: 'number' },
                 { id: 'ybt_dir', label: 'Y Apoio Dir. (%)', type: 'number' },
-                { id: 'ybt_diff', label: 'Assimetria (%)', type: 'text' },
+                { id: 'ybt_diff', label: 'Assimetria (%)', type: 'text', isCalculated: true },
                 { id: 'ybt_calc', label: 'Calculadora YBT', type: 'button' },
                 { id: 'ybt_obs', label: 'OBSERVAÇÕES', type: 'textarea' }
             ]
@@ -1641,7 +1693,9 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'diagnostico_conclusoes',
             title: 'Diagnostico e Conclusões',
             fields: [
+                { id: 'diag_button', label: 'Gerar Diagnóstico', type: 'button' },
                 { id: 'diagnostico', label: 'Diagnóstico Cinético Funcional', type: 'textarea' },
+                { id: 'surg_button', label: 'Gerar Sugestões', type: 'button' },
                 { id: 'conclusao', label: 'Conclusões e Sugestões Terapêuticas', type: 'textarea' }
             ]
         }
@@ -1844,16 +1898,6 @@ export const questionnairesData: Record<string, Questionnaire> = {
                 { id: 'ybt_dir', label: 'Y Apoio Dir. (%)', type: 'number' },
                 { id: 'ybt_diff', label: 'Assimetria (%)', type: 'text' },
                 { id: 'ybt_calc', label: 'Calculadora YBT', type: 'button' },
-                { id: 'sd_estudio_esq', label: 'Estúdio Step-Down Esq.', type: 'angle_measurement' },
-                { id: 'sd_estudio_dir', label: 'Estúdio Step-Down Dir.', type: 'angle_measurement' },
-                { id: 'sd_valgo_esq', label: 'Valgo dinâmico Esq.', type: 'number' },
-                { id: 'sd_valgo_dir', label: 'Valgo dinâmico Dir.', type: 'number' },
-                { id: 'sd_queda_esq', label: 'Queda pélvica Esq.', type: 'number' },
-                { id: 'sd_queda_dir', label: 'Queda pélvica Dir.', type: 'number' },
-                { id: 'sd_valgo_res_esq', label: 'Res. Valgo Esq.', type: 'text' },
-                { id: 'sd_valgo_res_dir', label: 'Res. Valgo Dir.', type: 'text' },
-                { id: 'sd_queda_res_esq', label: 'Res. Queda Esq.', type: 'text' },
-                { id: 'sd_queda_res_dir', label: 'Res. Queda Dir.', type: 'text' },
                 { id: 'ybt_obs', label: 'OBSERVAÇÕES', type: 'textarea' }
             ]
         },

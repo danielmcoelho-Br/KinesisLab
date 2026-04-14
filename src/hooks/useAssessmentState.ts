@@ -412,15 +412,17 @@ export function useAssessmentState({
         }
 
         setIsDirty(true);
+        const safeParse = (val: any) => {
+            if (val === undefined || val === null || val === '') return 0;
+            return parseFloat(String(val).replace(',', '.'));
+        };
+
         setAnswers(prev => {
             const newAnswers = { ...prev, [fieldId]: value, _lastModified: Date.now() };
             
             // Auto-calculations logic
             if (type === 'afOmbro') {
-                const safeParse = (val: any) => {
-                    if (val === undefined || val === null || val === '') return 0;
-                    return parseFloat(String(val).replace(',', '.'));
-                           const movements = ['forca_abd', 'forca_rl', 'forca_rm'];
+                const movements = ['forca_abd', 'forca_rl', 'forca_rm'];
                 movements.forEach(mId => {
                     if (fieldId === `${mId}_esq` || fieldId === `${mId}_dir`) {
                         const esq = safeParse(newAnswers[`${mId}_esq`]);
@@ -464,7 +466,6 @@ export function useAssessmentState({
                         newAnswers['rl_rm_ratio_dir'] = '';
                     }
                 }
-             }
 
                 // CKCUEST Classification
                 if (fieldId === 'ckcuest_esq' || fieldId === 'ckcuest_dir') {
@@ -541,7 +542,7 @@ export function useAssessmentState({
             }
 
             if (type === 'afGeriatria') {
-                const val = parseFloat(String(value).replace(',', '.'));
+                const val = safeParse(value);
                 if (!isNaN(val)) {
                     if (fieldId === 'pes_juntos') newAnswers['pes_juntos_res'] = val >= 30 ? 'Normal' : 'Abaixo';
                     if (fieldId === 'semi_tandem') newAnswers['semi_tandem_res'] = val >= 30 ? 'Normal' : 'Abaixo';
@@ -550,10 +551,10 @@ export function useAssessmentState({
                     if (fieldId === 'vel_marcha') newAnswers['vel_marcha_res'] = val >= 0.8 ? 'Normal' : 'Abaixo';
                     if (fieldId === 'preensao_esq' || fieldId === 'preensao_dir') {
                         const threshold = patientGender === 'Feminino' ? 16 : 27;
-                        const esqVal = parseFloat(String(newAnswers['preensao_esq'] || '0').replace(',', '.'));
-                        const dirVal = parseFloat(String(newAnswers['preensao_dir'] || '0').replace(',', '.'));
-                        if (!isNaN(esqVal) && newAnswers['preensao_esq'] !== undefined && newAnswers['preensao_esq'] !== '') newAnswers['preensao_res_esq'] = esqVal >= threshold ? 'Normal' : 'Abaixo';
-                        if (!isNaN(dirVal) && newAnswers['preensao_dir'] !== undefined && newAnswers['preensao_dir'] !== '') newAnswers['preensao_res_dir'] = dirVal >= threshold ? 'Normal' : 'Abaixo';
+                        const esqVal = safeParse(newAnswers['preensao_esq']);
+                        const dirVal = safeParse(newAnswers['preensao_dir']);
+                        if (newAnswers['preensao_esq'] !== undefined && newAnswers['preensao_esq'] !== '') newAnswers['preensao_res_esq'] = esqVal >= threshold ? 'Normal' : 'Abaixo';
+                        if (newAnswers['preensao_dir'] !== undefined && newAnswers['preensao_dir'] !== '') newAnswers['preensao_res_dir'] = dirVal >= threshold ? 'Normal' : 'Abaixo';
                     }
                     if (fieldId === 'unipodal_dir') newAnswers['unipodal_dir_res'] = val > 10 ? 'Normal' : 'Abaixo';
                     if (fieldId === 'unipodal_esq') newAnswers['unipodal_esq_res'] = val > 10 ? 'Normal' : 'Abaixo';
@@ -612,33 +613,77 @@ export function useAssessmentState({
                 const mmiiMovements = ['f_abd_q', 'f_ext_q', 'f_ext_j', 'f_flex_j', 'f_flex_j_p'];
                 mmiiMovements.forEach(mId => {
                     if (fieldId === `${mId}_esq` || fieldId === `${mId}_dir`) {
-                        const esq = Number(newAnswers[`${mId}_esq`]);
-                        const dir = Number(newAnswers[`${mId}_dir`]);
+                        const esq = safeParse(newAnswers[`${mId}_esq`]);
+                        const dir = safeParse(newAnswers[`${mId}_dir`]);
                         if (esq > 0 || dir > 0) {
                             const max = Math.max(esq, dir);
                             const min = Math.min(esq, dir);
                             const deficit = Math.round(((max - min) / max) * 100);
                             newAnswers[`${mId}_def`] = `${deficit}%`;
-                            newAnswers[`${mId}_def_res`] = deficit <= 15 ? 'Normal' : 'Reduzido';
+                            
+                            // Detailed classification
+                            if (deficit <= 10) newAnswers[`${mId}_res`] = 'Normal';
+                            else if (deficit <= 20) newAnswers[`${mId}_res`] = 'Déficit Leve';
+                            else if (deficit <= 30) newAnswers[`${mId}_res`] = 'Déficit Moderado';
+                            else newAnswers[`${mId}_res`] = 'Déficit Grave';
                         } else {
                             newAnswers[`${mId}_def`] = '';
-                            newAnswers[`${mId}_def_res`] = '';
+                            newAnswers[`${mId}_res`] = '';
                         }
                     }
                 });
 
-                ['esq', 'dir'].forEach(side => {
-                    const ext = Number(newAnswers[`f_ext_j_${side}`]);
-                    const flexValue = Number(newAnswers[`f_flex_j_${side}`]) || Number(newAnswers[`f_flex_j_p_${side}`]);
-                    if (ext && flexValue) newAnswers[`rel_iq_${side}`] = `${Math.round((flexValue / ext) * 100)}%`;
-                    else newAnswers[`rel_iq_${side}`] = '';
-                });
+                // Relação I/Q Logic
+                const relIQFields = ['f_ext_j', 'f_flex_j', 'f_flex_j_p'];
+                if (relIQFields.some(f => fieldId.startsWith(f))) {
+                    ['esq', 'dir'].forEach(side => {
+                        const ext = safeParse(newAnswers[`f_ext_j_${side}`]);
+                        const flexValue = safeParse(newAnswers[`f_flex_j_${side}`]) || safeParse(newAnswers[`f_flex_j_p_${side}`]);
+                        if (ext > 0 && flexValue > 0) {
+                            const ratio = (flexValue / ext);
+                            const ratioPercent = Math.round(ratio * 100);
+                            // Reference 0.45 - 0.60
+                            const status = (ratio >= 0.45 && ratio <= 0.60) ? 'Normal' : 'Desequilíbrio';
+                            newAnswers[`rel_iq_${side}`] = `${ratioPercent}% - ${status}`;
+                        } else {
+                            newAnswers[`rel_iq_${side}`] = '';
+                        }
+                    });
+                }
 
                 if (fieldId === 'ybt_esq' || fieldId === 'ybt_dir') {
-                    const esq = parseFloat(String(newAnswers['ybt_esq']).replace(',', '.'));
-                    const dir = parseFloat(String(newAnswers['ybt_dir']).replace(',', '.'));
-                    if (!isNaN(esq) && !isNaN(dir)) newAnswers['ybt_diff'] = `${Math.abs(esq - dir).toFixed(1)}%`;
+                    const esq = safeParse(newAnswers['ybt_esq']);
+                    const dir = safeParse(newAnswers['ybt_dir']);
+                    if (esq > 0 || dir > 0) newAnswers['ybt_diff'] = `${Math.abs(esq - dir).toFixed(1)}%`;
                     else newAnswers['ybt_diff'] = '';
+                }
+
+                // Step Down Test Calculation
+                const sdCriteria = ['sd_pelvis', 'sd_knee'];
+                if (sdCriteria.some(c => fieldId.startsWith(c))) {
+                    ['e', 'd'].forEach(side => {
+                        sdCriteria.forEach(c => {
+                            const rawVal = safeParse(newAnswers[`${c}_${side}`]);
+                            let point = 0;
+                            if (c === 'sd_knee') {
+                                // Valgo dinâmico: 8°±5 (Normal: 3-13)
+                                if (rawVal > 1) point = (rawVal < 3 || rawVal > 13) ? 1 : 0;
+                                else point = rawVal;
+                            } else if (c === 'sd_pelvis') {
+                                // Queda pélvica: 10°±5 (Normal: 5-15)
+                                if (rawVal > 1) point = (rawVal < 5 || rawVal > 15) ? 1 : 0;
+                                else point = rawVal;
+                            }
+                            
+                            // Set individual row result for the 5-column table
+                            const rowResKey = `${c}_res_${side}`;
+                            if (newAnswers[`${c}_${side}`] !== undefined && newAnswers[`${c}_${side}`] !== '') {
+                                newAnswers[rowResKey] = point === 0 ? 'Normal' : 'Alterado';
+                            } else {
+                                newAnswers[rowResKey] = '';
+                            }
+                        });
+                    });
                 }
             }
 

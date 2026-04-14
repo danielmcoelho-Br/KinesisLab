@@ -145,7 +145,7 @@ export default function PrintSummaryView({
 
             return checkFieldsData(section.fields) || hasTableData || hasSubData || hasHistoryData || hasTableHistoryData;
         }).reduce((acc: any[], item, idx, arr) => {
-            const isClinicalAssessment = ['afOmbro', 'afCervical', 'afLombar', 'afGeriatria'].includes(type);
+            const isClinicalAssessment = ['afOmbro', 'afCervical', 'afLombar', 'afGeriatria', 'afMmii', 'afTornozelo'].includes(type);
             const section = item as Section;
 
             if (isClinicalAssessment) {
@@ -161,7 +161,8 @@ export default function PrintSummaryView({
                     'sugestoes',
                     'oswestry_integracao',
                     'ndi_integracao',
-                    'quickdash_integracao'
+                    'quickdash_integracao',
+                    'integracao'
                 ];
 
                 // DASHBOARD LOGIC (First Row)
@@ -218,7 +219,7 @@ export default function PrintSummaryView({
                 if (section.isClinicalDashboard) {
                     const evaField = section.fields?.find((f: any) => typeof f !== 'string' && f.id === 'intensidade_dor');
                     const mapField = section.fields?.find((f: any) => typeof f !== 'string' && f.id === 'area_dor');
-                    const anamneseField = section.fields?.find((f: any) => typeof f !== 'string' && (f.id === 'anamnese' || f.id === 'anamnese_texto' || f.id === 'anamnese_obs' || f.id === 'queixa'));
+                    const anamneseField = section.fields?.find((f: any) => typeof f !== 'string' && (f.id === 'anamnese' || f.id.startsWith('anamnese_') || f.id === 'queixa'));
                     
                     return (
                         <div key={section.id} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', marginBottom: '1.5rem' }}>

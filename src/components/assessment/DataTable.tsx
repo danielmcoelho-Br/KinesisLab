@@ -148,7 +148,7 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
 
                                     let calculatedValue = answers[fieldId];
                                     const isCalculated = fieldId.includes('_deficit') || fieldId.includes('_def') || 
-                                                       fieldId.includes('_ratio') || fieldId.includes('_res_global');
+                                                       fieldId.includes('_ratio') || fieldId.includes('_res_global') || fieldId.includes('_iq_');
 
                                     if (isCalculated && !answers[fieldId] && (fieldId.endsWith('_deficit') || fieldId.endsWith('_def'))) {
                                         const sidePrefix = fieldId.replace('_deficit', '').replace('_def', '');
@@ -183,7 +183,6 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                                                 calculatedValue = isNormal ? 'NORMAL' : 'ABAIXO';
                                             } else {
                                                 // Check for other types of thresholds (e.g. static tests in geriatrics)
-                                                // For now, if no endurance threshold, keep the original behavior if it was defined
                                                 if (['pes_juntos', 'semi_tandem', 'tandem', 'unipodal_dir', 'unipodal_esq'].includes(sourceValFieldId)) {
                                                     const ref = sourceValFieldId.includes('tandem') ? 17.56 : (sourceValFieldId.includes('unipodal') ? 10 : 30);
                                                     calculatedValue = numVal >= ref ? 'NORMAL' : 'ABAIXO';
@@ -221,6 +220,20 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                     })}
                 </tbody>
             </table>
+            {section.footer && (
+                <div style={{ 
+                    padding: isPrint ? '0.25rem 0.5rem' : '0.75rem 1rem', 
+                    backgroundColor: '#f8fafc', 
+                    borderTop: '1px solid var(--border)',
+                    fontSize: isPrint ? '0.6rem' : '0.7rem',
+                    fontWeight: '700',
+                    color: 'var(--text-muted)',
+                    fontStyle: 'italic',
+                    textAlign: 'left'
+                }}>
+                    * {section.footer}
+                </div>
+            )}
         </div>
     );
 });

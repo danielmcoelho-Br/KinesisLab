@@ -46,7 +46,7 @@ const DataTableCell = memo(({
         (max !== undefined && numValue > max)
     );
 
-    if (fieldId.endsWith('_res') || fieldId.endsWith('_res_esq') || fieldId.endsWith('_res_dir') || fieldId.endsWith('_res_global') || fieldId.endsWith('_class') || fieldId.endsWith('_status') || fieldId.endsWith('_deficit_res') || fieldId.includes('ratio')) {
+    if (fieldId.endsWith('_res') || fieldId.endsWith('_res_esq') || fieldId.endsWith('_res_dir') || fieldId.endsWith('_res_e') || fieldId.endsWith('_res_d') || fieldId.endsWith('_result_esq') || fieldId.endsWith('_result_dir') || fieldId.endsWith('_res_global') || fieldId.endsWith('_class') || fieldId.endsWith('_status') || fieldId.endsWith('_deficit_res') || fieldId.includes('ratio')) {
         let displayValue = value || "-";
         
         // Dynamic status for ratio if missing
@@ -61,7 +61,7 @@ const DataTableCell = memo(({
         const isNormal = val.includes('NORMAL') || val === 'SIM';
         const isLeve = val.includes('LEVE');
         const isModerado = val.includes('MODERADO');
-        const isGrave = val.includes('GRAVE') || val.includes('ABAIXO') || val.includes('DÉFICIT') || val.includes('DEFICIT') || val.includes('ALTERADO') || val === 'NÃO' || val === 'NAO';
+        const isGrave = val.includes('GRAVE') || val.includes('ABAIXO') || val.includes('DÉFICIT') || val.includes('DEFICIT') || val.includes('ALTERADO') || val === 'NÃO' || val === 'NAO' || val.includes('DESEQUILÍBRIO') || val.includes('DESEQUILIBRIO');
         
         const isGeriatria = state.type === 'afGeriatria';
         let bgColor = '#f1f5f9';
@@ -238,13 +238,13 @@ const DataTableCell = memo(({
                     maxWidth: '85px',
                     padding: isPrint ? '0.1rem 0.2rem' : '0.2rem 0.3rem', 
                     borderRadius: '0.4rem', 
-                    border: isEditing ? (isOutOfRange ? '2px solid #f97316' : (state.type === 'afGeriatria' && isValueBelowStandard(fieldId, numValue, state.patientGender) ? '2px solid #eab308' : '1px solid var(--border)')) : '1px solid transparent',
-                    backgroundColor: isEditing ? (isOutOfRange ? '#fff7ed' : (state.type === 'afGeriatria' && isValueBelowStandard(fieldId, numValue, state.patientGender) ? '#fef08a' : 'white')) : 'transparent',
+                    border: isEditing ? (isOutOfRange ? '2px solid #f97316' : (isValueBelowStandard(fieldId, numValue, state.patientGender) ? '2px solid #eab308' : '1px solid var(--border)')) : '1px solid transparent',
+                    backgroundColor: isEditing ? (isOutOfRange ? '#fff7ed' : (isValueBelowStandard(fieldId, numValue, state.patientGender) ? '#fef08a' : 'white')) : 'transparent',
                     fontSize: isPrint ? '0.7rem' : '0.78rem',
                     textAlign: 'center',
-                    boxShadow: (isOutOfRange || (state.type === 'afGeriatria' && isValueBelowStandard(fieldId, numValue, state.patientGender))) ? (isOutOfRange ? '0 0 0 2px #ffedd5' : '0 0 0 2px #fef9c3') : 'none',
-                    color: (state.type === 'afGeriatria' && isValueBelowStandard(fieldId, numValue, state.patientGender)) ? '#854d0e' : 'inherit',
-                    fontWeight: (state.type === 'afGeriatria' && isValueBelowStandard(fieldId, numValue, state.patientGender)) ? '800' : 'inherit'
+                    boxShadow: (isOutOfRange || (isValueBelowStandard(fieldId, numValue, state.patientGender))) ? (isOutOfRange ? '0 0 0 2px #ffedd5' : '0 0 0 2px #fef9c3') : 'none',
+                    color: (isValueBelowStandard(fieldId, numValue, state.patientGender)) ? '#854d0e' : 'inherit',
+                    fontWeight: (isValueBelowStandard(fieldId, numValue, state.patientGender)) ? '800' : 'inherit'
                 }}
             />
             {isEditing && state.type !== 'afLombar' && state.type !== 'afCervical' && fieldType === 'number' && (fieldId.includes('forca') || fieldId.startsWith('f_') || fieldId.includes('preensao') || fieldId.includes('polpa') || fieldId.includes('lateral') || fieldId.includes('tripode') || fieldId.includes('resist')) && onOpenDynamo && (

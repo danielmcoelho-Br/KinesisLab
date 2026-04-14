@@ -907,7 +907,6 @@ export function useAssessmentState({
         patientAge,
         patientActivityLevel,
         patientAssessments,
-        patientAssessments,
         selectedImage, setSelectedImage,
         showDraftModal, setShowDraftModal,
         showExitModal, setShowExitModal,

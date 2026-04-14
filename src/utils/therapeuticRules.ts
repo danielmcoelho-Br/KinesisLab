@@ -427,7 +427,7 @@ export function generateDiagnosticText(questionnaireId: string, answers: Record<
     }
 
     // Trigger Points
-    const tps = [];
+    const tps: string[] = [];
     const mioFields: Record<string, string> = {
       'trapezio_sup': 'Trapézio Superior',
       'peitoral_maior': 'Peitoral Maior',

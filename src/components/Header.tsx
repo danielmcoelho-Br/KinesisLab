@@ -46,6 +46,8 @@ export default function Header({ showBackButton = false }: HeaderProps) {
                   src="/logo-kinesis.png" 
                   alt="KinesisLab Logo" 
                   fill
+                  priority
+                  sizes="(max-width: 768px) 80px, (max-width: 1024px) 100px, 134px"
                   style={{ objectFit: 'contain' }}
               />
           </div>

@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
+const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
 export async function saveAssessment(data: {
   patientId: string;
   type: string;
@@ -11,6 +13,9 @@ export async function saveAssessment(data: {
   scoreData: any;
   userId?: string;
 }) {
+  console.log(`[DEBUG] saveAssessment called for patient: ${data.patientId}`);
+  if (!isValidUUID(data.patientId)) return { success: false, error: "ID de paciente inválido" };
+
   try {
     const assessment = await prisma.assessment.create({
       data: {
@@ -33,6 +38,9 @@ export async function saveAssessment(data: {
 }
 
 export async function getAssessment(id: string) {
+  console.log(`[DEBUG] getAssessment called for: ${id}`);
+  if (!id || !isValidUUID(id)) return { success: false, error: "ID de avaliação inválido" };
+
   try {
     const assessment = await prisma.assessment.findUnique({
       where: { id },
@@ -46,7 +54,23 @@ export async function getAssessment(id: string) {
       }
     });
 
-    return { success: true, data: assessment };
+    if (!assessment) return { success: false, error: "Avaliação não encontrada" };
+
+    // Sanitize to ensure serializability
+    const sanitized = {
+      id: assessment.id,
+      patient_id: assessment.patient_id,
+      assessment_type: assessment.assessment_type,
+      segment: assessment.segment,
+      questionnaire_answers: assessment.questionnaire_answers,
+      clinical_data: assessment.clinical_data,
+      created_at: assessment.created_at,
+      created_by_id: assessment.created_by_id,
+      change_logs: Array.isArray(assessment.change_logs) ? assessment.change_logs : [],
+      created_by: assessment.created_by
+    };
+
+    return { success: true, data: sanitized };
   } catch (error) {
     console.error("Error fetching assessment:", error);
     return { success: false, error: "Falha ao buscar avaliação" };
@@ -58,13 +82,16 @@ export async function updateAssessment(id: string, data: {
   scoreData: any;
   logEntries: string[];
 }) {
+  console.log(`[DEBUG] updateAssessment called for: ${id}`);
+  if (!isValidUUID(id)) return { success: false, error: "ID de avaliação inválido" };
+
   try {
     const current = await prisma.assessment.findUnique({
       where: { id },
       select: { change_logs: true }
     });
 
-    const logs = Array.isArray(current?.change_logs) ? [...current.change_logs] : [];
+    const logs = Array.isArray(current?.change_logs) ? [...current.change_logs as any[]] : [];
     
     data.logEntries.forEach(entry => {
         logs.push({

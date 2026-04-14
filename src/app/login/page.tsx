@@ -41,6 +41,8 @@ export default function LoginPage() {
                   src="/logo-kinesis.png" 
                   alt="KinesisLab Logo" 
                   fill
+                  priority
+                  sizes="(max-width: 768px) 240px, 288px"
                   style={{ objectFit: 'contain' }}
               />
             </div>

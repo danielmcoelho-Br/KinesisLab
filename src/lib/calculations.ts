@@ -32,7 +32,57 @@ export interface CalculationResult {
     details?: Record<string, any>;
 }
 
-export function calculateAssessmentScore(type: CalculationType, answers: Record<string, any>): CalculationResult {
+// Normative data for Muscle Endurance (seconds)
+const NORMATIVE_DATA: Record<string, any> = {
+    neck_flexor: {
+        men: [
+            { ageRange: [20, 40], mean: 38.4 },
+            { ageRange: [41, 60], mean: 38.1 },
+            { ageRange: [61, 80], mean: 40.9 }
+        ],
+        women: [
+            { ageRange: [20, 40], mean: 23.1 },
+            { ageRange: [41, 60], mean: 36.2 },
+            { ageRange: [61, 80], mean: 28.5 }
+        ]
+    },
+    lumbar_flexor: {
+        men: [
+            { ageRange: [18, 40], mean: 233.9 },
+            { ageRange: [41, 99], mean: 108.2 }
+        ],
+        women: [
+            { ageRange: [18, 40], mean: 233.9 },
+            { ageRange: [41, 99], mean: 108.2 }
+        ]
+    },
+    sorensen: {
+        men: [
+            { ageRange: [18, 40], mean: 181.1 },
+            { ageRange: [41, 65], mean: 84.9 },
+            { ageRange: [66, 99], mean: 84.9 }
+        ],
+        women: [
+            { ageRange: [18, 40], mean: 171.9 },
+            { ageRange: [41, 65], mean: 88.2 },
+            { ageRange: [66, 99], mean: 88.2 }
+        ]
+    },
+    flexao_60: {
+        men: [
+            { ageRange: [18, 40], mean: 181.1 },
+            { ageRange: [41, 65], mean: 84.9 },
+            { ageRange: [66, 99], mean: 84.9 }
+        ],
+        women: [
+            { ageRange: [18, 40], mean: 171.9 },
+            { ageRange: [41, 65], mean: 88.2 },
+            { ageRange: [66, 99], mean: 88.2 }
+        ]
+    }
+};
+
+export function calculateAssessmentScore(type: CalculationType, answers: Record<string, any>, profile?: { gender?: string, age?: number, activityLevel?: string }): CalculationResult {
     // Filter answers where keys are numeric indices (0, 1, 2...) and values are numeric or string-numbers
     const values = Object.entries(answers)
         .filter(([k, v]) => !isNaN(Number(k)) && v !== undefined && v !== "" && typeof v !== 'boolean')
@@ -191,10 +241,66 @@ export function calculateAssessmentScore(type: CalculationType, answers: Record<
 
             // MMII specific force/perimetry
             if (type === 'mmii') {
-                ['p_joe', 'p_cox', 'f_abd_q', 'f_ext_q', 'f_ext_j', 'f_flex_j'].forEach(t => {
+                ['p_joe', 'p_cox'].forEach(t => {
                     const def = calcDeficit(answers[`${t}_esq`], answers[`${t}_dir`]);
-                    if (def) results[t] = { deficit: def };
+                    if (def) results[`${t}_def`] = def;
                 });
+
+                ['f_abd_q', 'f_ext_q', 'f_ext_j', 'f_flex_j', 'f_flex_j_p'].forEach(t => {
+                    const def = calcDeficit(answers[`${t}_esq`], answers[`${t}_dir`]);
+                    if (def) {
+                        results[`${t}_def`] = def;
+                        const defNum = parseFloat(def.replace('%', ''));
+                        const status = defNum < 15 ? 'NORMAL' : 'DÉFICIT';
+                        results[`${t}_res`] = `${def} - ${status}`;
+                    }
+                });
+
+                // Relação IQ (Sentado)
+                const flexE = parseFloat(answers['f_flex_j_esq']);
+                const extE = parseFloat(answers['f_ext_j_esq']);
+                const flexD = parseFloat(answers['f_flex_j_dir']);
+                const extD = parseFloat(answers['f_ext_j_dir']);
+
+                let statusE = '';
+                let statusD = '';
+
+                if (flexE > 0 && extE > 0) {
+                    const ratioE = flexE / extE;
+                    results['rel_iq_esq'] = ratioE.toFixed(2);
+                    statusE = (ratioE >= 0.45 && ratioE <= 0.60) ? 'NORMAL' : 'DÉFICIT';
+                }
+
+                if (flexD > 0 && extD > 0) {
+                    const ratioD = flexD / extD;
+                    results['rel_iq_dir'] = ratioD.toFixed(2);
+                    statusD = (ratioD >= 0.45 && ratioD <= 0.60) ? 'NORMAL' : 'DÉFICIT';
+                }
+
+                if (statusE || statusD) {
+                    if (statusE === 'DÉFICIT' || statusD === 'DÉFICIT') {
+                        results['rel_iq_res'] = 'DÉFICIT';
+                    } else {
+                        results['rel_iq_res'] = 'NORMAL';
+                    }
+                }
+
+                // YBT Asymmetry
+                const ybtE = parseFloat(answers['ybt_esq']);
+                const ybtD = parseFloat(answers['ybt_dir']);
+                if (!isNaN(ybtE) && !isNaN(ybtD)) {
+                    results['ybt_diff'] = Math.abs(ybtE - ybtD).toFixed(1);
+                }
+
+                // Step Down Test Calculation
+                const sdE = (parseInt(answers['sd_arm_e']) || 0) + (parseInt(answers['sd_trunk_e']) || 0) + (parseInt(answers['sd_pelvis_e']) || 0) + (parseInt(answers['sd_knee_e']) || 0) + (parseInt(answers['sd_unstead_e']) || 0);
+                const sdD = (parseInt(answers['sd_arm_d']) || 0) + (parseInt(answers['sd_trunk_d']) || 0) + (parseInt(answers['sd_pelvis_d']) || 0) + (parseInt(answers['sd_knee_d']) || 0) + (parseInt(answers['sd_unstead_d']) || 0);
+                if (sdE > 0) results['sd_result_esq'] = sdE;
+                if (sdD > 0) results['sd_result_dir'] = sdD;
+
+                // Endurance Percentages
+                if (answers['sorensen_pct']) results['sorensen_pct'] = answers['sorensen_pct'];
+                if (answers['flexao_60_pct']) results['flexao_60_pct'] = answers['flexao_60_pct'];
             }
 
             return {
@@ -265,12 +371,22 @@ export function calculateAssessmentScore(type: CalculationType, answers: Record<
         case 'sum': 
         default: {
             if (n === 0) return emptyResult();
+            
+            // Collect any clinical percentages from answers for summary
+            const clinicalDetails: Record<string, any> = {};
+            Object.keys(answers).forEach(k => {
+                if (k.endsWith('_pct') || k.endsWith('_res')) {
+                    clinicalDetails[k] = answers[k];
+                }
+            });
+
             return {
                 score: sum,
                 max: '-',
                 percentage: 0,
                 interpretation: 'Cálculo concluído',
-                unit: ''
+                unit: '',
+                details: clinicalDetails
             };
         }
     }

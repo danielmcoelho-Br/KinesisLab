@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
+const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
 export async function getPatients(query: string = "") {
   try {
     const patients = await prisma.patient.findMany({
@@ -43,6 +45,23 @@ export async function getPatients(query: string = "") {
   } catch (error) {
     console.error("Error fetching patients:", error);
     return { success: false, error: "Falha ao buscar pacientes" };
+  }
+}
+
+export async function findPatientByName(name: string) {
+  try {
+    const patient = await prisma.patient.findFirst({
+      where: {
+        name: {
+          equals: name.trim(),
+          mode: 'insensitive'
+        }
+      }
+    });
+    return { success: true, data: patient };
+  } catch (error) {
+    console.error("Error finding patient by name:", error);
+    return { success: false, error: "Erro ao buscar duplicidade de nome" };
   }
 }
 
@@ -134,6 +153,8 @@ export async function deletePatient(id: string) {
 }
 
 export async function getPatientAssessments(patientId: string) {
+  console.log(`[DEBUG] getPatientAssessments called for: ${patientId}`);
+  if (!isValidUUID(patientId)) return { success: false, error: "ID de paciente inválido" };
   try {
     const patient = await prisma.patient.findUnique({
       where: { id: patientId }
@@ -149,10 +170,20 @@ export async function getPatientAssessments(patientId: string) {
       orderBy: { created_at: 'desc' }
     });
 
-    
+    const patientData = patient ? {
+      id: patient.id,
+      name: patient.name,
+      age: patient.age,
+      gender: patient.gender,
+      dominance: patient.dominance,
+      activity_level: patient.activity_level,
+      birth_date: patient.birth_date,
+      created_at: patient.created_at
+    } : null;
+
     return { 
       success: true, 
-      data: { patient, assessments } 
+      data: { patient: patientData, assessments } 
     };
   } catch (error) {
     console.error("Error fetching patient assessments:", error);
@@ -161,11 +192,25 @@ export async function getPatientAssessments(patientId: string) {
 }
 
 export async function getPatient(id: string) {
+  console.log(`[DEBUG] getPatient called for: ${id}`);
+  if (!isValidUUID(id)) return { success: false, error: "ID inválido" };
   try {
     const patient = await prisma.patient.findUnique({
       where: { id }
     });
-    return { success: true, data: patient };
+    
+    const patientData = patient ? {
+      id: patient.id,
+      name: patient.name,
+      age: patient.age,
+      gender: patient.gender,
+      dominance: patient.dominance,
+      activity_level: patient.activity_level,
+      birth_date: patient.birth_date,
+      created_at: patient.created_at
+    } : null;
+
+    return { success: true, data: patientData };
   } catch (error) {
     console.error("Error fetching patient:", error);
     return { success: false, error: "Falha ao buscar paciente" };
@@ -178,8 +223,6 @@ export async function deleteAssessment(id: string) {
       where: { id }
     });
     
-    // Use path for revalidation if needed
-    // Usually patient profile page or dashboard
     revalidatePath("/dashboard/patient/[patientId]", "page");
     
     return { success: true };
@@ -189,3 +232,52 @@ export async function deleteAssessment(id: string) {
   }
 }
 
+export async function addPatientDocument(patientId: string, doc: { name: string; type: string; data: string; size: number }) {
+  try {
+    const patient = await prisma.patient.findUnique({ where: { id: patientId } });
+    if (!patient) throw new Error("Paciente não encontrado");
+
+    const currentDocs = Array.isArray(patient.documents) ? [...patient.documents as any[]] : [];
+    const newDoc = {
+      ...doc,
+      id: Math.random().toString(36).substring(2, 11),
+      uploaded_at: new Date().toISOString()
+    };
+
+    await prisma.patient.update({
+      where: { id: patientId },
+      data: {
+        documents: [...currentDocs, newDoc]
+      }
+    });
+
+    revalidatePath(`/dashboard/patient/${patientId}`);
+    return { success: true, data: newDoc };
+  } catch (error: any) {
+    console.error("Error adding document:", error);
+    return { success: false, error: `Falha ao anexar documento: ${error.message || "Erro desconhecido"}` };
+  }
+}
+
+export async function deletePatientDocument(patientId: string, documentId: string) {
+  try {
+    const patient = await prisma.patient.findUnique({ where: { id: patientId } });
+    if (!patient) throw new Error("Paciente não encontrado");
+
+    const currentDocs = Array.isArray(patient.documents) ? [...patient.documents as any[]] : [];
+    const filteredDocs = currentDocs.filter(d => d.id !== documentId);
+
+    await prisma.patient.update({
+      where: { id: patientId },
+      data: {
+        documents: filteredDocs
+      }
+    });
+
+    revalidatePath(`/dashboard/patient/${patientId}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error deleting document:", error);
+    return { success: false, error: `Falha ao excluir documento: ${error.message || "Erro desconhecido"}` };
+  }
+}

@@ -1,47 +1,29 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from "framer-motion";
 import { 
     X, 
+    Maximize2, 
+    Save, 
+    Eraser, 
+    Pencil, 
+    Minus, 
+    RotateCcw, 
     Undo, 
-    Trash2, 
     Copy, 
-    Download,
+    Download, 
     Grid, 
-    MousePointer2, 
-    Paintbrush, 
-    Type, 
-    Move, 
-    Square, 
-    Minus,
-    Maximize2,
-    RotateCcw,
-    Palette,
-    Check,
-    Eraser
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'sonner';
-import './PosturalAnalysisModal.css';
-
-interface Point {
-    x: number;
-    y: number;
-}
-
-interface Line {
-    start: Point;
-    end: Point;
-    color: string;
-}
-
-interface AnglePoint {
-    points: Point[]; // 3 points for an angle
-    color: string;
-    angle: number | null;
-}
-
-type Tool = 'select' | 'brush' | 'line' | 'angle_points' | 'angle_lines' | 'eraser';
+    Palette, 
+    MousePointer2,
+    Layers,
+    Type,
+    Trash2,
+    Paintbrush
+} from "lucide-react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import AngleMeasurement from "./AngleMeasurement";
+import { compressImage } from "@/lib/image-compressor";
+import { toast } from "sonner";
 
 interface PosturalAnalysisModalProps {
     isOpen: boolean;
@@ -50,456 +32,176 @@ interface PosturalAnalysisModalProps {
     onSave: (processedImage: string) => void;
 }
 
-export default function PosturalAnalysisModal({ isOpen, onClose, imageSrc, onSave }: PosturalAnalysisModalProps) {
-    const [activeTool, setActiveTool] = useState<Tool>('brush');
-    const [color, setColor] = useState('#ff0000');
-    const [showGrid, setShowGrid] = useState(true);
-    const [gridSize, setGridSize] = useState(40);
-    const [isDrawing, setIsDrawing] = useState(false);
-    const [history, setHistory] = useState<string[]>([]);
-    const [currentImageSrc, setCurrentImageSrc] = useState(imageSrc);
-    
-    // States for shapes
-    const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
-    const [currentLine, setCurrentLine] = useState<Line | null>(null);
-
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const mainCtxRef = useRef<CanvasRenderingContext2D | null>(null);
-    const imageRef = useRef<HTMLImageElement | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const COLORS = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffffff', '#000000'];
+export default function PosturalAnalysisModal({
+    isOpen,
+    onClose,
+    imageSrc,
+    onSave
+}: PosturalAnalysisModalProps) {
+    const [currentImage, setCurrentImage] = useState<string>(imageSrc);
+    const [currentTool, setCurrentTool] = useState<'brush' | 'line' | 'angle' | 'eraser'>('angle');
+    const [currentColor, setCurrentColor] = useState('#ff0000');
+    const [showGrid, setShowGrid] = useState(false);
+    const [gridSize, setGridSize] = useState(50);
 
     useEffect(() => {
-        setCurrentImageSrc(imageSrc);
+        setCurrentImage(imageSrc);
     }, [imageSrc]);
 
-    // Initialize Canvas
-    useEffect(() => {
-        if (!isOpen || !currentImageSrc) return;
-
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        mainCtxRef.current = ctx;
-
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = currentImageSrc;
-        img.onload = () => {
-            imageRef.current = img;
-            const containerWidth = window.innerWidth * 0.85;
-            const containerHeight = window.innerHeight * 0.55;
-            
-            let width = img.width;
-            let height = img.height;
-            const ratio = width / height;
-            
-            if (width > containerWidth) {
-                width = containerWidth;
-                height = width / ratio;
-            }
-            if (height > containerHeight) {
-                height = containerHeight;
-                width = height * ratio;
-            }
-
-            canvas.width = width;
-            canvas.height = height;
-            ctx.drawImage(img, 0, 0, width, height);
-            setHistory([canvas.toDataURL()]);
-        };
-    }, [isOpen, currentImageSrc]);
-
-    const saveToHistory = useCallback(() => {
-        if (!canvasRef.current) return;
-        const dataUrl = canvasRef.current.toDataURL();
-        setHistory(prev => [...prev, dataUrl].slice(-20));
+    const handleAngleChange = useCallback((updatedImage: string) => {
+        setCurrentImage(updatedImage);
     }, []);
 
-    const handleUndo = () => {
-        if (history.length <= 1) return;
-        const newHistory = history.slice(0, -1);
-        const lastState = newHistory[newHistory.length - 1];
-        const img = new Image();
-        img.src = lastState;
-        img.onload = () => {
-            const ctx = mainCtxRef.current;
-            if (ctx && canvasRef.current) {
-                ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-                ctx.drawImage(img, 0, 0);
-                setHistory(newHistory);
-            }
-        };
-    };
-
-    const getCoord = (e: React.MouseEvent | React.TouchEvent): Point => {
-        const canvas = canvasRef.current;
-        if (!canvas) return { x: 0, y: 0 };
-        const rect = canvas.getBoundingClientRect();
-        const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-        const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-        return { x: clientX - rect.left, y: clientY - rect.top };
-    };
-
-    const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
-        if (!currentImageSrc) return;
-        const coord = getCoord(e);
-        const ctx = mainCtxRef.current;
-        if (!ctx) return;
-
-        saveToHistory();
-
-        if (activeTool === 'brush' || activeTool === 'eraser') {
-            setIsDrawing(true);
-            ctx.beginPath();
-            ctx.moveTo(coord.x, coord.y);
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.lineWidth = activeTool === 'eraser' ? 24 : 4;
-            ctx.strokeStyle = activeTool === 'eraser' ? 'transparent' : color;
-            
-            if (activeTool === 'eraser') {
-                ctx.globalCompositeOperation = 'destination-out';
-            } else {
-                ctx.globalCompositeOperation = 'source-over';
-            }
-        } else if (activeTool === 'line') {
-            setIsDrawing(true);
-            setCurrentLine({ start: coord, end: coord, color: color });
-        } else if (activeTool === 'angle_points') {
-            const newPoints = [...currentPoints, coord];
-            if (newPoints.length === 3) {
-                drawPointsAndAngle(ctx, newPoints, color);
-                setCurrentPoints([]);
-                saveToHistory();
-            } else {
-                setCurrentPoints(newPoints);
-                ctx.fillStyle = color;
-                ctx.beginPath();
-                ctx.arc(coord.x, coord.y, 4, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-    };
-
-    const handleMouseMove = (e: React.MouseEvent | React.TouchEvent) => {
-        if (!isDrawing) return;
-        const coord = getCoord(e);
-        const ctx = mainCtxRef.current;
-        if (!ctx) return;
-
-        if (activeTool === 'brush' || activeTool === 'eraser') {
-            ctx.lineTo(coord.x, coord.y);
-            ctx.stroke();
-        }
-    };
-
-    const handleMouseUp = (e: React.MouseEvent | React.TouchEvent) => {
-        if (!isDrawing) return;
-        const coord = getCoord(e);
-        const ctx = mainCtxRef.current;
-        
-        if (activeTool === 'line' && ctx && currentLine) {
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.beginPath();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 3;
-            ctx.moveTo(currentLine.start.x, currentLine.start.y);
-            ctx.lineTo(coord.x, coord.y);
-            ctx.stroke();
-            setCurrentLine(null);
-            saveToHistory();
-        }
-        
-        setIsDrawing(false);
-        if (ctx) ctx.globalCompositeOperation = 'source-over';
-    };
-
-    const calculateAngle = (p1: Point, p2: Point, p3: Point): number => {
-        const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
-        const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
-        const dot = v1.x * v2.x + v1.y * v2.y;
-        const mag1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
-        const mag2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
-        const angle = Math.acos(Math.max(-1, Math.min(1, dot / (mag1 * mag2)))) * (180 / Math.PI);
-        return Math.round(angle * 10) / 10;
-    };
-
-    const drawPointsAndAngle = (ctx: CanvasRenderingContext2D, pts: Point[], color: string) => {
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = color;
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 3;
-        pts.forEach((p, idx) => {
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
-            ctx.fill();
-            if (idx > 0) {
-                ctx.beginPath();
-                ctx.moveTo(pts[idx-1].x, pts[idx-1].y);
-                ctx.lineTo(p.x, p.y);
-                ctx.stroke();
-            }
-        });
-        if (pts.length === 3) {
-            const angle = calculateAngle(pts[0], pts[1], pts[2]);
-            const vertex = pts[1];
-            ctx.font = 'bold 20px Arial';
-            ctx.fillStyle = 'white';
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 4;
-            ctx.strokeText(`${angle}°`, vertex.x + 15, vertex.y - 15);
-            ctx.fillText(`${angle}°`, vertex.x + 15, vertex.y - 15);
-        }
-    };
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => setCurrentImageSrc(reader.result as string);
-        reader.readAsDataURL(file);
-    };
-
-    const handleSave = () => {
-        if (!canvasRef.current || !currentImageSrc) return;
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = canvasRef.current.width;
-        tempCanvas.height = canvasRef.current.height;
-        const tempCtx = tempCanvas.getContext('2d');
-        if (tempCtx) {
-            if (imageRef.current) tempCtx.drawImage(imageRef.current, 0, 0, tempCanvas.width, tempCanvas.height);
-            tempCtx.drawImage(canvasRef.current, 0, 0);
-            if (showGrid) {
-                tempCtx.strokeStyle = 'rgba(0, 162, 255, 0.4)';
-                tempCtx.lineWidth = 1;
-                for (let x = gridSize; x < tempCanvas.width; x += gridSize) {
-                    tempCtx.beginPath(); tempCtx.moveTo(x, 0); tempCtx.lineTo(x, tempCanvas.height); tempCtx.stroke();
-                }
-                for (let y = gridSize; y < tempCanvas.height; y += gridSize) {
-                    tempCtx.beginPath(); tempCtx.moveTo(0, y); tempCtx.lineTo(tempCanvas.width, y); tempCtx.stroke();
-                }
-                tempCtx.strokeStyle = 'rgba(0, 162, 255, 0.8)';
-                tempCtx.lineWidth = 2;
-                tempCtx.beginPath(); tempCtx.moveTo(tempCanvas.width / 2, 0); tempCtx.lineTo(tempCanvas.width / 2, tempCanvas.height); tempCtx.stroke();
-                tempCtx.beginPath(); tempCtx.moveTo(0, tempCanvas.height / 2); tempCtx.lineTo(tempCanvas.width, tempCanvas.height / 2); tempCtx.stroke();
-            }
-            onSave(tempCanvas.toDataURL('image/png'));
+    const handleSave = async () => {
+        try {
+            const compressed = await compressImage(currentImage);
+            onSave(compressed);
+            onClose();
+        } catch (err) {
+            console.error("Error saving image:", err);
+            onSave(currentImage);
             onClose();
         }
     };
 
-    const handleDownload = () => {
-        if (!canvasRef.current) return;
-        const link = document.createElement('a');
-        link.download = `analise-postural-${Date.now()}.png`;
-        link.href = canvasRef.current.toDataURL();
-        link.click();
-    };
-
-    const handleCopy = async () => {
-        if (!canvasRef.current) return;
-        try {
-            canvasRef.current.toBlob(async (blob) => {
-                if (blob) {
-                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-                    toast.success("Imagem copiada!");
-                }
-            });
-        } catch (err) { toast.error("Erro ao copiar"); }
-    };
+    const COLORS = ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff", "#ffffff", "#000000"];
 
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="postural-modal-overlay">
+                <div style={{ 
+                    position: 'fixed', 
+                    inset: 0, 
+                    zIndex: 10010, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    backgroundColor: 'rgba(0,0,0,0.92)', 
+                    backdropFilter: 'blur(12px)',
+                    padding: '1.5rem'
+                }}>
                     <motion.div 
-                        initial={{ opacity: 0, y: 30 }} 
-                        animate={{ opacity: 1, y: 0 }} 
-                        exit={{ opacity: 0, y: 30 }}
-                        className="postural-modal-container"
+                        initial={{ scale: 0.95, opacity: 0, y: 30 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.95, opacity: 0, y: 30 }}
+                        style={{ 
+                            backgroundColor: '#1e293b', 
+                            width: '100%', 
+                            maxWidth: '1400px', 
+                            height: '95vh',
+                            borderRadius: '1.5rem', 
+                            display: 'flex', 
+                            flexDirection: 'column',
+                            overflow: 'hidden',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            color: '#f1f5f9'
+                        }}
                     >
-                        {/* Header Section */}
-                        <header className="postural-modal-header">
-                            <div className="header-content-stack">
-                                {/* Row 1: Superior (Functions & Tools) */}
-                                <div className="header-row-title">
-                                    <div className="header-row-tools">
-                                        <div className="header-title-group">
-                                            <div className="header-accent-bar" />
-                                            <h2 className="header-title-text">
-                                                Estúdio Profissional
-                                            </h2>
-                                        </div>
-                                        
-                                        <button 
-                                            onClick={() => fileInputRef.current?.click()}
-                                            className="studio-btn-primary"
-                                        >
-                                            <Maximize2 size={16} /> Novo
-                                        </button>
-                                        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" style={{ display: 'none' }} />
-
-                                        <div className="studio-group-container">
-                                            <ToolButton active={activeTool === 'brush'} onClick={() => setActiveTool('brush')} icon={<Paintbrush size={18} />} label="Pincel" />
-                                            <ToolButton active={activeTool === 'eraser'} onClick={() => setActiveTool('eraser')} icon={<Eraser size={18} />} label="Borracha" />
-                                            <ToolButton active={activeTool === 'line'} onClick={() => setActiveTool('line')} icon={<Minus size={18} />} label="Reta" />
-                                            <ToolButton active={activeTool === 'angle_points'} onClick={() => setActiveTool('angle_points')} icon={<RotateCcw size={18} style={{ transform: 'rotate(90deg)' }} />} label="Ângulo" />
-                                        </div>
-
-                                        <div className="grid-control-container">
-                                            <button 
-                                                onClick={() => setShowGrid(!showGrid)}
-                                                className={`btn-grid-toggle ${showGrid ? 'active' : ''}`}
-                                            >
-                                                <Grid size={16} /> {showGrid ? 'Gradil' : 'Sem Grade'}
-                                            </button>
-                                            {showGrid && (
-                                                <input 
-                                                    type="range" min="20" max="100" value={gridSize} 
-                                                    onChange={(e) => setGridSize(parseInt(e.target.value))} 
-                                                    className="grid-slider" 
-                                                />
-                                            )}
-                                        </div>
-
-                                        <div className="color-palette">
-                                            {COLORS.map(c => (
-                                                <button 
-                                                    key={c} onClick={() => setColor(c)}
-                                                    className={`color-dot ${color === c ? 'active' : ''}`}
-                                                    style={{ backgroundColor: c }}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <button 
-                                        onClick={onClose}
-                                        className="btn-close-modal"
-                                    >
-                                        <X size={24} />
-                                    </button>
+                        {/* HEADER */}
+                        <div style={{ 
+                            padding: '1rem 1.5rem', 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            backgroundColor: '#0f172a',
+                            borderBottom: '1px solid rgba(255,255,255,0.05)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <div style={{ borderLeft: '4px solid #8B0000', paddingLeft: '1rem' }}>
+                                    <h2 style={{ fontSize: '1.5rem', fontWeight: '900', margin: 0, letterSpacing: '-0.5px' }}>
+                                        Estúdio Profissional
+                                    </h2>
                                 </div>
-
-                                {/* Row 2: Inferior (Actions Row) */}
-                                <div className="header-row-actions">
-                                    <div className="action-btns-group">
-                                        <ActionButton 
-                                            onClick={handleUndo} 
-                                            disabled={history.length <= 1}
-                                            icon={<Undo size={16} />} 
-                                            label="Desfazer" 
-                                        />
-                                        <ActionButton 
-                                            onClick={() => {
-                                                const ctx = mainCtxRef.current;
-                                                if (ctx && canvasRef.current && imageRef.current) {
-                                                    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-                                                    ctx.drawImage(imageRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
-                                                    setHistory([canvasRef.current.toDataURL()]);
-                                                    toast.info("Desenhos limpos");
-                                                }
-                                            }}
-                                            icon={<RotateCcw size={16} />} 
-                                            label="Limpar" 
-                                        />
-                                        <ActionButton 
-                                            onClick={() => { if(confirm("Deseja realmente remover a foto e todos os desenhos?")) { setCurrentImageSrc(''); setHistory([]); } }}
-                                            danger
-                                            icon={<Trash2 size={16} />} 
-                                            label="Apagar" 
-                                        />
-                                        
-                                        <div className="v-divider" />
-                                        
-                                        <ActionButton onClick={handleCopy} icon={<Copy size={16} />} label="Copiar" />
-                                        <ActionButton onClick={handleDownload} icon={<Download size={16} />} label="Baixar" />
-                                    </div>
-
-                                    <div className="footer-actions">
-                                        <button 
-                                            onClick={onClose} 
-                                            className="btn-footer-cancel"
-                                        >
-                                            Cancelar
-                                        </button>
-                                        <button 
-                                            onClick={handleSave} 
-                                            disabled={!currentImageSrc}
-                                            className="btn-footer-save"
-                                        >
-                                            Salvar e Inserir no Formulário
-                                        </button>
-                                    </div>
-                                </div>
+                                <button style={{ backgroundColor: '#8B0000', color: 'white', border: 'none', borderRadius: '8px', padding: '0.4rem 0.8rem', fontSize: '0.75rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <Maximize2 size={14} /> NOVO
+                                </button>
                             </div>
-                        </header>
 
-                        {/* Workspace Area */}
-                        <div className="workspace-area">
-                            {!currentImageSrc ? (
-                                <motion.div 
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    className="empty-state-card"
-                                >
-                                    <div className="empty-state-icon-box">
-                                        <Maximize2 size={56} style={{ color: 'var(--primary)', opacity: 0.2 }} />
-                                    </div>
-                                    <div>
-                                        <h3 className="empty-state-title">Workspace Vazio</h3>
-                                        <p className="empty-state-desc">Comece agora fazendo o upload de uma imagem do seu computador ou dispositivo.</p>
-                                    </div>
-                                    <button 
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="btn-upload-large"
-                                    >
-                                        <Maximize2 size={24} />
-                                        <span>Selecionar Imagem do Computador</span>
-                                    </button>
-                                </motion.div>
-                            ) : (
-                                <div className="canvas-wrapper">
-                                    <canvas 
-                                        ref={canvasRef}
-                                        onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
-                                        onTouchStart={handleMouseDown} onTouchMove={handleMouseMove} onTouchEnd={handleMouseUp}
-                                        className="studio-canvas"
+                            {/* TOOLBAR CENTER */}
+                            <div style={{ display: 'flex', backgroundColor: '#334155', borderRadius: '12px', padding: '4px', gap: '4px' }}>
+                                <ToolButton active={currentTool === 'brush'} onClick={() => setCurrentTool('brush')} icon={<Paintbrush size={18}/>} label="PINCEL" />
+                                <ToolButton active={currentTool === 'eraser'} onClick={() => setCurrentTool('eraser')} icon={<Eraser size={18}/>} label="BORRACHA" />
+                                <ToolButton active={currentTool === 'line'} onClick={() => setCurrentTool('line')} icon={<Minus size={18}/>} label="RETA" />
+                                <ToolButton active={currentTool === 'angle'} onClick={() => setCurrentTool('angle')} icon={<RotateCcw size={18}/>} label="ÂNGULO" />
+                            </div>
+
+                            {/* GRID & COLORS */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#334155', padding: '6px 12px', borderRadius: '12px' }}>
+                                    <Grid size={18} color={showGrid ? '#ef4444' : '#94a3b8'} style={{ cursor: 'pointer' }} onClick={() => setShowGrid(!showGrid)} />
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>Gradil</span>
+                                    <input 
+                                        type="range" 
+                                        min="10" max="200" step="5" 
+                                        value={gridSize} 
+                                        onChange={(e) => setGridSize(parseInt(e.target.value))}
+                                        style={{ width: '60px', accentColor: '#8B0000' }}
                                     />
-                                    {showGrid && canvasRef.current && (
-                                        <div 
-                                            className="grid-overlay"
-                                            style={{
-                                                backgroundImage: `
-                                                    linear-gradient(to right, rgba(0, 162, 255, 0.4) 1px, transparent 1px),
-                                                    linear-gradient(to bottom, rgba(0, 162, 255, 0.4) 1px, transparent 1px)
-                                                `,
-                                                backgroundSize: `${gridSize}px ${gridSize}px`
-                                            }}
-                                        >
-                                            <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '2.5px', backgroundColor: 'rgba(163, 22, 33, 0.3)' }} />
-                                            <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '2.5px', backgroundColor: 'rgba(163, 22, 33, 0.3)' }} />
-                                        </div>
-                                    )}
                                 </div>
-                            )}
+
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    {COLORS.map(c => (
+                                        <div 
+                                            key={c} 
+                                            onClick={() => setCurrentColor(c)}
+                                            style={{ 
+                                                width: '20px', 
+                                                height: '20px', 
+                                                borderRadius: '4px', 
+                                                backgroundColor: c, 
+                                                cursor: 'pointer',
+                                                border: currentColor === c ? '2px solid white' : '1px solid rgba(255,255,255,0.2)',
+                                                transform: currentColor === c ? 'scale(1.2)' : 'scale(1)',
+                                                transition: 'all 0.1s'
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                                <X size={24} color="#94a3b8" style={{ cursor: 'pointer' }} onClick={onClose} />
+                            </div>
                         </div>
 
-                        {/* Status Bar */}
-                        <footer className="status-bar">
-                            <div className="status-log">
-                                <span>KinesisLab Studio v2.0</span>
-                                <div className="status-indicator" />
+                        {/* SUB-HEADER ACTIONS */}
+                        <div style={{ padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'space-between', backgroundColor: '#1e293b' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <IconButton icon={<Undo size={16}/>} label="Desfazer" />
+                                <IconButton icon={<RotateCcw size={16}/>} label="Limpar" />
+                                <IconButton icon={<Trash2 size={16}/>} label="Apagar" color="#ef4444" bg="rgba(239, 68, 68, 0.1)"/>
                             </div>
-                            <div className="status-log">
-                                <span>Ferramenta: {activeTool}</span>
-                                <span>Histórico: {history.length} estados</span>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <IconButton icon={<Copy size={16}/>} label="Copiar" />
+                                <IconButton icon={<Download size={16}/>} label="Baixar" />
                             </div>
-                        </footer>
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                <button onClick={onClose} style={{ border: 'none', background: '#334155', color: '#f1f5f9', fontWeight: '700', padding: '0.6rem 1.2rem', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
+                                <button onClick={handleSave} style={{ border: 'none', background: '#8B0000', color: 'white', fontWeight: '800', padding: '0.6rem 1.5rem', borderRadius: '8px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(139, 0, 0, 0.4)' }}>SALVAR E INSERIR NO FORMULÁRIO</button>
+                            </div>
+                        </div>
+
+                        {/* WORKSPACE */}
+                        <div style={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', backgroundColor: '#0f172a', padding: '1.5rem', justifyContent: 'center', alignItems: 'center' }}>
+                            <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center' }}>
+                                <AngleMeasurement 
+                                    value={imageSrc} 
+                                    onChange={handleAngleChange}
+                                    currentTool={currentTool}
+                                    currentColor={currentColor}
+                                    showGrid={showGrid}
+                                    gridSize={gridSize}
+                                    showControls={false}
+                                />
+                            </div>
+                        </div>
+
+                        {/* FOOTER BAR */}
+                        <div style={{ padding: '0.5rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0f172a', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                            <span style={{ fontSize: '0.65rem', fontWeight: '900', color: '#64748b' }}>KINESISLAB STUDIO V2.0 <span style={{ color: '#22c55e' }}>●</span></span>
+                            <div style={{ display: 'flex', gap: '2rem' }}>
+                                <span style={{ fontSize: '0.65rem', fontWeight: '900', color: '#64748b' }}>FERRAMENTA: {currentTool.toUpperCase()}</span>
+                                <span style={{ fontSize: '0.65rem', fontWeight: '900', color: '#64748b' }}>HISTÓRICO: ATIVO</span>
+                            </div>
+                        </div>
                     </motion.div>
                 </div>
             )}
@@ -507,27 +209,48 @@ export default function PosturalAnalysisModal({ isOpen, onClose, imageSrc, onSav
     );
 }
 
-function ToolButton({ active, icon, label, onClick }: { active: boolean, icon: React.ReactNode, label: string, onClick: () => void }) {
+function ToolButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: any, label: string }) {
     return (
         <button 
-            onClick={onClick} title={label}
-            className={`studio-tool-btn ${active ? 'active' : ''}`}
+            onClick={onClick}
+            style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                gap: '2px',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: active ? '#ffffff' : 'transparent',
+                color: active ? '#0f172a' : '#94a3b8',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                minWidth: '80px'
+            }}
         >
             {icon}
-            <span className="studio-tool-btn-label">{label}</span>
+            <span style={{ fontSize: '0.6rem', fontWeight: '900' }}>{label}</span>
         </button>
     );
 }
 
-function ActionButton({ onClick, icon, label, disabled = false, danger = false }: { onClick: () => void, icon: React.ReactNode, label: string, disabled?: boolean, danger?: boolean }) {
+function IconButton({ icon, label, color = '#f1f5f9', bg = '#334155' }: { icon: any, label: string, color?: string, bg?: string }) {
     return (
-        <button 
-            onClick={onClick}
-            disabled={disabled}
-            className={`studio-action-btn ${danger ? 'danger' : ''}`}
-        >
-            {icon}
-            <span>{label}</span>
+        <button style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            padding: '0.5rem 1rem', 
+            borderRadius: '8px', 
+            border: 'none', 
+            backgroundColor: bg, 
+            color: color, 
+            fontSize: '0.7rem', 
+            fontWeight: '700', 
+            cursor: 'pointer' 
+        }}>
+            {icon} {label}
         </button>
     );
 }

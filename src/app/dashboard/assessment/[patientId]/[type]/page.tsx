@@ -38,6 +38,11 @@ import AssessmentHistoryChart from "@/components/assessment/AssessmentHistoryCha
 import FormSection from "@/components/assessment/FormSection";
 import SectionNav from "@/components/assessment/SectionNav";
 import { AssessmentProvider } from "@/contexts/AssessmentContext";
+import DynamoModal from "@/components/assessment/modals/DynamoModal";
+import YbtModal from "@/components/assessment/modals/YbtModal";
+import DraftModal from "@/components/assessment/modals/DraftModal";
+import ExitModal from "@/components/assessment/modals/ExitModal";
+import ImageZoomModal from "@/components/assessment/modals/ImageZoomModal";
 
 const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
@@ -486,368 +491,57 @@ function AssessmentContent() {
       </div>
 
       <AnimatePresence>
-                {dynamoModal && (
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', padding: '1rem' }}>
-                        <motion.div 
-                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            className="modal-content"
-                            style={{ 
-                                backgroundColor: 'white', 
-                                padding: '2rem', 
-                                borderRadius: '1.5rem', 
-                                width: '100%', 
-                                maxWidth: '400px', 
-                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '1.5rem',
-                                border: '1px solid var(--border)'
-                            }}
-                        >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1rem', marginBottom: '0.5rem' }}>
-                                <div style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Calculator size={24} className="text-primary" />
-                                    <span>Inserir Medidas</span>
-                                </div>
-                                <button onClick={() => setDynamoModal(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.5rem' }}>
-                                    <X size={20} />
-                                </button>
-                            </div>
+        {dynamoModal && (
+            <DynamoModal 
+                label={dynamoModal.label}
+                fieldId={dynamoModal.fieldId}
+                dynamoValues={dynamoValues as [string, string, string]}
+                setDynamoValues={setDynamoValues as any}
+                onClose={() => {
+                    setDynamoModal(null);
+                    setDynamoValues(['', '', '']);
+                }}
+                onSave={(fieldId, val) => handleInputChange(fieldId, val)}
+            />
+        )}
 
-                            <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-                                Calculando média para: <span style={{ fontWeight: '700', color: 'var(--primary)' }}>{dynamoModal.label}</span>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                                {dynamoValues.map((val, i) => (
-                                    <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                        <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--secondary)' }}>Medida {i + 1} (kgF)</label>
-                                        <input 
-                                            type="number" 
-                                            step="0.01"
-                                            value={val}
-                                            onChange={(e) => {
-                                                const newVals: [string, string, string] = [...dynamoValues];
-                                                newVals[i] = e.target.value;
-                                                setDynamoValues(newVals);
-                                            }}
-                                            placeholder="0.00"
-                                            autoFocus={i === 0}
-                                            style={{ 
-                                                width: '100%', 
-                                                padding: '0.85rem', 
-                                                borderRadius: '0.75rem', 
-                                                border: '2px solid var(--border)',
-                                                fontSize: '1.1rem',
-                                                fontWeight: '700',
-                                                textAlign: 'center',
-                                                color: 'var(--secondary)',
-                                                outline: 'none',
-                                            }}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                <button 
-                                    onClick={() => {
-                                        const values = dynamoValues.filter(v => v !== '' && !isNaN(Number(v))).map(Number);
-                                        if (values.length > 0) {
-                                            const avg = values.reduce((a, b) => a + b, 0) / values.length;
-                                            handleInputChange(dynamoModal.fieldId, avg.toFixed(2));
-                                            setDynamoModal(null);
-                                            setDynamoValues(['', '', '']);
-                                            toast.success("Média calculada e inserida!");
-                                        } else {
-                                            toast.error("Insira ao menos uma medida válida.");
-                                        }
-                                    }}
-                                    className="btn-primary"
-                                    style={{ width: '100%', padding: '1rem', borderRadius: '1rem', fontWeight: '800', fontSize: '1rem' }}
-                                >
-                                    Calcular Média e Inserir
-                                </button>
-                                <button 
-                                    onClick={() => {
-                                        setDynamoModal(null);
-                                        setDynamoValues(['', '', '']);
-                                    }}
-                                    className="btn-action-outline"
-                                    style={{ width: '100%', padding: '1rem', borderRadius: '1rem', fontWeight: '600' }}
-                                >
-                                    Cancelar
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-
-                {ybtModal && (
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', padding: '1rem' }}>
-                        <motion.div 
-                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            className="modal-content"
-                            style={{ 
-                                backgroundColor: 'white', 
-                                padding: '2rem', 
-                                borderRadius: '1.5rem', 
-                                width: '100%', 
-                                maxWidth: '500px', 
-                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '1.5rem',
-                                border: '1px solid var(--border)'
-                            }}
-                        >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-                                <div style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Calculator size={24} className="text-primary" />
-                                    <span>Calculadora Y-Balance Test</span>
-                                </div>
-                                <button onClick={() => setYbtModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.5rem' }}>
-                                    <X size={20} />
-                                </button>
-                            </div>
-
-                            <div style={{ display: 'flex', backgroundColor: 'var(--bg-secondary)', padding: '4px', borderRadius: '1rem', marginBottom: '0.5rem' }}>
-                                <button 
-                                    onClick={() => setYbtValues(prev => ({ ...prev, side: 'esq' }))}
-                                    style={{ flex: 1, padding: '0.75rem', borderRadius: '0.75rem', border: 'none', backgroundColor: ybtValues.side === 'esq' ? 'white' : 'transparent', color: ybtValues.side === 'esq' ? 'var(--primary)' : 'var(--text-muted)', fontWeight: '700', boxShadow: ybtValues.side === 'esq' ? 'var(--shadow-sm)' : 'none', transition: 'all 0.2s' }}
-                                >
-                                    Membro Esquerdo
-                                </button>
-                                <button 
-                                    onClick={() => setYbtValues(prev => ({ ...prev, side: 'dir' }))}
-                                    style={{ flex: 1, padding: '0.75rem', borderRadius: '0.75rem', border: 'none', backgroundColor: ybtValues.side === 'dir' ? 'white' : 'transparent', color: ybtValues.side === 'dir' ? 'var(--primary)' : 'var(--text-muted)', fontWeight: '700', boxShadow: ybtValues.side === 'dir' ? 'white' : 'none', transition: 'all 0.2s' }}
-                                >
-                                    Membro Direito
-                                </button>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative', padding: '1rem 0' }}>
-                                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                    <div style={{ width: '120px', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-                                            <ArrowUp size={16} className="text-primary" />
-                                            <label style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--secondary)' }}>Anterior</label>
-                                        </div>
-                                        <input 
-                                            type="number" 
-                                            value={ybtValues.anterior}
-                                            onChange={(e) => setYbtValues(prev => ({ ...prev, anterior: e.target.value }))}
-                                            placeholder="0.0"
-                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '0.75rem', border: '2px solid var(--border)', fontSize: '1.1rem', textAlign: 'center', fontWeight: '800' }}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
-                                    <div style={{ width: '140px', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-                                            <ArrowDownLeft size={16} className="text-primary" />
-                                            <label style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--secondary)' }}>Post-Lateral</label>
-                                        </div>
-                                        <input 
-                                            type="number" 
-                                            value={ybtValues.postLateral}
-                                            onChange={(e) => setYbtValues(prev => ({ ...prev, postLateral: e.target.value }))}
-                                            placeholder="0.0"
-                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '0.75rem', border: '2px solid var(--border)', fontSize: '1.1rem', textAlign: 'center', fontWeight: '800' }}
-                                        />
-                                    </div>
-                                    <div style={{ width: '140px', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-                                            <ArrowDownRight size={16} className="text-primary" />
-                                            <label style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--secondary)' }}>Post-Medial</label>
-                                        </div>
-                                        <input 
-                                            type="number" 
-                                            value={ybtValues.postMedial}
-                                            onChange={(e) => setYbtValues(prev => ({ ...prev, postMedial: e.target.value }))}
-                                            placeholder="0.0"
-                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '0.75rem', border: '2px solid var(--border)', fontSize: '1.1rem', textAlign: 'center', fontWeight: '800' }}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', border: '1px solid var(--border)' }}>
-                                    <Ruler size={20} className="text-muted" />
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)' }}>Tamanho do Membro (cm)</label>
-                                        <input 
-                                            type="number" 
-                                            value={ybtValues.limbLength}
-                                            onChange={(e) => setYbtValues(prev => ({ ...prev, limbLength: e.target.value }))}
-                                            placeholder="Ex: 85.0"
-                                            style={{ width: '100%', padding: '0.5rem 0', background: 'transparent', border: 'none', borderBottom: '2px solid var(--primary)', fontSize: '1.25rem', fontWeight: '800', outline: 'none' }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style={{ padding: '1.25rem', backgroundColor: 'var(--primary-light)', borderRadius: '1.5rem', textAlign: 'center', border: '2px solid var(--primary)' }}>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--primary)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '800' }}>Resultado Final YBT</div>
-                                <div style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--primary)', letterSpacing: '-1px' }}>
-                                    {(() => {
-                                        const { anterior, postMedial, postLateral, limbLength } = ybtValues;
-                                        const sum = Number(anterior) + Number(postMedial) + Number(postLateral);
-                                        const len = Number(limbLength);
-                                        if (sum > 0 && len > 0) {
-                                            return ((sum / (3 * len)) * 100).toFixed(1) + '%';
-                                        }
-                                        return '0.0%';
-                                    })()}
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
-                                <button 
-                                    onClick={() => {
-                                        const { anterior, postMedial, postLateral, limbLength, side } = ybtValues;
-                                        const sum = Number(anterior) + Number(postMedial) + Number(postLateral);
-                                        const len = Number(limbLength);
-                                        if (sum > 0 && len > 0) {
-                                            const result = ((sum / (3 * len)) * 100).toFixed(1);
-                                            handleInputChange(`ybt_${side}`, result);
-                                            setYbtModal(false);
-                                            toast.success(`Resultado ${side === 'esq' ? 'Esquerdo' : 'Direito'} inserido!`);
-                                        } else {
-                                            toast.error("Preencha todos os valores para calcular.");
-                                        }
-                                    }}
-                                    className="btn-primary"
-                                    style={{ width: '100%', padding: '1.1rem', borderRadius: '1.25rem', fontWeight: '900', fontSize: '1.1rem' }}
-                                >
-                                    Confirmar e Salvar
-                                </button>
-                                <button onClick={() => setYbtModal(false)} className="btn-action-outline" style={{ width: '100%', padding: '1rem', borderRadius: '1.25rem', fontWeight: '700' }}>
-                                    Cancelar
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+        {ybtModal && (
+            <YbtModal 
+                ybtValues={ybtValues as any}
+                setYbtValues={setYbtValues}
+                onClose={() => setYbtModal(false)}
+                onSave={(fieldId, val) => handleInputChange(fieldId, val)}
+            />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showDraftModal && (
-            <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}
-            >
-                <motion.div 
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="modal-content" 
-                    style={{ maxWidth: '450px', width: '90%', padding: '2rem', textAlign: 'center', backgroundColor: 'white', borderRadius: '1.5rem', boxShadow: 'var(--shadow-lg)' }}
-                >
-                    <div style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary)', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-                        <HistoryIcon size={30} />
-                    </div>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--secondary)' }}>Rascunho Detectado</h2>
-                    <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', lineHeight: '1.6' }}>
-                        Identificamos um rascunho de avaliação que não foi finalizado. Como deseja prosseguir?
-                    </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <button 
-                            onClick={handleRecoverDraft}
-                            className="btn-primary"
-                            style={{ width: '100%', padding: '0.85rem' }}
-                        >
-                            Recuperar Dados Salvos
-                        </button>
-                        <button 
-                            onClick={handleDiscardDraft}
-                            className="btn-action-outline"
-                            style={{ width: '100%', padding: '0.85rem', color: '#ef4444', borderColor: '#ef4444' }}
-                        >
-                            Iniciar Novo Formulário
-                        </button>
-                    </div>
-                </motion.div>
-            </motion.div>
+            <DraftModal 
+                onRecover={handleRecoverDraft}
+                onDiscard={handleDiscardDraft}
+            />
         )}
       </AnimatePresence>
 
       <AnimatePresence>
         {selectedImage && (
-            <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setSelectedImage(null)}
-                className="image-zoom-overlay"
-            >
-                <div className="zoom-close">
-                    <X size={32} />
-                </div>
-                <motion.img 
-                    initial={{ scale: 0.9 }}
-                    animate={{ scale: 1 }}
-                    src={selectedImage} 
-                    alt="Zoom" 
-                />
-            </motion.div>
+            <ImageZoomModal 
+                imageSrc={selectedImage}
+                onClose={() => setSelectedImage(null)}
+            />
         )}
       </AnimatePresence>
 
       <AnimatePresence>
         {showExitModal && (
-            <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, backdropFilter: 'blur(4px)' }}
-            >
-                <motion.div 
-                    initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                    animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                    className="modal-content" 
-                    style={{ maxWidth: '450px', width: '90%', padding: '2rem', textAlign: 'center', backgroundColor: 'white', borderRadius: '1.5rem', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)' }}
-                >
-                    <div style={{ backgroundColor: '#fef3c7', color: '#d97706', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-                        <X size={30} />
-                    </div>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--secondary)' }}>Sair da Avaliação?</h2>
-                    <p style={{ color: 'var(--text-muted)', marginBottom: '2.25rem', lineHeight: '1.6' }}>
-                        Você possui alterações que ainda não foram salvas permanentemente. Deseja salvar um rascunho para continuar depois?
-                    </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <button 
-                            onClick={confirmExitSave}
-                            className="btn-primary"
-                            style={{ width: '100%', padding: '1rem', borderRadius: '1rem', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                        >
-                            <Save size={18} /> Sim, Salvar Rascunho
-                        </button>
-                        <button 
-                            onClick={confirmExitDiscard}
-                            className="btn-action-outline"
-                            style={{ width: '100%', padding: '1rem', borderRadius: '1rem', fontWeight: '700', color: '#ef4444', borderColor: '#ef4444' }}
-                        >
-                            Não, Descartar e Sair
-                        </button>
-                        <button 
-                            onClick={() => state.setShowExitModal(false)}
-                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', marginTop: '0.5rem', padding: '0.5rem' }}
-                        >
-                            Cancelar
-                        </button>
-                    </div>
-                </motion.div>
-            </motion.div>
+            <ExitModal 
+                onConfirmSave={confirmExitSave}
+                onConfirmDiscard={confirmExitDiscard}
+                onCancel={() => state.setShowExitModal(false)}
+            />
         )}
-
+      </AnimatePresence>
         {showMyelopathyModal && (
             <motion.div 
                 initial={{ opacity: 0 }}

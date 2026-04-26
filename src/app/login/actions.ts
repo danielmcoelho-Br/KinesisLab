@@ -32,8 +32,8 @@ export async function login(formData: FormData) {
     }
 
     return { success: true, user: { id: user.id, name: user.name, email: user.email, birth_date: user.birth_date, role: user.role, crefito: user.crefito, avatar_url: user.avatar_url } };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Login error:", error);
-    return { error: "Ocorreu um erro ao tentar entrar. Tente novamente." };
+    return { error: `Erro interno do servidor: ${error.message || String(error)}` };
   }
 }

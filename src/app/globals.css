@@ -414,3 +414,44 @@ body {
     background: none !important;
   }
 }
+
+/* Custom Width Utilities */
+.full-width-container {
+  max-width: none !important;
+  width: 100% !important;
+  padding: 0 2rem !important;
+}
+
+.full-width-card {
+  max-width: none !important;
+  width: 100% !important;
+  padding: 2.5rem !important;
+}
+
+.full-width-layout {
+  max-width: none !important;
+  width: 100% !important;
+  grid-template-columns: 1fr !important;
+  margin: 0 !important;
+}
+
+.full-width-view {
+  max-width: none !important;
+  width: 100% !important;
+}
+
+/* PaintMap Specialized Layout */
+.paintmap-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: start;
+  width: 100%;
+  gap: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .paintmap-container {
+    grid-template-columns: 70% 28%;
+    gap: 2%;
+  }
+}

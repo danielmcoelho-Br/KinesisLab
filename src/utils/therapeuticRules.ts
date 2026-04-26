@@ -49,6 +49,35 @@ export function getTherapeuticSuggestions(questionnaireId: string, answers: Reco
     if (hasValue(answers['tensao_slump_esq']) || hasValue(answers['tensao_slump_dir'])) {
       suggestions.push({ id: 'neuro_slump', title: 'Mobilização Neural (Eixo Neural)', description: 'Tratamento de mecânico-sensibilidade do sistema nervoso.', category: 'Mobilidade' });
     }
+
+    // -- LOGIC FOR HAND (afMao) --
+    if (questionnaireId === 'afMao') {
+      // 1. ADM
+      if (safeParse(answers['adm_punho_ext_esq']) < 60 || safeParse(answers['adm_punho_ext_dir']) < 60) {
+        suggestions.push({ id: 'mao_adm_ext', title: 'Ganho de Extensão de Punho', description: 'Exercícios de mobilidade e alongamento de flexores de punho.', category: 'Mobilidade' });
+      }
+      if (safeParse(answers['adm_punho_flex_esq']) < 60 || safeParse(answers['adm_punho_flex_dir']) < 60) {
+        suggestions.push({ id: 'mao_adm_flex', title: 'Ganho de Flexão de Punho', description: 'Exercícios de mobilidade e alongamento de extensores de punho.', category: 'Mobilidade' });
+      }
+
+      // 2. Strength
+      const gripE = safeParse(answers['preensao_esq']);
+      const gripD = safeParse(answers['preensao_dir']);
+      const gender = (answers['gender'] || '').toLowerCase();
+      const gripRef = gender === 'masculino' ? 27 : 16;
+      if ((gripE > 0 && gripE < gripRef) || (gripD > 0 && gripD < gripRef)) {
+        suggestions.push({ id: 'mao_fort_grip', title: 'Fortalecimento de Preensão', description: 'Exercícios compressivos e globais de mão.', category: 'Fortalecimento' });
+      }
+
+      // 3. Special Tests / Nerve
+      if (answers['test_phalen_esq'] || answers['test_phalen_dir'] || answers['test_tinel_punho_esq'] || answers['test_tinel_punho_dir']) {
+        suggestions.push({ id: 'mao_neuro_mediano', title: 'Deslizamento de Nervo Mediano', description: 'Técnicas de mobilização neural para túnel do carpo.', category: 'Manuel' });
+        suggestions.push({ id: 'mao_ed_posicao', title: 'Educação: Posicionamento Neutro', description: 'Orientação sobre ergonomia e repouso articular.', category: 'Educação' });
+      }
+      if (answers['test_finkelstein_esq'] || answers['test_finkelstein_dir']) {
+        suggestions.push({ id: 'mao_t_glide', title: 'Deslizamento Tendíneo (De Quervain)', description: 'Exercícios suaves para o 1º compartimento extensor.', category: 'Mobilidade' });
+      }
+    }
     if (hasValue(answers['tensao_femoral_esq']) || hasValue(answers['tensao_femoral_dir'])) {
       suggestions.push({ id: 'neuro_femoral', title: 'Mobilização Neural (Femoral)', description: 'Técnicas de deslizamento para nervo femoral.', category: 'Mobilidade' });
     }
@@ -283,11 +312,57 @@ export function getTherapeuticSuggestions(questionnaireId: string, answers: Reco
         suggestions.push({ id: 'mmii_ybt_asym', title: 'Assimetria de Controle Motor (YBT)', description: 'Treino de equilíbrio dinâmico e estabilidade lombo-pélvica direcionado ao lado deficitário.', category: 'Mobilidade' });
     }
 
-    // 4. Step Down (Controle de Valgo)
-    const sdE = safeParse(answers['sd_result_esq']);
-    const sdD = safeParse(answers['sd_result_dir']);
     if (sdE >= 3 || sdD >= 3) {
         suggestions.push({ id: 'mmii_step_down', title: 'Controle de Valgo Dinâmico', description: 'Fortalecimento de glúteo médio e treino de controle motor para evitar colapso medial do joelho.', category: 'Fortalecimento' });
+    }
+  }
+
+  // -- LOGIC FOR ANKLE (afTornozelo) --
+  if (questionnaireId === 'afTornozelo') {
+    // 1. ADM / WBLT
+    if (safeParse(answers['wblt_esq']) < 10 || safeParse(answers['wblt_dir']) < 10 || safeParse(answers['wblt_def']) > 15) {
+        suggestions.push({ id: 'ank_wblt', title: 'Ganho de Dorsiflexão', description: 'Trabalhar mobilidade de tornozelo (WBLT reduzido ou assimétrico). Mobilização talo-crural e alongamento de tríceps sural.', category: 'Mobilidade' });
+    }
+
+    // 2. Strength
+    const deficits = ['f_pla_tor_def', 'f_dor_tor_def', 'f_inv_tor_def', 'f_eve_tor_def'];
+    if (deficits.some(d => safeParse(answers[d]) > 15)) {
+        suggestions.push({ id: 'ank_strength', title: 'Fortalecimento de Tornozelo', description: 'Focar no reequilíbrio de força entre inversores/eversores e flexores plantares/dorsais.', category: 'Fortalecimento' });
+    }
+
+    // 3. Step Down (if exists in torsozelo)
+    const sdE = safeParse(answers['sd_result_esq']) || safeParse(answers['sd_esq']);
+    const sdD = safeParse(answers['sd_result_dir']) || safeParse(answers['sd_dir']);
+    if (sdE >= 2 || sdD >= 2) {
+        suggestions.push({ id: 'ank_step_down', title: 'Controle Neuromuscular', description: 'Treino de controle motor unipodal e estabilização de joelho/tornozelo (Step Down alterado).', category: 'Fortalecimento' });
+    }
+
+    // 4. Trigger Points
+    const ankMio: Record<string, string> = {
+        'aquiles': 'Tendão de Aquiles',
+        'fascia_plantar': 'Fáscia Plantar',
+        'tibial_anterior': 'Tibial Anterior',
+        'tibial_posterior': 'Tibial Posterior',
+        'gastrocnemio': 'Gastrocnêmio',
+        'soleo': 'Sóleo',
+        'fibulares': 'Fibulares'
+    };
+    Object.keys(ankMio).forEach(key => {
+        if (hasValue(answers[`palp_${key}_esq`]) || hasValue(answers[`palp_${key}_dir`])) {
+            const side = (hasValue(answers[`palp_${key}_esq`]) && hasValue(answers[`palp_${key}_dir`])) ? '(Bilateral)' : hasValue(answers[`palp_${key}_esq`]) ? '(Esq)' : '(Dir)';
+            suggestions.push({
+                id: `tp_ank_${key}`,
+                title: ankMio[key],
+                description: `Sensibilidade/Tensão detectada ${side}.`,
+                category: 'Manual',
+                type: 'musculo'
+            });
+        }
+    });
+
+    // 5. Balance
+    if (safeParse(answers['ybt_diff']) > 10) {
+        suggestions.push({ id: 'ank_balance', title: 'Treino de Equilíbrio / YBT', description: 'Exercícios de estabilidade dinâmica devido à assimetria no Y-Balance Test.', category: 'Mobilidade' });
     }
   }
 
@@ -598,6 +673,71 @@ export function generateDiagnosticText(questionnaireId: string, answers: Record<
     const sdD = safeParse(answers['sd_result_dir']);
     if (sdE >= 4 || sdD >= 4) findings.push(`Controle motor pobre no Step Down Test detectado (Escala ${sdE} Esq / ${sdD} Dir).`);
     else if (sdE >= 2 || sdD >= 2) findings.push(`Sinais de valgo dinâmico ou instabilidade detectados no Step Down Test.`);
+  }
+
+  // 11. Ankle Specific (afTornozelo)
+  if (questionnaireId === 'afTornozelo') {
+    // ADM / WBLT
+    const wE = safeParse(answers['wblt_esq']);
+    const wD = safeParse(answers['wblt_dir']);
+    if (wE > 0 && wE < 10) findings.push(`Restrição importante de dorsiflexão em carga no lado Esquerdo (WBLT: ${wE}cm).`);
+    if (wD > 0 && wD < 10) findings.push(`Restrição importante de dorsiflexão em carga no lado Direito (WBLT: ${wD}cm).`);
+    
+    const wDef = safeParse(answers['wblt_def']);
+    if (wDef > 10) findings.push(`Assimetria significativa de mobilidade de tornozelo (WBLT: ${wDef}%).`);
+
+    // Força
+    ['pla_tor', 'dor_tor', 'inv_tor', 'eve_tor'].forEach(m => {
+        const def = safeParse(answers[`f_${m}_def`]);
+        if (def > 15) findings.push(`Déficit de força em ${m.replace('_', ' ').toUpperCase()} (${def}% de assimetria).`);
+    });
+
+    // YBT
+    const ybtAsym = safeParse(answers['ybt_diff']);
+    if (ybtAsym > 10) findings.push(`Assimetria no equilíbrio dinâmico detectada (YBT: ${ybtAsym}%).`);
+
+    // Step Down
+    const sdE = safeParse(answers['sd_result_esq']) || safeParse(answers['sd_esq']);
+    const sdD = safeParse(answers['sd_result_dir']) || safeParse(answers['sd_dir']);
+    if (sdE >= 2 || sdD >= 2) findings.push(`Alteração no controle neuromuscular detectada no Step Down Test.`);
+
+    // Special Tests
+    if (answers['test_thompson_esq'] || answers['test_thompson_dir']) findings.push('Sinal de Thompson positivo (Suspeita de ruptura do Tendão de Aquiles).');
+    if (answers['test_kleiger_esq'] || answers['test_kleiger_dir'] || answers['test_squeeze_esq'] || answers['test_squeeze_dir']) {
+        findings.push('Sinais positivos para lesão da sindesmose (Testes de Kleiger/Squeeze).');
+    }
+  }
+
+  // 12. Hand Specific (afMao)
+  if (questionnaireId === 'afMao') {
+    // Força de Preensão
+    const gripE = safeParse(answers['preensao_esq']);
+    const gripD = safeParse(answers['preensao_dir']);
+    const isMasc = (answers['gender'] || '').toLowerCase() === 'masculino';
+    const gRef = isMasc ? 27 : 16;
+    if (gripE > 0 && gripE < gRef) findings.push(`Déficit de preensão palmar Esquerdo (${gripE}kg / Ref: ${gRef}kg).`);
+    if (gripD > 0 && gripD < gRef) findings.push(`Déficit de preensão palmar Direito (${gripD}kg / Ref: ${gRef}kg).`);
+
+    // Pinças
+    const pinRef = isMasc ? { p: 7, l: 10, t: 9 } : { p: 5, l: 7, t: 6 };
+    ['esq', 'dir'].forEach(side => {
+      const p = safeParse(answers[`polpa_${side}`]);
+      const l = safeParse(answers[`lateral_${side}`]);
+      const t = safeParse(answers[`tripode_${side}`]);
+      if (p > 0 && p < pinRef.p) findings.push(`Fraqueza de Pinça Polpa-polpa ${side === 'esq' ? 'Esq' : 'Dir'}.`);
+      if (l > 0 && l < pinRef.l) findings.push(`Fraqueza de Pinça Lateral ${side === 'esq' ? 'Esq' : 'Dir'}.`);
+      if (t > 0 && t < pinRef.t) findings.push(`Fraqueza de Pinça Trípode ${side === 'esq' ? 'Esq' : 'Dir'}.`);
+    });
+
+    // ADM Punho
+    if (safeParse(answers['adm_punho_ext_esq']) < 60 || safeParse(answers['adm_punho_ext_dir']) < 60) findings.push('Restrição de AM em Extensão de Punho.');
+    if (safeParse(answers['adm_punho_flex_esq']) < 60 || safeParse(answers['adm_punho_flex_dir']) < 60) findings.push('Restrição de AM em Flexão de Punho.');
+
+    // Testes Especiais
+    if (answers['test_phalen_esq'] || answers['test_phalen_dir']) findings.push('Teste de Phalen Positivo (Sinais de Síndrome do Túnel do Carpo).');
+    if (answers['test_tinel_punho_esq'] || answers['test_tinel_punho_dir']) findings.push('Sinal de Tinel Positivo no Punho.');
+    if (answers['test_finkelstein_esq'] || answers['test_finkelstein_dir']) findings.push('Teste de Finkelstein Positivo (Tendinite de De Quervain).');
+    if (answers['test_roos_esq'] || answers['test_roos_dir']) findings.push('Teste de Roos Positivo (Sugestivo de Síndrome do Desfiladeiro Torácico).');
   }
 
   if (findings.length === 0) return "DIAGNÓSTICO CINÉTICO FUNCIONAL:\n\n• Quadro de estabilidade e funcionalidade dentro dos padrões de normalidade.";

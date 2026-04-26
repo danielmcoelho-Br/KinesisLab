@@ -5,7 +5,7 @@ import { CheckCircle2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import DataTableCell from "./DataTableCell";
 import { useAssessmentContext } from "@/contexts/AssessmentContext";
-import { getEnduranceThreshold, getPatientProfileString } from "@/utils/clinicalThresholds";
+import { getEnduranceThreshold, getPatientProfileString, getHandStrengthReference, isValueBelowStandard } from "@/utils/clinicalThresholds";
 import { Section, TableRow } from "@/types/clinical";
 
 interface DataTableProps {
@@ -97,6 +97,25 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                             </th>
                         ))}
                     </tr>
+                    {section.description && (
+                        <tr>
+                            <th 
+                                colSpan={section.columns?.length || 1}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    backgroundColor: '#fffbeb', // LIGHT YELLOW FOR REFERENCE
+                                    borderBottom: '1px solid #fef3c7',
+                                    fontSize: '0.7rem',
+                                    fontWeight: '700',
+                                    color: '#92400e', // DARK AMBER
+                                    textAlign: 'left',
+                                    fontStyle: 'italic'
+                                }}
+                            >
+                                💡 {section.description}
+                            </th>
+                        </tr>
+                    )}
                 </thead>
                 <tbody>
                     {section.rows?.filter((row: TableRow) => {
@@ -121,6 +140,13 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                                 });
                                 const profile = getPatientProfileString(patientGender, patientAge, patientActivityLevel);
                                 displayLabel = `${displayLabel} (Ref: ${threshold}s - ${profile})`;
+                            }
+                        } else if (type === 'afMao' && section.id === 'forca_preensao') {
+                            const mainField = row.fields[0];
+                            const fieldId = typeof mainField === 'string' ? mainField : (mainField as any)?.id;
+                            const referenceValue = getHandStrengthReference(fieldId, patientGender, patientAge);
+                            if (referenceValue) {
+                                displayLabel = `${displayLabel} (Ref: ${referenceValue})`;
                             }
                         }
 
@@ -149,7 +175,8 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                                     let calculatedValue = answers[fieldId];
                                     const isCalculated = fieldId.includes('_deficit') || fieldId.includes('_def') || 
                                                        fieldId.includes('_ratio') || fieldId.includes('_res_global') || 
-                                                       fieldId.includes('_iq_') || fieldId.includes('_pct');
+                                                       fieldId.includes('_iq_') || fieldId.includes('_pct') ||
+                                                       fieldId.endsWith('_res');
 
                                     if (isCalculated && !answers[fieldId] && (fieldId.endsWith('_deficit') || fieldId.endsWith('_def'))) {
                                         const sidePrefix = fieldId.replace('_deficit', '').replace('_def', '');
@@ -191,6 +218,11 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
                                                     calculatedValue = numVal <= 12.47 ? 'NORMAL' : 'ABAIXO';
                                                 } else if (sourceValFieldId === 'vel_marcha') {
                                                     calculatedValue = numVal >= 0.8 ? 'NORMAL' : 'ABAIXO';
+                                                } else if (type === 'afMao' && (sourceValFieldId.includes('preensao') || sourceValFieldId.includes('lateral') || sourceValFieldId.includes('polpa') || sourceValFieldId.includes('tripode'))) {
+                                                    if (!isNaN(numVal)) {
+                                                        const isBelow = isValueBelowStandard(sourceValFieldId, numVal, patientGender, patientAge);
+                                                        calculatedValue = isBelow ? 'ABAIXO' : 'NORMAL';
+                                                    }
                                                 }
                                             }
                                         }

@@ -19,9 +19,10 @@ interface FormSectionProps {
     isPrint?: boolean;
     hideTitle?: boolean;
     excludeFields?: string[];
+    halfWidth?: boolean; // New prop
 }
 
-const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false, excludeFields = [] }: FormSectionProps) => {
+const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false, excludeFields = [], halfWidth = false }: FormSectionProps) => {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -80,9 +81,16 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
             style={{ marginBottom: isPrint ? (hideTitle ? '0.5rem' : '1.25rem') : (hideTitle ? '1rem' : '2.5rem'), pageBreakInside: 'avoid' }}
         >
             {!hideTitle && (
-                <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: isPrint ? '0.75rem' : '1.5rem', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {section.title}
-                </h3>
+                <>
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: section.description ? '0.25rem' : (isPrint ? '0.75rem' : '1.5rem'), color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {section.title}
+                    </h3>
+                    {section.description && (
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: isPrint ? '0.75rem' : '1.5rem', fontWeight: '500' }}>
+                            {section.description}
+                        </p>
+                    )}
+                </>
             )}
 
             {section.id === 'ybt' ? (
@@ -309,21 +317,21 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                         section={section} 
                         isPrint={isPrint}
                     />                    {/* 1. SIDE-BY-SIDE EVOLUTION CHARTS (Data-heavy sections) */}
-                    {['perimetria', 'forca', 'dinamometria', 'ndi_integracao', 'oswestry_integracao', 'quickdash_integracao', 'resistencia', 'testes_resistencia', 'testes_fadiga', 'testes_especiais_resistidos', 'resistencia_tronco', 'testes_equilibrio', 'adm', 'movimento_cervical', 'movimento_lombar', 'endurance'].includes(section.id) && (
+                    {['perimetria', 'forca', 'forca_preensao', 'dinamometria', 'ndi_integracao', 'oswestry_integracao', 'quickdash_integracao', 'resistencia', 'testes_resistencia', 'testes_fadiga', 'testes_especiais_resistidos', 'resistencia_tronco', 'testes_equilibrio', 'adm', 'movimento_cervical', 'movimento_lombar', 'endurance'].includes(section.id) && (
                         <div style={{ 
-                            display: (isPrint || ['afOmbro', 'afCervical', 'afLombar', 'afMmii'].includes(type)) ? 'grid' : 'flex', 
-                            gridTemplateColumns: (isPrint || ['afOmbro', 'afCervical', 'afLombar', 'afMmii'].includes(type)) ? '1fr 1fr' : 'none',
-                            flexWrap: (isPrint || ['afOmbro', 'afCervical', 'afLombar', 'afMmii'].includes(type)) ? 'nowrap' : 'wrap', 
-                            gap: (isPrint || ['afOmbro', 'afCervical', 'afLombar', 'afMmii'].includes(type)) ? '2.5%' : '1.5rem', 
+                            display: (isPrint || ['afOmbro', 'afCervical', 'afLombar', 'afMmii', 'afMao'].includes(type)) ? 'grid' : 'flex', 
+                            gridTemplateColumns: (isPrint || ['afOmbro', 'afCervical', 'afLombar', 'afMmii', 'afMao'].includes(type)) ? '1fr 1fr' : 'none',
+                            flexWrap: (isPrint || ['afOmbro', 'afCervical', 'afLombar', 'afMmii', 'afMao'].includes(type)) ? 'nowrap' : 'wrap', 
+                            gap: (isPrint || ['afOmbro', 'afCervical', 'afLombar', 'afMmii', 'afMao'].includes(type)) ? '2.5%' : '1.5rem', 
                             marginTop: '1.5rem',
                             width: '100%',
                             pageBreakInside: 'avoid'
                         }}>
-                            {type === 'afMmii' && section.id === 'forca' ? (
-                                // SPECIAL ROW-BY-ROW COMPARATIVE CHARTS FOR MMII STRENGTH
+                            {(type === 'afMmii' && section.id === 'forca') || (type === 'afMao' && section.id === 'forca_preensao') ? (
+                                // SPECIAL ROW-BY-ROW COMPARATIVE CHARTS FOR MMII & MAO STRENGTH
                                 section.rows?.filter((r: TableRow) => r.id !== 'relacao_iq').map((row: TableRow) => (
                                     <MuscleStrengthRowChart 
-                                        key={`mmii-forca-${row.id}`}
+                                        key={`${type}-forca-${row.id}`}
                                         row={row}
                                         answers={answers}
                                         history={patientAssessments}
@@ -407,7 +415,7 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                 </div>
             ) : section.type === 'multi-table' ? (
                 <div style={{ 
-                    display: (isPrint || !isEditing) && (
+                    display: (!halfWidth && (isPrint || !isEditing)) && (
                         section.id.includes('miofascial_neural') || 
                         section.id.includes('palpacao_miofascial') || 
                         section.id.includes('testes_especiais') || 
@@ -417,12 +425,13 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                         section.id.includes('miotomos') || 
                         section.id.includes('reflexos') || 
                         section.id.includes('irritabilidade') || 
-                        section.id.includes('movimento_cervical') || 
-                        section.id.includes('movimento_lombar') ||
+                        section.id.includes('movimento') ||
                         section.id.includes('avaliacao_do_movimento') ||
-                        section.id.includes('resistencia')
+                        section.id.includes('resistencia') ||
+                        section.id.includes('palpacao') ||
+                        section.id.includes('inspecao')
                     ) ? 'grid' : 'flex', 
-                    gridTemplateColumns: (isPrint || !isEditing) && (
+                    gridTemplateColumns: (!halfWidth && (isPrint || !isEditing)) && (
                         section.id.includes('miofascial_neural') || 
                         section.id.includes('palpacao_miofascial') || 
                         section.id.includes('testes_especiais') || 
@@ -432,15 +441,18 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                         section.id.includes('miotomos') || 
                         section.id.includes('reflexos') || 
                         section.id.includes('irritabilidade') || 
-                        section.id.includes('movimento_cervical') || 
-                        section.id.includes('movimento_lombar') ||
+                        section.id.includes('movimento') ||
                         section.id.includes('avaliacao_do_movimento') ||
                         section.id.includes('resistencia') ||
                         section.id.includes('adm') ||
-                        section.id.includes('mmii')
-                    ) ? '1fr 1fr' : 'none',
+                        section.id.includes('mmii') ||
+                        section.id.includes('tornozelo') ||
+                        section.id.includes('inspecao') ||
+                        section.id.includes('palpacao')
+                    ) ? (['afTornozelo', 'afMao'].includes(type) ? '48% 48%' : '1fr 1fr') : 'none',
+                    justifyContent: (['afTornozelo', 'afMao'].includes(type) && !halfWidth && (isPrint || !isEditing)) ? 'space-between' : 'flex-start',
                     flexDirection: 'column', 
-                    gap: isPrint ? '0.75rem' : '1.5rem',
+                    gap: (['afTornozelo', 'afMao'].includes(type) && !halfWidth && (isPrint || !isEditing)) ? '1.5rem 4%' : (isPrint ? '0.75rem' : '1.5rem'),
                     width: '100%',
                     minWidth: 0
                 }}>

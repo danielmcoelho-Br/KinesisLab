@@ -239,13 +239,13 @@ const DataTableCell = memo(({
                     maxWidth: '85px',
                     padding: isPrint ? '0.1rem 0.2rem' : '0.2rem 0.3rem', 
                     borderRadius: '0.4rem', 
-                    border: isEditing ? (isOutOfRange ? '2px solid #f97316' : (isValueBelowStandard(fieldId, numValue, state.patientGender) ? '2px solid #eab308' : '1px solid var(--border)')) : '1px solid transparent',
-                    backgroundColor: isEditing ? (isOutOfRange ? '#fff7ed' : (isValueBelowStandard(fieldId, numValue, state.patientGender) ? '#fef08a' : 'white')) : 'transparent',
+                    border: isEditing ? (isOutOfRange ? '2px solid #f97316' : (isValueBelowStandard(fieldId, numValue, state.patientGender, state.patientAge) && state.type !== 'afMao' ? '2px solid #eab308' : '1px solid var(--border)')) : '1px solid transparent',
+                    backgroundColor: isEditing ? (isOutOfRange ? '#fff7ed' : (isValueBelowStandard(fieldId, numValue, state.patientGender, state.patientAge) && state.type !== 'afMao' ? '#fef08a' : 'white')) : 'transparent',
                     fontSize: isPrint ? '0.7rem' : '0.78rem',
                     textAlign: 'center',
-                    boxShadow: (isOutOfRange || (isValueBelowStandard(fieldId, numValue, state.patientGender))) ? (isOutOfRange ? '0 0 0 2px #ffedd5' : '0 0 0 2px #fef9c3') : 'none',
-                    color: (isValueBelowStandard(fieldId, numValue, state.patientGender)) ? '#854d0e' : 'inherit',
-                    fontWeight: (isValueBelowStandard(fieldId, numValue, state.patientGender)) ? '800' : 'inherit'
+                    boxShadow: (isOutOfRange || (isValueBelowStandard(fieldId, numValue, state.patientGender, state.patientAge) && state.type !== 'afMao')) ? (isOutOfRange ? '0 0 0 2px #ffedd5' : '0 0 0 2px #fef9c3') : 'none',
+                    color: (isValueBelowStandard(fieldId, numValue, state.patientGender, state.patientAge) && state.type !== 'afMao') ? '#854d0e' : 'inherit',
+                    fontWeight: (isValueBelowStandard(fieldId, numValue, state.patientGender, state.patientAge) && state.type !== 'afMao') ? '800' : 'inherit'
                 }}
             />
             {isEditing && state.type !== 'afLombar' && state.type !== 'afCervical' && fieldType === 'number' && (fieldId.includes('forca') || fieldId.startsWith('f_') || fieldId.includes('preensao') || fieldId.includes('polpa') || fieldId.includes('lateral') || fieldId.includes('tripode') || fieldId.includes('resist')) && onOpenDynamo && (

@@ -212,7 +212,7 @@ function AssessmentContent() {
             onSave={handleSavePosturalAnalysis}
         />
 
-        <main className="no-print container main-content">
+        <main className={`no-print container main-content ${type === 'afSensibilidade' ? 'full-width-container' : ''}`}>
         <header className="assessment-header">
             <div className="header-top stack-on-mobile">
                 <div className="header-left">
@@ -314,13 +314,15 @@ function AssessmentContent() {
                 />
             </div>
         ) : (
-        <div className="assessment-layout">
-            <SectionNav 
-                items={items}
-                isClinical={isClinical}
-            />
+        <div className={`assessment-layout ${type === 'afSensibilidade' ? 'full-width-layout' : ''}`}>
+            {type !== 'afSensibilidade' && (
+                <SectionNav 
+                    items={items}
+                    isClinical={isClinical}
+                />
+            )}
 
-            <div className="continuous-screen-view">
+            <div className={`continuous-screen-view ${type === 'afSensibilidade' ? 'full-width-view' : ''}`}>
             <div className="progress-bar-wrapper">
                 <motion.div 
                     initial={{ width: 0 }}
@@ -336,7 +338,7 @@ function AssessmentContent() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.3 }}
-                    className="assessment-card"
+                    className={`assessment-card ${type === 'afSensibilidade' ? 'full-width-card' : ''}`}
                 >
                     <ClinicalFlagAlert flags={activeFlags} />
                     {isClinical ? (

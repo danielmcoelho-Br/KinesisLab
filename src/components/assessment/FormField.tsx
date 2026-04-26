@@ -4,6 +4,7 @@ import { memo } from "react";
 import { Calculator, Sparkles } from "lucide-react";
 import { generateTherapeuticText, generateDiagnosticText } from "@/utils/therapeuticRules";
 import BodySchema from "@/components/BodySchema";
+import PaintMap from "@/components/PaintMap";
 import FreeCanvas from "@/components/FreeCanvas";
 import AngleMeasurement from "@/components/AngleMeasurement";
 import AssessmentHistoryChart from "./AssessmentHistoryChart";
@@ -191,7 +192,7 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                         placeholder="Descreva aqui..."
                         style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)', fontSize: '0.85rem' }}
                     />
-                    {['conclusao', 'sugestoes_obs'].includes(field.id) && isEditing && (['afLombar', 'afCervical', 'afGeriatria', 'afOmbro', 'afMmii'].includes(type)) && (
+                    {['conclusao', 'sugestoes_obs'].includes(field.id) && isEditing && (['afLombar', 'afCervical', 'afGeriatria', 'afOmbro', 'afMmii', 'afMao'].includes(type)) && (
                         <div style={{ marginTop: '0.5rem' }}>
                             <button
                                 type="button"
@@ -219,7 +220,7 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                             </button>
                         </div>
                     )}
-                    {['diagnostico', 'diagnostico_funcional', 'risco_quedas'].includes(field.id) && isEditing && (['afLombar', 'afCervical', 'afGeriatria', 'afOmbro', 'afMmii'].includes(type)) && (
+                    {['diagnostico', 'diagnostico_funcional', 'risco_quedas'].includes(field.id) && isEditing && (['afLombar', 'afCervical', 'afGeriatria', 'afOmbro', 'afMmii', 'afMao'].includes(type)) && (
                         <div style={{ marginTop: '0.5rem' }}>
                             <button
                                 type="button"
@@ -594,39 +595,18 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
           </div>
         );
       case 'paintmap':
-        const isDataUrl = typeof value === 'string' && (value.startsWith('data:image') || value.startsWith('http'));
         return (
-            <div key={field.id} className="form-group">
+            <div key={field.id} className="form-group" style={{ width: '100%', gridColumn: '1 / -1' }}>
                 {!field.hideLabel && (
                     <label className="form-label" style={{ marginBottom: '1.5rem', display: 'block', fontWeight: (isPrint || !isEditing) ? '800' : 'inherit' }}>{field.label}</label>
                 )}
-                <div style={{ pointerEvents: isEditing ? 'auto' : 'none', opacity: 1 }}>
-                    <div style={{ 
-                        display: 'grid',
-                        gridTemplateColumns: '1fr',
-                        gridTemplateRows: '1fr',
-                        position: 'relative', 
-                        width: '100%', 
-                        maxWidth: '750px', 
-                        margin: '0 auto', 
-                        borderRadius: '2rem', 
-                        overflow: 'hidden', 
-                        border: isPrint ? '1px solid #eee' : 'none' 
-                    }}>
-                        <img 
-                            src={field.image || ""} 
-                            style={{ gridArea: '1/1', width: '100%', height: 'auto', display: 'block' }} 
-                            alt="Background" 
-                        />
-                        {value && (
-                            <img 
-                                src={value as string} 
-                                style={{ gridArea: '1/1', width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none' }} 
-                                alt="Marks" 
-                            />
-                        )}
-                    </div>
-                </div>
+                <PaintMap 
+                    image={field.image || ""}
+                    colors={field.colors || []}
+                    value={value as string}
+                    onChange={(val) => handleInputChange(field.id, val)}
+                    readOnly={!isEditing || isPrint}
+                />
             </div>
         );
       case 'angle_measurement':
@@ -712,6 +692,9 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
             );
         }
         
+        const isDiag = field.id === 'diag_button';
+        const isSurg = field.id === 'surg_button';
+        
         return (
             <div key={field.id} className="form-group">
                 <button 
@@ -719,12 +702,34 @@ const FormField = memo(function FormField({ field, isPrint: overrideIsPrint, val
                     onClick={() => {
                         if (field.id === 'ybt_calc' && onOpenYbt) {
                             onOpenYbt();
+                        } else if (isDiag) {
+                            const text = generateDiagnosticText(type, answers);
+                            handleInputChange('diagnostico', text);
+                        } else if (isSurg) {
+                            const text = generateTherapeuticText(type, answers);
+                            handleInputChange('conclusao', text);
                         }
                     }}
-                    className="btn-secondary"
-                    style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem' }}
+                    className={(!isDiag && !isSurg) ? "btn-secondary" : ""}
+                    style={{ 
+                        width: 'fit-content', 
+                        padding: '0.6rem 1.25rem', 
+                        marginTop: '0.5rem',
+                        backgroundColor: isDiag ? '#1e293b' : isSurg ? '#991b1b' : undefined,
+                        color: (isDiag || isSurg) ? 'white' : 'inherit',
+                        border: 'none',
+                        borderRadius: '0.75rem',
+                        fontWeight: '700',
+                        fontSize: '0.85rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        boxShadow: (isDiag || isSurg) ? '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' : 'none',
+                        transition: 'all 0.2s ease'
+                    }}
                 >
-                    {field.label}
+                    {(isDiag || isSurg) && <Sparkles size={16} />}
+                    {isDiag ? "Sugestão Diagnóstico" : isSurg ? "Sugerir Terapia" : field.label}
                 </button>
             </div>
         );

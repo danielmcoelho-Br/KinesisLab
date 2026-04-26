@@ -70,7 +70,7 @@ export function getEnduranceThreshold({ testId, gender, age, activityLevel = 'In
 /**
  * Specifically for geriatrics, determines if a value is "clinicaly suspicious" (Yellow)
  */
-export function isValueBelowStandard(testId: string, value: number, gender?: Gender): boolean {
+export function isValueBelowStandard(testId: string, value: number, gender?: Gender, age?: number): boolean {
     if (isNaN(value) || value === 0) return false;
 
     if (testId === 'pes_juntos' || testId === 'semi_tandem') return value < 30;
@@ -78,14 +78,31 @@ export function isValueBelowStandard(testId: string, value: number, gender?: Gen
     if (testId.includes('unipodal')) return value < 10;
     if (testId === 'tug') return value > 12.47; // For TUG, higher is worse
     if (testId === 'vel_marcha') return value < 0.8;
-    if (testId === 'preensao') {
-        const threshold = (gender || "").toLowerCase() === 'masculino' ? 27 : 16;
-        return value < threshold;
+    if (testId.includes('preensao') || testId === 'preensao_palmar') {
+        const refStr = getHandStrengthReference(testId, gender || "", age || 0);
+        // For range "36.8-56.6", take the lower bound
+        const ref = parseFloat(refStr);
+        return value < ref;
+    }
+    if (testId.includes('polpa') || testId === 'pinca_polpa') {
+        const refStr = getHandStrengthReference(testId, gender || "", age || 0);
+        const ref = parseFloat(refStr);
+        return value < ref;
+    }
+    if (testId.includes('lateral') || testId === 'pinca_lateral') {
+        const refStr = getHandStrengthReference(testId, gender || "", age || 0);
+        const ref = parseFloat(refStr);
+        return value < ref;
+    }
+    if (testId.includes('tripode') || testId === 'pinca_tripode') {
+        const refStr = getHandStrengthReference(testId, gender || "", age || 0);
+        const ref = parseFloat(refStr);
+        return value < ref;
     }
     if (testId === 'sentar_levantar') return value > 12; // Higher is worse
 
-    // -- MMII Thresholds --
-    // Force Deficits (Yellow if > 10% or > 15% - let's go with 15% as per standard clinical suspicion)
+    // -- MMII & Hand Thresholds --
+    // Force Deficits (Yellow if > 15%)
     if (testId.includes('deficit') || testId.includes('def')) {
         return value > 15;
     }
@@ -152,11 +169,18 @@ export function getMuscleStrengthReference(muscleId: string, gender: Gender, age
         return parseFloat(val.toFixed(1));
     }
 
+    if (muscleId.includes('preensao') || muscleId.includes('pinca') || muscleId.includes('polpa') || muscleId.includes('lateral') || muscleId.includes('tripode')) {
+        const refStr = getHandStrengthReference(muscleId, gender, age);
+        // Extract first number from string like "36.8-56.6 kgf" or "11.8 kgf"
+        const match = refStr.match(/[\d.]+/);
+        return match ? parseFloat(match[0]) : 20;
+    }
+
     return 20; // Default fallback
 }
 
 export function getPatientProfileString(gender: Gender, age: number, activityLevel: ActivityLevel = 'Inativo'): string {
-    const isMale = gender === 'Masculino';
+    const isMale = (gender || "").toLowerCase() === 'masculino';
     const isActive = activityLevel === 'Ativo';
     const isYoung = age <= 40;
 
@@ -165,4 +189,62 @@ export function getPatientProfileString(gender: Gender, age: number, activityLev
     const ageStr = isYoung ? '≤ 40 anos' : '> 40 anos';
 
     return `${gStr} ${aStr} ${ageStr}`;
+}
+
+// --- HAND STRENGTH NORMATIVE DATA (Extracted from User Images) ---
+
+const HAND_NORMS = {
+    // Values in Pounds (lb), converted to kgf in the lookup function (val * 0.45)
+    lateral: {
+        male: { 20: 26.0, 25: 26.7, 30: 26.4, 35: 26.1, 40: 25.6, 45: 25.8, 50: 26.7, 55: 24.2, 60: 23.2, 65: 23.4, 70: 19.3, 75: 20.5 },
+        female: { 20: 17.6, 25: 17.7, 30: 18.7, 35: 16.6, 40: 16.7, 45: 17.6, 50: 16.7, 55: 15.7, 60: 15.5, 65: 15.0, 70: 14.5, 75: 12.6 }
+    },
+    tip: {
+        male: { 20: 18.0, 25: 18.3, 30: 17.4, 35: 18.0, 40: 17.8, 45: 18.7, 50: 18.3, 55: 16.6, 60: 15.8, 65: 17.0, 70: 13.8, 75: 14.0 },
+        female: { 20: 11.1, 25: 11.9, 30: 12.6, 35: 11.6, 40: 11.5, 45: 13.2, 50: 12.5, 55: 11.7, 60: 10.1, 65: 10.6, 70: 10.1, 75: 9.6 }
+    },
+    palmer: {
+        male: { 20: 26.6, 25: 26.0, 30: 24.7, 35: 26.2, 40: 24.5, 45: 24.0, 50: 23.8, 55: 23.7, 60: 21.8, 65: 21.4, 70: 18.1, 75: 18.7 },
+        female: { 20: 17.2, 25: 17.7, 30: 19.3, 35: 17.5, 40: 17.0, 45: 17.9, 50: 17.3, 55: 16.0, 60: 14.8, 65: 14.2, 70: 14.4, 75: 12.0 }
+    },
+    // Values in kgf (Direct Range)
+    grip: {
+        male: {
+            20: "36.8-56.6", 25: "37.7-57.5", 30: "36.0-55.8", 35: "35.8-55.6", 40: "35.5-55.3",
+            45: "34.7-54.5", 50: "32.9-50.7", 55: "30.7-48.5", 60: "30.2-48.0", 65: "28.2-44.0", 70: "21.3-35.1"
+        },
+        female: {
+            20: "21.5-35.3", 25: "25.6-41.4", 30: "21.5-35.3", 35: "20.3-34.1", 40: "18.9-32.7",
+            45: "18.6-32.4", 50: "18.1-31.9", 55: "17.7-31.5", 60: "17.2-31.0", 65: "15.4-27.2", 70: "14.7-24.5"
+        }
+    }
+};
+
+export function getHandStrengthReference(testId: string, gender: Gender, age: number): string {
+    const isMale = (gender || "").toLowerCase() === 'masculino';
+    const gKey = isMale ? 'male' : 'female';
+    
+    // Nearest age bracket finder
+    const getNearest = (data: Record<number, any>, target: number) => {
+        const ages = Object.keys(data).map(Number).sort((a, b) => a - b);
+        const closest = ages.reduce((prev, curr) => Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev);
+        return data[closest];
+    };
+
+    if (testId.includes('preensao_palmar') || testId.includes('preensao_esq') || testId.includes('preensao_dir') || testId === 'preensao') {
+        return getNearest(HAND_NORMS.grip[gKey], age) + " kgf";
+    }
+    
+    let type: 'lateral' | 'tip' | 'palmer' | null = null;
+    if (testId.includes('lateral')) type = 'lateral';
+    if (testId.includes('polpa')) type = 'tip';
+    if (testId.includes('tripode')) type = 'palmer';
+
+    if (type) {
+        const valLb = getNearest(HAND_NORMS[type][gKey], age);
+        const valKg = (valLb * 0.453).toFixed(1);
+        return `${valKg} kgf`;
+    }
+
+    return "";
 }

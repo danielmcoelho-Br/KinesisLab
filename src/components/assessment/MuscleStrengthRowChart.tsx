@@ -87,18 +87,19 @@ const MuscleStrengthRowChart = ({
                 }}>
                     <span style={{ 
                         position: 'absolute', 
-                        top: '-1.75rem', 
+                        top: '-1.4rem', 
                         right: '0', 
-                        fontSize: '0.9rem', 
-                        fontWeight: '900', 
-                        color: '#334155',
-                        backgroundColor: 'rgba(255,255,255,0.95)',
-                        padding: '3px 10px',
-                        borderRadius: '6px',
-                        boxShadow: 'var(--shadow-md)',
-                        border: '1px solid #cbd5e1'
+                        fontSize: '0.75rem', 
+                        fontWeight: '800', 
+                        color: '#475569',
+                        backgroundColor: 'rgba(255,255,255,0.9)',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                        border: '1px solid #e2e8f0',
+                        whiteSpace: 'nowrap'
                     }}>
-                        Referência: {reference} kgf
+                        Ref: {reference} kgf
                     </span>
                 </div>
 

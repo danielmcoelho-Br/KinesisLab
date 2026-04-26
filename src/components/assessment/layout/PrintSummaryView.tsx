@@ -145,7 +145,7 @@ export default function PrintSummaryView({
 
             return checkFieldsData(section.fields) || hasTableData || hasSubData || hasHistoryData || hasTableHistoryData;
         }).reduce((acc: any[], item, idx, arr) => {
-            const isClinicalAssessment = ['afOmbro', 'afCervical', 'afLombar', 'afGeriatria', 'afMmii', 'afTornozelo'].includes(type);
+            const isClinicalAssessment = ['afOmbro', 'afCervical', 'afLombar', 'afGeriatria', 'afMmii', 'afTornozelo', 'afMao'].includes(type);
             const section = item as Section;
 
             if (isClinicalAssessment) {
@@ -163,7 +163,10 @@ export default function PrintSummaryView({
                     'oswestry_integracao',
                     'ndi_integracao',
                     'quickdash_integracao',
-                    'integracao'
+                    'integracao',
+                    'ybt',
+                    'perimetria',
+                    'forca_preensao'
                 ];
 
                 // DASHBOARD LOGIC (First Row)
@@ -243,6 +246,7 @@ export default function PrintSummaryView({
                                         section={section.secondarySection} 
                                         isPrint={true} 
                                         hideTitle={false}
+                                        halfWidth={true}
                                     />
                                 </div>
 
@@ -263,9 +267,13 @@ export default function PrintSummaryView({
                 // 2. PAIR GROUP RENDERER (Clean 2-column layout for subsequent tables)
                 if (section.isPairGroup) {
                     return (
-                        <div key={section.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', width: '100%', marginBottom: '1.5rem', pageBreakInside: 'avoid' }}>
-                            <FormSection section={section} isPrint={true} />
-                            <FormSection section={section.secondarySection} isPrint={true} />
+                        <div key={section.id} style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '1.5rem', pageBreakInside: 'avoid' }}>
+                            <div style={{ width: '48%' }}>
+                                <FormSection section={section} isPrint={true} halfWidth={true} />
+                            </div>
+                            <div style={{ width: '48%' }}>
+                                <FormSection section={section.secondarySection} isPrint={true} halfWidth={true} />
+                            </div>
                         </div>
                     );
                 }

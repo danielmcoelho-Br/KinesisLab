@@ -582,10 +582,21 @@ export function useAssessmentState({
                             const min = Math.min(esq, dir);
                             const deficit = Math.round(((max - min) / max) * 100);
                             newAnswers[`${mId}_def`] = `${deficit}%`;
-                            newAnswers[`${mId}_def_res`] = deficit <= 15 ? 'Normal' : 'Reduzido';
+                            
+                            // Classification for Strength (f_*_tor)
+                            if (mId.startsWith('f_') && mId.endsWith('_tor')) {
+                                if (deficit <= 10) newAnswers[`${mId}_res`] = 'Simetria funcional';
+                                else if (deficit > 15) newAnswers[`${mId}_res`] = 'Risco funcional aumentado';
+                                else newAnswers[`${mId}_res`] = '---';
+                            } else {
+                                newAnswers[`${mId}_def_res`] = deficit <= 15 ? 'Normal' : 'Reduzido';
+                            }
                         } else {
                             newAnswers[`${mId}_def`] = '';
                             newAnswers[`${mId}_def_res`] = '';
+                            if (mId.startsWith('f_') && mId.endsWith('_tor')) {
+                                newAnswers[`${mId}_res`] = '';
+                            }
                         }
                     }
                 });
@@ -600,6 +611,20 @@ export function useAssessmentState({
                     const isAsymmetric = diff > 5 || pctDiff > 10;
                     newAnswers['slhrt_class'] = `ESQUERDO: ${esq > 0 ? classify(esq) : "Não realizado"}\nDIREITO: ${dir > 0 ? classify(dir) : "Não realizado"}\nAssimetria Significativa: ${isAsymmetric ? "SIM" : "NÃO"} (${diff} reps / ${pctDiff.toFixed(1)}%)`;
                 } else newAnswers['slhrt_class'] = '';
+
+                const wesq = safeParse(newAnswers['wblt_esq']);
+                const wdir = safeParse(newAnswers['wblt_dir']);
+                if (wesq > 0 || wdir > 0) {
+                    const classify = (v: number) => v >= 25 ? "Adequado" : v >= 20 ? "Limítrofe" : v >= 15 ? "Moderado" : "Importante";
+                    const diff = Math.abs(wesq - wdir);
+                    const max = Math.max(wesq, wdir);
+                    const pctDiff = max > 0 ? (diff / max) * 100 : 0;
+                    const isAsymmetric = diff > 5 || pctDiff > 10;
+                    
+                    const resE = wesq > 0 ? classify(wesq) : "-";
+                    const resD = wdir > 0 ? classify(wdir) : "-";
+                    newAnswers['wblt_res'] = `${resE} / ${resD}${isAsymmetric ? ' (Risco)' : ''}`;
+                } else newAnswers['wblt_res'] = '';
 
                 if (fieldId === 'ybt_esq' || fieldId === 'ybt_dir') {
                     const yesq = parseFloat(String(newAnswers['ybt_esq'] || '0').replace(',', '.'));
@@ -674,7 +699,10 @@ export function useAssessmentState({
                     else newAnswers['ybt_diff'] = '';
                 }
 
-                // Step Down Test Calculation
+            }
+
+            // Step Down Test Calculation (Shared between afMmii and afTornozelo)
+            if (type === 'afMmii' || type === 'afTornozelo') {
                 const sdCriteria = ['sd_pelvis', 'sd_knee'];
                 if (sdCriteria.some(c => fieldId.startsWith(c))) {
                     ['e', 'd'].forEach(side => {

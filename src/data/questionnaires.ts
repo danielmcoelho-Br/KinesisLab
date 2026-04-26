@@ -2224,8 +2224,6 @@ export const questionnairesData: Record<string, Questionnaire> = {
             title: 'Avaliação Clínica e Mapa de Sensibilidade',
             fields: [
                 { id: 'diagnostico', label: 'Diagnóstico Clínico', type: 'textarea' },
-                { id: 'historia', label: 'História da Doença', type: 'textarea' },
-                { id: 'observacoes', label: 'Observações Gerais', type: 'textarea' },
                 {
                     id: 'mapa_sensibilidade',
                     label: 'Marque no mapa o nível de sensibilidade encontrado',

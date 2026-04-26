@@ -63,6 +63,7 @@ export type Section = {
     subsections?: Section[];
     chart?: string;
     footer?: string;
+    description?: string;
 };
   
 export type DiagnosisRule = {

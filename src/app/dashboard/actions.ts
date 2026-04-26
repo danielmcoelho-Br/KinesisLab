@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { createPatientSchema, updatePatientSchema, addPatientDocumentSchema } from "@/lib/schemas";
 
 const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
@@ -82,6 +83,12 @@ export async function createPatient(data: {
       birth_date = undefined;
     }
 
+    const validationResult = createPatientSchema.safeParse(data);
+    if (!validationResult.success) {
+      console.warn("Patient validation failed:", validationResult.error.format());
+      return { success: false, error: "Dados do paciente inválidos ou incompletos." };
+    }
+
     const patient = await prisma.patient.create({
       data: {
         name: data.name,
@@ -112,6 +119,13 @@ export async function updatePatient(id: string, data: any, userId?: string, user
   try {
     const current = await prisma.patient.findUnique({ where: { id } });
     if (!current) throw new Error("Paciente não encontrado");
+
+    const parsedData = { ...data, id };
+    const validationResult = updatePatientSchema.safeParse(parsedData);
+    if (!validationResult.success) {
+      console.warn("Patient validation failed:", validationResult.error.format());
+      return { success: false, error: "Dados do paciente inválidos ou incompletos." };
+    }
 
     const logs = Array.isArray(current.change_logs) ? [...current.change_logs as any[]] : [];
     const timestamp = new Date().toLocaleString('pt-BR');
@@ -234,6 +248,18 @@ export async function deleteAssessment(id: string) {
 
 export async function addPatientDocument(patientId: string, doc: { name: string; type: string; data: string; size: number }) {
   try {
+    const validationResult = addPatientDocumentSchema.safeParse({
+      patient_id: patientId,
+      description: doc.name,
+      file_url: doc.data,
+      file_type: doc.type
+    });
+    
+    if (!validationResult.success) {
+      console.warn("Document validation failed:", validationResult.error.format());
+      return { success: false, error: "Dados do documento inválidos." };
+    }
+
     const patient = await prisma.patient.findUnique({ where: { id: patientId } });
     if (!patient) throw new Error("Paciente não encontrado");
 

@@ -333,23 +333,27 @@ export function useAssessmentState({
         setActiveFlags(triggered);
     }, [answers, questionnaire]);
 
-    // Save draft effect
+    // Save draft effect (Debounced 1 second to improve UI performance during typing)
     useEffect(() => {
         if (!assessmentId && Object.keys(answers).length > 0) {
             const keys = Object.keys(answers);
             const hasRealData = keys.some(k => !k.endsWith('_score_previo') && !k.endsWith('_data_previo'));
             
             if (hasRealData) {
-                const draftKey = `assessment_draft_${patientId}_${type}`;
-                const cleanAnswers: Record<string, any> = { ...answers };
+                const timeoutId = setTimeout(() => {
+                    const draftKey = `assessment_draft_${patientId}_${type}`;
+                    const cleanAnswers: Record<string, any> = { ...answers };
 
-                try {
-                    localforage.setItem(draftKey, JSON.stringify(cleanAnswers)).catch(() => {
+                    try {
+                        localforage.setItem(draftKey, JSON.stringify(cleanAnswers)).catch(() => {
+                            localforage.removeItem(draftKey);
+                        });
+                    } catch (e) {
                         localforage.removeItem(draftKey);
-                    });
-                } catch (e) {
-                    localforage.removeItem(draftKey);
-                }
+                    }
+                }, 1000); // 1000ms delay to prevent heavy async calls on every keystroke
+                
+                return () => clearTimeout(timeoutId);
             }
         }
     }, [answers, patientId, type, assessmentId]);

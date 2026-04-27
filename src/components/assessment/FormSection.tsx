@@ -215,8 +215,8 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                             </div>
                         </div>
 
-                        <div className="table-responsive" style={{ width: '100%', marginTop: '1rem', borderRadius: '1rem', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white' }}>
+                        <div className="table-responsive" style={{ width: '100%', marginTop: '1rem', borderRadius: '1rem', border: '1px solid var(--border)', overflowX: 'auto', boxShadow: 'var(--shadow-sm)' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white', minWidth: '400px' }}>
                                 <thead>
                                     <tr style={{ backgroundColor: 'var(--bg-secondary)' }}>
                                         <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '800', color: 'var(--secondary)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>Parâmetro</th>

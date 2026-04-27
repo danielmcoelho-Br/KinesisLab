@@ -40,7 +40,7 @@ const DataTable = memo(({ section, isPrint: overrideIsPrint }: DataTableProps) =
             width: '100%',
             borderRadius: '1.25rem', 
             border: isPrint ? '1px solid #e2e8f0' : '1px solid var(--border)', 
-            overflow: 'hidden',
+            overflowX: 'auto',
             backgroundColor: 'white',
             boxShadow: isPrint ? 'none' : '0 4px 6px -1px rgba(163, 22, 33, 0.05), 0 2px 4px -1px rgba(163, 22, 33, 0.03)'
         }}>

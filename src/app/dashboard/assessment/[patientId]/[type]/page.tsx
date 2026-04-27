@@ -38,11 +38,13 @@ import AssessmentHistoryChart from "@/components/assessment/AssessmentHistoryCha
 import FormSection from "@/components/assessment/FormSection";
 import SectionNav from "@/components/assessment/SectionNav";
 import { AssessmentProvider } from "@/contexts/AssessmentContext";
-import DynamoModal from "@/components/assessment/modals/DynamoModal";
-import YbtModal from "@/components/assessment/modals/YbtModal";
-import DraftModal from "@/components/assessment/modals/DraftModal";
-import ExitModal from "@/components/assessment/modals/ExitModal";
-import ImageZoomModal from "@/components/assessment/modals/ImageZoomModal";
+import dynamic from "next/dynamic";
+
+const DynamoModal = dynamic(() => import("@/components/assessment/modals/DynamoModal"), { ssr: false });
+const YbtModal = dynamic(() => import("@/components/assessment/modals/YbtModal"), { ssr: false });
+const DraftModal = dynamic(() => import("@/components/assessment/modals/DraftModal"), { ssr: false });
+const ExitModal = dynamic(() => import("@/components/assessment/modals/ExitModal"), { ssr: false });
+const ImageZoomModal = dynamic(() => import("@/components/assessment/modals/ImageZoomModal"), { ssr: false });
 
 const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 

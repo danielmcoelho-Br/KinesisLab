@@ -188,35 +188,16 @@ export function calculateAssessmentScore(type: CalculationType, answers: Record<
 
         case 'aofas': {
             // AOFAS Ankle-Hindfoot Scale (0-100)
-            const aofasKeys = [
-                'aofas_dor', 'aofas_limitacao', 'aofas_distancia', 'aofas_superficie', 
-                'aofas_marcha', 'aofas_sagital', 'aofas_retrope', 'aofas_estabilidade', 'aofas_alinhamento'
-            ];
-            
-            let localSum = 0;
-            let answeredCount = 0;
-            aofasKeys.forEach(key => {
-                if (answers[key] !== undefined && answers[key] !== "") {
-                    localSum += Number(answers[key]);
-                    answeredCount++;
-                }
-            });
-
-            // If no explicit IDs found, use the generic sum from numeric keys (legacy)
-            const finalSum = answeredCount > 0 ? localSum : sum;
-            const finalN = answeredCount > 0 ? answeredCount : n;
-
-            if (finalN === 0) return emptyResult();
-            
+            if (n === 0) return emptyResult();
             const max = 100;
-            const percentage = Math.round((finalSum / max) * 100);
+            const percentage = Math.round((sum / max) * 100);
             let interpretation = '';
             if (percentage >= 90) interpretation = 'Excelente';
             else if (percentage >= 80) interpretation = 'Bom';
             else if (percentage >= 70) interpretation = 'Regular';
             else interpretation = 'Ruim';
 
-            return { score: finalSum, max, percentage, interpretation, unit: ' pontos' };
+            return { score: sum, max, percentage, interpretation, unit: ' pontos' };
         }
 
         case 'afCotovelo':

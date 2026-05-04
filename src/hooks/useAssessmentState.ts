@@ -741,24 +741,20 @@ export function useAssessmentState({
 
             if (type === 'afLombar') {
                 const val = parseFloat(String(value).replace(',', '.'));
-                if (!isNaN(val)) {
-                    if (fieldId === 'flexao_60') {
-                        const threshold = getEnduranceThreshold({ testId: 'flexao_60', gender: patientGender, age: patientAge, activityLevel: patientActivityLevel });
-                        if (threshold > 0) {
-                            newAnswers['flexao_60_res'] = val >= threshold ? 'Normal' : 'Reduzido';
-                            const pct = Math.round(((val / threshold) - 1) * 100);
-                            newAnswers['flexao_60_pct'] = `${pct > 0 ? '+' : ''}${pct}%`;
-                        }
-                    }
-                    if (fieldId === 'sorensen') {
-                        const threshold = getEnduranceThreshold({ testId: 'sorensen', gender: patientGender, age: patientAge, activityLevel: patientActivityLevel });
-                        if (threshold > 0) {
-                            newAnswers['sorensen_res'] = val >= threshold ? 'Normal' : 'Reduzido';
-                            const pct = Math.round(((val / threshold) - 1) * 100);
-                            newAnswers['sorensen_pct'] = `${pct > 0 ? '+' : ''}${pct}%`;
-                        }
+                const enduranceTests = ['flexao_60', 'sorensen', 'prancha', 'prancha_lat_esq', 'prancha_lat_dir'];
+                
+                if (!isNaN(val) && enduranceTests.includes(fieldId)) {
+                    const threshold = getEnduranceThreshold({ testId: fieldId, gender: patientGender, age: patientAge, activityLevel: patientActivityLevel });
+                    if (threshold > 0) {
+                        newAnswers[`${fieldId}_res`] = val >= threshold ? 'Normal' : 'Reduzido';
+                        const pct = Math.round(((val / threshold) - 1) * 100);
+                        newAnswers[`${fieldId}_pct`] = `${pct > 0 ? '+' : ''}${pct}%`;
+                    } else {
+                        newAnswers[`${fieldId}_res`] = '---';
+                        newAnswers[`${fieldId}_pct`] = '---';
                     }
                 }
+            }
 
                 if (fieldId === 'hip_flexion_esq' || fieldId === 'hip_flexion_dir') {
                     const esq = Number(newAnswers['hip_flexion_esq']);

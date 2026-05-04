@@ -702,7 +702,10 @@ export const questionnairesData: Record<string, Questionnaire> = {
             columns: ['Teste', 'Tempo (s)', 'Percentual (%)', 'Resultado'],
             rows: [
                 { id: 'res_60_row', label: 'Flexão a 60º - Isometria Anterior', fields: ['flexao_60', { id: 'flexao_60_pct', isCalculated: true }, 'flexao_60_res'] },
-                { id: 'res_sorensen_row', label: 'Teste de Sorensen - Isometria Posterior', fields: ['sorensen', { id: 'sorensen_pct', isCalculated: true }, 'sorensen_res'] }
+                { id: 'res_sorensen_row', label: 'Teste de Sorensen - Isometria Posterior', fields: ['sorensen', { id: 'sorensen_pct', isCalculated: true }, 'sorensen_res'] },
+                { id: 'res_prancha_row', label: 'Prancha - Estabilidade de CORE', fields: ['prancha', { id: 'prancha_pct', isCalculated: true }, 'prancha_res'] },
+                { id: 'res_prancha_lat_esq_row', label: 'Prancha Lateral Esquerda', fields: ['prancha_lat_esq', { id: 'prancha_lat_esq_pct', isCalculated: true }, 'prancha_lat_esq_res'] },
+                { id: 'res_prancha_lat_dir_row', label: 'Prancha Lateral Direita', fields: ['prancha_lat_dir', { id: 'prancha_lat_dir_pct', isCalculated: true }, 'prancha_lat_dir_res'] }
             ],
             fields: [
                 { id: 'testes_obs', label: 'Observações Adicionais', type: 'textarea' }

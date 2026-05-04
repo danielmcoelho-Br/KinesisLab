@@ -55,6 +55,22 @@ export function getEnduranceThreshold({ testId, gender, age, activityLevel = 'In
         return 109.5;
     }
 
+    // Plank (Frontal Core Stability)
+    if (testId === 'prancha') {
+        if (age < 20) return 60;
+        if (age <= 39) return 45;
+        if (age <= 49) return 50;
+        if (age <= 59) return 40;
+        return 20;
+    }
+
+    // Side Plank (Lateral Stability)
+    if (testId === 'prancha_lat_esq' || testId === 'prancha_lat_dir') {
+        if (age <= 39) return 45;
+        if (age <= 59) return 30;
+        return 15;
+    }
+
     // Geriatric Thresholds
     if (testId === 'pes_juntos' || testId === 'semi_tandem') return 30;
     if (testId === 'tandem') return 17.56;

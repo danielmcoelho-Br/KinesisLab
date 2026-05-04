@@ -317,7 +317,7 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                         section={section} 
                         isPrint={isPrint}
                     />                    {/* 1. SIDE-BY-SIDE EVOLUTION CHARTS (Data-heavy sections) */}
-                    {['perimetria', 'forca', 'forca_preensao', 'dinamometria', 'ndi_integracao', 'oswestry_integracao', 'quickdash_integracao', 'resistencia', 'testes_resistencia', 'testes_fadiga', 'testes_especiais_resistidos', 'resistencia_tronco', 'testes_equilibrio', 'adm', 'movimento_cervical', 'movimento_lombar', 'endurance'].includes(section.id) && (
+                    {['perimetria', 'forca', 'forca_preensao', 'forca_quadril_lombar', 'dinamometria', 'ndi_integracao', 'oswestry_integracao', 'quickdash_integracao', 'resistencia', 'testes_resistencia', 'testes_fadiga', 'testes_especiais_resistidos', 'resistencia_tronco', 'testes_equilibrio', 'adm', 'movimento_cervical', 'movimento_lombar', 'endurance'].includes(section.id) && (
                         <div style={{ 
                             display: (isPrint || ['afOmbro', 'afCervical', 'afLombar', 'afMmii', 'afMao'].includes(type)) ? 'grid' : 'flex', 
                             gridTemplateColumns: (isPrint || ['afOmbro', 'afCervical', 'afLombar', 'afMmii', 'afMao'].includes(type)) ? '1fr 1fr' : 'none',
@@ -327,7 +327,7 @@ const FormSection = memo(({ section, isPrint: overrideIsPrint, hideTitle = false
                             width: '100%',
                             pageBreakInside: 'avoid'
                         }}>
-                            {(type === 'afMmii' && section.id === 'forca') || (type === 'afMao' && section.id === 'forca_preensao') ? (
+                            {((type === 'afMmii' || type === 'afLombar') && (section.id === 'forca' || section.id === 'forca_quadril_lombar')) || (type === 'afMao' && section.id === 'forca_preensao') ? (
                                 // SPECIAL ROW-BY-ROW COMPARATIVE CHARTS FOR MMII & MAO STRENGTH
                                 section.rows?.filter((r: TableRow) => r.id !== 'relacao_iq').map((row: TableRow) => (
                                     <MuscleStrengthRowChart 

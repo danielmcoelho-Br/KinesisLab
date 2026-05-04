@@ -712,6 +712,18 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         },
         {
+            id: 'forca_quadril_lombar',
+            title: 'Dinamometria Muscular de Quadril (kgF)',
+            type: 'table',
+            columns: ['Movimento', 'Esquerdo', 'Direito', 'DÉFICIT %', 'Resultado'],
+            rows: [
+                { id: 'flex_q_forca_lom', label: 'Flexão de Quadril', fields: ['f_flex_q_esq_lom', 'f_flex_q_dir_lom', 'f_flex_q_def_lom', 'f_flex_q_res_lom'] },
+                { id: 'abd_q_forca_lom', label: 'Abdução de Quadril', fields: ['f_abd_q_esq_lom', 'f_abd_q_dir_lom', 'f_abd_q_def_lom', 'f_abd_q_res_lom'] },
+                { id: 'ext_q_forca_lom', label: 'Extensão de Quadril', fields: ['f_ext_q_esq_lom', 'f_ext_q_dir_lom', 'f_ext_q_def_lom', 'f_ext_q_res_lom'] }
+            ],
+            fields: [{ id: 'forca_quadril_obs', label: 'OBSERVAÇÕES', type: 'textarea' }]
+        },
+        {
             id: 'oswestry_integracao',
             title: 'ODI (Índice de Incapacidade de Oswestry)',
             fields: [

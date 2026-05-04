@@ -1556,27 +1556,137 @@ export const questionnairesData: Record<string, Questionnaire> = {
     segment: 'tornozelo',
     title: 'Escala AOFAS (Tornozelo e Retropé)',
     description: 'Avalia dor, função e alinhamento do tornozelo e retropé.',
-    questions: [
-        { text: 'DOR (40 pontos no máximo)', isInstruction: true },
-        { text: '1. Dor (intensidade)', options: [{ value: 40, label: 'Nenhuma' }, { value: 30, label: 'Leve, ocasional' }, { value: 20, label: 'Moderada, diária' }, { value: 0, label: 'Grave, quase sempre presente' }] },
-        { text: 'FUNÇÃO (50 pontos no máximo)', isInstruction: true },
-        { text: '2. Limitação de atividades e necessidade de suporte', options: [{ value: 10, label: 'Nenhuma limitação, sem suporte' }, { value: 7, label: 'Atividades diárias ok, recreacionais limitadas' }, { value: 4, label: 'Limitação diária e recreacional, uso de bengala' }, { value: 0, label: 'Limitação severa, uso de andador/cadeira' }] },
-        { text: '3. Distância máxima de caminhada', options: [{ value: 5, label: '> 600 metros' }, { value: 4, label: '400 - 600 metros' }, { value: 2, label: '100 - 300 metros' }, { value: 0, label: '< 100 metros' }] },
-        { text: '4. Superfícies de caminhada', options: [{ value: 5, label: 'Nenhuma dificuldade' }, { value: 3, label: 'Dificuldade em terrenos irregulares/degraus' }, { value: 0, label: 'Dificuldade severa' }] },
-        { text: '5. Anormalidade da marcha', options: [{ value: 8, label: 'Normal' }, { value: 4, label: 'Óbvia (manca)' }, { value: 0, label: 'Acentuada' }] },
-        { text: '6. Mobilidade Sagital (flexão + extensão)', options: [{ value: 8, label: 'Normal ou leve restrição (30° ou mais)' }, { value: 4, label: 'Restrição moderada (15° - 29°)' }, { value: 0, label: 'Restrição severa (< 15°)' }] },
-        { text: '7. Mobilidade do Retropé (inversão + eversão)', options: [{ value: 6, label: '75% a 100% do normal' }, { value: 3, label: '25% a 74% do normal' }, { value: 0, label: '< 25% do normal' }] },
-        { text: '8. Estabilidade do tornozelo-retropé', options: [{ value: 8, label: 'Estável' }, { value: 0, label: 'Definitivamente instável' }] },
-        { text: 'ALINHAMENTO (10 pontos no máximo)', isInstruction: true },
-        { text: '9. Alinhamento do tornozelo-retropé', options: [{ value: 10, label: 'Bom, pé plantígrado' }, { value: 5, label: 'Razoável, sintomático' }, { value: 0, label: 'Ruim, deformidade grave' }] }
+    type: 'clinical',
+    sections: [
+        {
+            id: 'dor',
+            title: 'I. DOR (40 pontos no máximo)',
+            fields: [
+                { 
+                    id: 'aofas_dor', 
+                    label: 'Intensidade da Dor', 
+                    type: 'select', 
+                    options: [
+                        { value: 40, label: 'Nenhuma' }, 
+                        { value: 30, label: 'Leve, ocasional' }, 
+                        { value: 20, label: 'Moderada, diária' }, 
+                        { value: 0, label: 'Grave, quase sempre presente' }
+                    ] 
+                }
+            ]
+        },
+        {
+            id: 'funcao',
+            title: 'II. FUNÇÃO (50 pontos no máximo)',
+            fields: [
+                { 
+                    id: 'aofas_limitacao', 
+                    label: 'Limitação de atividades e necessidade de suporte', 
+                    type: 'select', 
+                    options: [
+                        { value: 10, label: 'Nenhuma limitação, sem suporte' }, 
+                        { value: 7, label: 'Atividades diárias ok, recreacionais limitadas' }, 
+                        { value: 4, label: 'Limitação diária e recreacional, uso de bengala' }, 
+                        { value: 0, label: 'Limitação severa, uso de andador/cadeira' }
+                    ] 
+                },
+                { 
+                    id: 'aofas_distancia', 
+                    label: 'Distância máxima de caminhada', 
+                    type: 'select', 
+                    options: [
+                        { value: 5, label: '> 600 metros' }, 
+                        { value: 4, label: '400 - 600 metros' }, 
+                        { value: 2, label: '100 - 300 metros' }, 
+                        { value: 0, label: '< 100 metros' }
+                    ] 
+                },
+                { 
+                    id: 'aofas_superficie', 
+                    label: 'Superfícies de caminhada', 
+                    type: 'select', 
+                    options: [
+                        { value: 5, label: 'Nenhuma dificuldade' }, 
+                        { value: 3, label: 'Dificuldade em terrenos irregulares/degraus' }, 
+                        { value: 0, label: 'Dificuldade severa' }
+                    ] 
+                },
+                { 
+                    id: 'aofas_marcha', 
+                    label: 'Anormalidade da marcha', 
+                    type: 'select', 
+                    options: [
+                        { value: 8, label: 'Normal' }, 
+                        { value: 4, label: 'Óbvia (manca)' }, 
+                        { value: 0, label: 'Acentuada' }
+                    ] 
+                },
+                { 
+                    id: 'aofas_sagital', 
+                    label: 'Mobilidade Sagital (flexão + extensão)', 
+                    type: 'select', 
+                    options: [
+                        { value: 8, label: 'Normal ou leve restrição (30° ou mais)' }, 
+                        { value: 4, label: 'Restrição moderada (15° - 29°)' }, 
+                        { value: 0, label: 'Restrição severa (< 15°)' }
+                    ] 
+                },
+                { 
+                    id: 'aofas_retrope', 
+                    label: 'Mobilidade do Retropé (inversão + eversão)', 
+                    type: 'select', 
+                    options: [
+                        { value: 6, label: '75% a 100% do normal' }, 
+                        { value: 3, label: '25% a 74% do normal' }, 
+                        { value: 0, label: '< 25% do normal' }
+                    ] 
+                },
+                { 
+                    id: 'aofas_estabilidade', 
+                    label: 'Estabilidade do tornozelo-retropé', 
+                    type: 'select', 
+                    options: [
+                        { value: 8, label: 'Estável' }, 
+                        { value: 0, label: 'Definitivamente instável' }
+                    ] 
+                }
+            ]
+        },
+        {
+            id: 'alinhamento',
+            title: 'III. ALINHAMENTO (10 pontos no máximo)',
+            fields: [
+                { 
+                    id: 'aofas_alinhamento', 
+                    label: 'Alinhamento do tornozelo-retropé', 
+                    type: 'select', 
+                    options: [
+                        { value: 10, label: 'Bom, pé plantígrado' }, 
+                        { value: 5, label: 'Razoável, sintomático' }, 
+                        { value: 0, label: 'Ruim, deformidade grave' }
+                    ] 
+                }
+            ]
+        }
     ],
     calculateScore: (answers: Record<string, any>) => {
+        const aofasKeys = [
+            'aofas_dor', 'aofas_limitacao', 'aofas_distancia', 'aofas_superficie', 
+            'aofas_marcha', 'aofas_sagital', 'aofas_retrope', 'aofas_estabilidade', 'aofas_alinhamento'
+        ];
+        
         let score = 0;
-        Object.keys(answers).forEach(key => {
-            if (!isNaN(parseInt(key))) {
-                score += Number(answers[key]);
-            }
+        aofasKeys.forEach(key => {
+            if (answers[key] !== undefined) score += Number(answers[key]);
         });
+        
+        if (score === 0) {
+            Object.keys(answers).forEach(key => {
+                if (!isNaN(parseInt(key))) {
+                    score += Number(answers[key]);
+                }
+            });
+        }
         
         let interpretation = '';
         if (score >= 90) interpretation = 'Excelente';

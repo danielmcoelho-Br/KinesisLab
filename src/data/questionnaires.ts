@@ -587,45 +587,6 @@ export const questionnairesData: Record<string, Questionnaire> = {
             ]
         },
         {
-            id: 'exame_neurologico',
-            title: 'Exame Neurológico',
-            type: 'multi-table',
-            subsections: [
-                {
-                    id: 'miotomos',
-                    title: 'Miótomos (Força 0-5)',
-                    type: 'table',
-                    columns: [
-                        'Nível / Movimento', 
-                        { label: 'Esquerdo', action: { type: 'fill', value: '5' } }, 
-                        { label: 'Direito', action: { type: 'fill', value: '5' } }
-                    ],
-                    rows: [
-                        { id: 'l2_mio', label: 'L2 (Flexão Quadril)', fields: [{ id: 'forca_l2_esq', type: 'select', options: scores0to5 }, { id: 'forca_l2_dir', type: 'select', options: scores0to5 }] },
-                        { id: 'l3_mio', label: 'L3 (Extensão Joelho)', fields: [{ id: 'forca_l3_esq', type: 'select', options: scores0to5 }, { id: 'forca_l3_dir', type: 'select', options: scores0to5 }] },
-                        { id: 'l4_mio', label: 'L4 (Dorsiflexão)', fields: [{ id: 'forca_l4_esq', type: 'select', options: scores0to5 }, { id: 'forca_l4_dir', type: 'select', options: scores0to5 }] },
-                        { id: 'l5_mio', label: 'L5 (Extensão Hálux)', fields: [{ id: 'forca_l5_esq', type: 'select', options: scores0to5 }, { id: 'forca_l5_dir', type: 'select', options: scores0to5 }] },
-                        { id: 's1_mio', label: 'S1 (Flexão Plantar)', fields: [{ id: 'forca_s1_esq', type: 'select', options: scores0to5 }, { id: 'forca_s1_dir', type: 'select', options: scores0to5 }] }
-                    ]
-                },
-                {
-                    id: 'reflexos',
-                    title: 'Reflexos Profundos',
-                    type: 'table',
-                    columns: [
-                        'Reflexo', 
-                        { label: 'Esquerdo', action: { type: 'fill', value: 'Normal' } }, 
-                        { label: 'Direito', action: { type: 'fill', value: 'Normal' } }
-                    ],
-                    rows: [
-                        { id: 'ref_patelar', label: 'Patelar (L4)', fields: [{ id: 'ref_pat_esq', type: 'select', options: reflexOptions }, { id: 'ref_pat_dir', type: 'select', options: reflexOptions }] },
-                        { id: 'ref_aquileu', label: 'Aquileu (S1)', fields: [{ id: 'ref_aqui_esq', type: 'select', options: reflexOptions }, { id: 'ref_aqui_dir', type: 'select', options: reflexOptions }] }
-                    ]
-                }
-            ]
-        },
-
-        {
             id: 'avaliacao_do_movimento',
             title: 'Avaliação do Movimento',
             type: 'multi-table',

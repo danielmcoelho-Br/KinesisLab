@@ -246,7 +246,7 @@ export function calculateAssessmentScore(type: CalculationType, answers: Record<
                     if (def) results[`${t}_def`] = def;
                 });
 
-                ['f_abd_q', 'f_ext_q', 'f_ext_j', 'f_flex_j', 'f_flex_j_p'].forEach(t => {
+                ['f_flex_q', 'f_abd_q', 'f_ext_q', 'f_ext_j', 'f_flex_j', 'f_flex_j_p'].forEach(t => {
                     const def = calcDeficit(answers[`${t}_esq`], answers[`${t}_dir`]);
                     if (def) {
                         results[`${t}_def`] = def;

@@ -1637,7 +1637,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             id: 'mmii_forca_def',
             message: 'Déficit de força muscular significativa (> 15%) em um ou mais grupos musculares.',
             criteria: (answers: any) => {
-                const muscles = ['f_abd_q_def', 'f_ext_q_def', 'f_ext_j_def', 'f_flex_j_def', 'f_flex_j_p_def'];
+                const muscles = ['f_flex_q_def', 'f_abd_q_def', 'f_ext_q_def', 'f_ext_j_def', 'f_flex_j_def', 'f_flex_j_p_def'];
                 return muscles.some(m => parseFloat(String(answers[m] || '0').replace('%', '')) > 15);
             }
         },
@@ -1668,7 +1668,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
         level: 'red',
         message: 'Fraqueza muscular severa detectada (Grau < 3) em movimentos de quadril ou joelho. Necessária investigação de compressão radicular ou neuropatia periférica.',
         criteria: (answers: any) => {
-          const mios = ['f_abd_q_esq', 'f_abd_q_dir', 'f_ext_q_esq', 'f_ext_q_dir', 'f_ext_j_esq', 'f_ext_j_dir', 'f_flex_j_esq', 'f_flex_j_dir', 'f_flex_j_p_esq', 'f_flex_j_p_dir'];
+          const mios = ['f_flex_q_esq', 'f_flex_q_dir', 'f_abd_q_esq', 'f_abd_q_dir', 'f_ext_q_esq', 'f_ext_q_dir', 'f_ext_j_esq', 'f_ext_j_dir', 'f_flex_j_esq', 'f_flex_j_dir', 'f_flex_j_p_esq', 'f_flex_j_p_dir'];
           return mios.some(m => answers[m] && parseInt(answers[m]) < 3);
         }
       }
@@ -1735,6 +1735,7 @@ export const questionnairesData: Record<string, Questionnaire> = {
             type: 'table',
             columns: ['MOVIMENTO', 'ESQUERDO', 'DIREITO', '% DÉFICIT', 'RESULTADO'],
             rows: [
+                { id: 'flex_q_forca', label: 'Flexão de Quadril', fields: ['f_flex_q_esq', 'f_flex_q_dir', 'f_flex_q_def', 'f_flex_q_res'] },
                 { id: 'abd_q_forca', label: 'Abdução de Quadril', fields: ['f_abd_q_esq', 'f_abd_q_dir', 'f_abd_q_def', 'f_abd_q_res'] },
                 { id: 'ext_q_forca', label: 'Extensão de Quadril', fields: ['f_ext_q_esq', 'f_ext_q_dir', 'f_ext_q_def', 'f_ext_q_res'] },
                 { id: 'ext_j_forca', label: 'Extensão de Joelho', fields: ['f_ext_j_esq', 'f_ext_j_dir', 'f_ext_j_def', 'f_ext_j_res'] },

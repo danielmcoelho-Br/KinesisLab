@@ -774,17 +774,6 @@ export function useAssessmentState({
                 }
             }
 
-                if (fieldId === 'hip_flexion_esq' || fieldId === 'hip_flexion_dir') {
-                    const esq = Number(newAnswers['hip_flexion_esq']);
-                    const dir = Number(newAnswers['hip_flexion_dir']);
-                    if (esq && dir) {
-                        newAnswers['hip_flexion_ratio'] = `${Math.round((esq / dir) * 100)}%`;
-                    } else {
-                        newAnswers['hip_flex_ratio'] = '';
-                    }
-                }
-            }
-
             if (type === 'afCervical') {
                 const val = parseFloat(String(value).replace(',', '.'));
                 if (!isNaN(val)) {

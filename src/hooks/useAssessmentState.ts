@@ -360,9 +360,13 @@ export function useAssessmentState({
 
     const handleSelect = (value: number) => {
         if (!isEditing) return;
+        
+        const items = questionnaire.sections || questionnaire.questions || [];
+        const currentItem = items[currentIdx];
+        const key = (currentItem as any).id !== undefined ? (currentItem as any).id : currentIdx;
+
         setAnswers(prev => {
-            const newAnswers = { ...prev, [currentIdx]: value };
-            const items = questionnaire.sections || questionnaire.questions || [];
+            const newAnswers = { ...prev, [key]: value };
             if (currentIdx < items.length - 1) {
                 setTimeout(() => {
                     setCurrentIdx(currentIdx + 1);

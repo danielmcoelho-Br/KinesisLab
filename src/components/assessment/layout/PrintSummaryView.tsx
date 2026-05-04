@@ -284,16 +284,15 @@ export default function PrintSummaryView({
                     </div>
                 );
             } else {
+                const key = (item as any).id !== undefined ? (item as any).id : idx;
+                if ((item as any).isInstruction || answers[key] === undefined) return null;
                 return (
                     <div key={idx} className="print-section" style={{ marginBottom: '1.5rem', padding: '1.5rem', border: '1px solid var(--border)', borderRadius: '1rem', backgroundColor: 'var(--bg-secondary)', pageBreakInside: 'avoid' }}>
                         <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--secondary)', marginBottom: '1rem' }}>
                             {(item as any).text}
                         </div>
                         <div style={{ fontSize: '1.1rem', color: 'var(--primary)', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)', fontWeight: '800' }}>
-                            {answers[idx] !== undefined 
-                                ? ((item as any).options?.find((o: any) => o.value === answers[idx])?.label || 'Não respondido')
-                                : 'Não respondido'
-                            }
+                            {((item as any).options?.find((o: any) => o.value === answers[key])?.label || 'Não respondido')}
                         </div>
                     </div>
                 );
